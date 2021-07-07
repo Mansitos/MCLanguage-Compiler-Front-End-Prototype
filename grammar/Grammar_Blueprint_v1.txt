@@ -1,0 +1,213 @@
+-----------------
+--- VARIABILI ---
+note: tolto tuple, privacy specifier e config-exter-export part
+
+variable-declaration-statement:
+  variable-kind variable-declaration-list ;
+
+variable-kind:
+  'param'
+  'const'
+  'var'
+  'ref'
+  'const ref'
+
+variable-declaration-list:
+  variable-declaration
+  variable-declaration , variable-declaration-list
+
+variable-declaration:
+  identifier-list type-part[OPT] initialization-part[OPT]
+
+type-part:
+  : type-expression
+
+initialization-part:
+  = expression
+
+identifier-list:
+  identifier
+  identifier , identifier-list
+
+------------
+--- TIPI ---
+note: tolto quasi tutto...
+
+type-expression:
+  primitive-type
+  lvalue-expression (todo)
+  if-expression
+  unary-expression
+  binary-expression
+
+primitive-type:
+  'void'
+  'bool'
+  'int'
+  'real'
+  'string'
+
+------------------
+-- ESPRESSIONI ---
+
+expression:
+-  literal-expression
+-  variable-expression
+-  call-expression
+-  cast-expression
+-  lvalue-expression 
+-  parenthesized-expression
+-  unary-expression
+-  binary-expression
+-  if-expression
+-  for-expression
+  forall-expression (todo)
+  module-access-expression (per ora no)
+
+if-expression:
+  'if' expression 'then' expression 'else' expression
+  'if' expression 'then' expression
+
+unary-expression:
+  unary-operator expression
+
+unary-operator: one of
+  + - ~ !
+
+binary-expression:
+  expression binary-operator expression
+
+binary-operator: one of
+  + - * / % ** & | ^ << >> && || == != <= >= < > 'by' #
+
+literal-expression:
+  bool-literal
+  integer-literal
+  real-literal
+  string-literal
+  array-literal
+
+variable-expression:
+  identifier
+
+call-expression:
+  lvalue-expression ( named-expression-list )
+  lvalue-expression [ named-expression-list ]
+  parenthesesless-function-identifier
+
+parenthesesless-function-identifier:
+  identifier
+
+parenthesized-expression:
+  ( expression )
+
+lvalue-expression:
+  variable-expression
+  call-expression
+  parenthesized-expression
+
+named-expression-list:
+  named-expression
+  named-expression , named-expression-list
+
+named-expression:
+  expression
+  identifier = expression
+
+cast-expression:
+  expression : type-expression
+
+for-expression:
+  'for' index-var-declaration 'in' expression 'do' expression
+  'for' expression 'do' expression
+
+index-var-declaration:
+  identifier
+
+------------------
+--- STATEMENTS ---
+
+block-statement:	(prima regola?)
+  { statements[OPT] }
+
+statements:
+  statement
+  statement statements
+
+statement:
+-  block-statement
+-  expression-statement
+-  assignment-statement
+-  conditional-statement
+-  while-do-statement
+-  do-while-statement
+-  for-statement
+-  break-statement
+-  continue-statement
+-  empty-statement
+-  return-statement
+  procedure-declaration-statement (?!?!)
+  method-declaration-statement (?!?!)
+-  variable-declaration-statement
+-  forall-statement
+
+block-statement:
+  { statements[OPT] }
+
+expression-statement:
+  variable-expression ;
+  call-expression ;
+
+assignment-statement:
+  lvalue-expression assignment-operator expression
+
+assignment-operator: one of
+   = += -= *= /= %= **= &= |= ^= &&= ||= <<= >>=
+
+conditional-statement:
+  'if' expression 'then' statement else-part[OPT]
+  'if' expression block-statement else-part[OPT]
+  'if' ctrl-decl 'then' statement else-part[OPT]
+  'if' ctrl-decl block-statement else-part[OPT]
+
+else-part:
+  'else' statement
+
+ctrl-decl:
+  'var' identifier '=' expression
+  'const' identifier '=' expression
+
+while-do-statement:
+  'while' expression 'do' statement
+  'while' expression block-statement
+  'while' ctrl-decl 'do' statement
+  'while' ctrl-decl block-statement
+
+do-while-statement:
+  'do' statement 'while' expression ;
+
+for-statement:
+  'for' index-var-declaration 'in' expression 'do' statement
+  'for' index-var-declaration 'in' expression block-statement
+  'for' expression 'do' statement
+  'for' expression block-statement
+
+break-statement:
+  'break';
+
+continue-statement:
+  'continue';
+
+return-statement:
+  'return' expression[OPT] ;
+
+empty-statement:
+  ;
+
+forall-statement:
+  'forall' index-var-declaration 'in' expression 'do' statement
+  'forall' index-var-declaration 'in' expression block-statement
+  'forall' expression 'do' statement
+  'forall' expression block-statement
+
+
