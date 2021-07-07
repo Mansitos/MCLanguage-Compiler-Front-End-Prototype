@@ -52,7 +52,7 @@ primitive-type:
 
 expression:
 -  literal-expression
--  variable-expression
+   identifier-expression
 -  call-expression
 -  cast-expression
 -  lvalue-expression 
@@ -87,16 +87,9 @@ literal-expression:
   string-literal
   array-literal
 
-variable-expression:
-  identifier
-
 call-expression:
   lvalue-expression ( named-expression-list )
   lvalue-expression [ named-expression-list ]
-  parenthesesless-function-identifier
-
-parenthesesless-function-identifier:
-  identifier
 
 parenthesized-expression:
   ( expression )
@@ -159,7 +152,7 @@ assignment-statement:
   lvalue-expression assignment-operator expression
 
 assignment-operator: one of
-   = += -= *= /= %= **= &= |= ^= &&= ||= <<= >>=
+   = += -= *= /= %= **= 
 
 conditional-statement:
   'if' expression 'then' statement else-part[OPT]

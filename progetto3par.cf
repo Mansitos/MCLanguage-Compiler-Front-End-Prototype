@@ -1,0 +1,163 @@
+entrypoints S ;
+rules Boolean ::= "true" | "false" | "True" | "False" ;
+
+BlockStatement.         S ::= "{" STATEMENTS "}" ;
+
+ListStatements.         STATEMENTS ::= STATEMENT STATEMENTS ;
+EmptyStatement.         STATEMENTS ::= {--empty--} ;
+
+Statement.                      STATEMENT ::= S ;
+ExpressionStatement.            STATEMENT ::= EXPRESSIONSTATEMENT ";" ;
+AssignmentStatement.            STATEMENT ::= LVALUEEXPRESSION ASSIGNOP EXPRESSION ";" ;
+ConditionalStatement.           STATEMENT ::= CONDITIONALSTATE ;
+WhileDoStatement.               STATEMENT ::= WHILESTATEMENT ;
+DoWhileStatement.               STATEMENT ::= DOSTATEMENT ;
+ForStatement.                   STATEMENT ::= FORSTATEMENT ;
+BreakStatement.                 STATEMENT ::= "break" ";" ;
+ContinueStatement.              STATEMENT ::= "continue" ";" ;
+ReturnStatement.                STATEMENT ::= RETURNSTATEMENT ";" ;
+VariableDeclarationStatement.   STATEMENT ::= VARIABLETYPE VARDECLIST ";" ;
+ForAllStatement.                STATEMENT ::= FORALLSTATEMENT ;
+ProcedureStatement.             STATEMENT ::= "proc" Ident "(" PARAMETERS ")" ":" "void" "{" STATEMENTS "}" ;
+FunctionStatement.              STATEMENT ::= "function" Ident "(" PARAMETERS ")" ":" PRIMITIVETYPE "{" STATEMENTS "}" ;
+
+ParameterList.                  PARAMETERS ::= PARAMETER "," PARAMETERS ;
+ParameterListEmpty.             PARAMETERS ::= {--empty--} ;
+
+Parameter.                      PARAMETER ::= Ident ":" PRIMITIVETYPE ;
+
+AssignOperationEq.            ASSIGNOP ::= "=" ;
+AssignOperationEqPlus.        ASSIGNOP ::= "+=" ;
+AssignOperationEqMinus.       ASSIGNOP ::= "-=" ;
+AssignOperationEqProd.        ASSIGNOP ::= "*=" ;
+AssignOperationEqFract.       ASSIGNOP ::= "/=" ;
+AssignOperationEqPercent.     ASSIGNOP ::= "%=" ;
+AssignOperationEqPower.       ASSIGNOP ::= "**=" ;
+
+VariableTypeParam.               VARIABLETYPE ::= "param" ;
+VariableTypeConst.               VARIABLETYPE ::= "const" ;
+VariableTypeVar.                 VARIABLETYPE ::= "var" ;
+VariableTypeRef.                 VARIABLETYPE ::= "ref" ;
+VariableTypeConstRef.            VARIABLETYPE ::= "const ref" ;
+
+VariableDeclarationSingle.       VARDECLIST ::= VARDECID ;
+
+VariableDeclaration.            VARDECID ::= IDENTLIST TYPEPART INITPART ;
+
+IdentifierList.                 IDENTLIST ::= Ident "," IDENTLIST ;
+IdentifierSingle.               IDENTLIST ::= Ident ;
+
+TypePart.                       TYPEPART ::= ":" TYPEEXPRESSION ;
+TypePartEmpty.                  TYPEPART ::= {--empty--} ;
+
+InitializzationPart.            INITPART ::= "=" EXPRESSION ;
+InitializzationPartArray.       INITPART ::= "=" "[" LISTELEMENTARRAY ;
+InitializzationPartEmpty.       INITPART ::= {--empty--} ;
+
+ListElementsOfArray.             LISTELEMENTARRAY ::= Integer "," LISTELEMENTARRAY ;
+ListElementOfArray.              LISTELEMENTARRAY ::= Integer "]" ;
+
+TypeExpression.                 TYPEEXPRESSION ::= PRIMITIVETYPE ;
+TypeExpressionArraySimple.      TYPEEXPRESSION ::= "[" Integer ".." Integer "]" PRIMITIVETYPE ;
+TypeExpressionArray.            TYPEEXPRESSION ::= "[" "{" Integer ".." Integer "}" "]" PRIMITIVETYPE ;
+
+PrimitiveTypeVoid.              PRIMITIVETYPE ::= "void" ;     
+PrimitiveTypeBool.              PRIMITIVETYPE ::= "bool" ;     
+PrimitiveTypeInt.               PRIMITIVETYPE ::= "int" ;     
+PrimitiveTypeReal.              PRIMITIVETYPE ::= "real" ;     
+PrimitiveTypeString.            PRIMITIVETYPE ::= "string" ;  
+PrimitiveTypeChar.            PRIMITIVETYPE ::= "char" ;                   
+
+ConditionalStatementSimpleThen.     CONDITIONALSTATE ::= "if" EXPRESSION "then" STATEMENT ELSESTATEMENT ;
+ConditionalStatementSimpleWThen.     CONDITIONALSTATE ::= "if" EXPRESSION S ELSESTATEMENT ;
+ConditionalStatementCtrlThen.     CONDITIONALSTATE ::= "if" CTRLDECSTATEMENT "then" STATEMENT ELSESTATEMENT ;
+ConditionalStatementCtrlWThen.     CONDITIONALSTATE ::= "if" CTRLDECSTATEMENT S ELSESTATEMENT ;
+
+WhileStateSimpleDo.                  WHILESTATEMENT ::= "while" EXPRESSION "do" STATEMENT ;
+WhileStateSimpleWDo.                 WHILESTATEMENT ::= "while" EXPRESSION S ;
+WhileStateCtrlDo.                    WHILESTATEMENT ::= "while" CTRLDECSTATEMENT "do" STATEMENT ;
+WhileStateCtrlWDo.                   WHILESTATEMENT ::= "while" CTRLDECSTATEMENT S ;
+
+DoWhileState.                       DOSTATEMENT ::= "do" STATEMENT "while" EXPRESSION ";" ;
+
+ForStateIndexDo.                        FORSTATEMENT ::= "for" INDEXVARDEC "in" EXPRESSION "do" STATEMENT ;
+ForStateIndexWDo.                       FORSTATEMENT ::= "for" INDEXVARDEC "in" EXPRESSION S ;
+ForStateExprDo.                         FORSTATEMENT ::= "for" EXPRESSION "do" STATEMENT ;
+ForStateExprWDo.                        FORSTATEMENT ::= "for" EXPRESSION S ;
+
+ForAllStateIndexDo.                        FORALLSTATEMENT ::= "forall" INDEXVARDEC "in" EXPRESSION "do" STATEMENT ;
+ForAllStateIndexWDo.                       FORALLSTATEMENT ::= "forall" INDEXVARDEC "in" EXPRESSION S ;
+ForAllStateExprDo.                         FORALLSTATEMENT ::= "forall" EXPRESSION "do" STATEMENT ;
+ForAllStateExprWDo.                        FORALLSTATEMENT ::= "forall" EXPRESSION S ;
+
+IndexVarDeclaration.                    INDEXVARDEC ::= Ident ;
+
+ElseStateEmpty.                     ELSESTATEMENT ::= {--empty--} ; 
+ElseState.                          ELSESTATEMENT ::= "else" STATEMENT ;    
+
+ReturnState.                        RETURNSTATEMENT ::= "return" EXPRESSION ;
+ReturnStateEmpty.                   RETURNSTATEMENT ::= "return" ;
+
+CtrlDecStateVar.                       CTRLDECSTATEMENT ::= "var" Ident "=" EXPRESSION ;
+CtrlDecStateConst.                     CTRLDECSTATEMENT ::= "const" Ident "=" EXPRESSION ;
+
+VariableExpression.                 EXPRESSIONSTATEMENT ::= Ident ;
+CallExpression.                     EXPRESSIONSTATEMENT ::= CALLEXPRESSION ;
+
+CallExpressionParentheses.                  CALLEXPRESSION ::= Ident "(" NAMEDEXPRESSIONLIST ")" ;
+CallExpressionQuadre.                       CALLEXPRESSION ::= Ident "[" NAMEDEXPRESSIONLIST "]" ;
+
+NamedExpressionList.         NAMEDEXPRESSIONLIST ::= NAMEDEXPRESSION ;
+NamedExpressionLists.        NAMEDEXPRESSIONLIST ::= NAMEDEXPRESSION "," NAMEDEXPRESSIONLIST ;
+
+NamedExpression.                NAMEDEXPRESSION ::= EXPRESSION ;
+NamedExpressionAssigned.        NAMEDEXPRESSIONLIST ::= Ident "=" EXPRESSION ;
+
+ExpressionIdent.                      EXPRESSION ::= Ident ARRAYINDEXELEMENT ;
+ExpressionInteger.                    EXPRESSION ::= Integer ;
+ExpressionReal.                       EXPRESSION ::= Double ;
+ExpressionString.                     EXPRESSION ::= String ;
+ExpressionChar.                       EXPRESSION ::= Char ;
+ExpressionBoolean.                    EXPRESSION ::= Boolean ;
+ExpressionBinary.                     EXPRESSION ::= DEFAULT BINARYOP EXPRESSION ;
+ExpressionUnary.                      EXPRESSION ::= UNARYOP EXPRESSION ;
+ExpressionCast.                       EXPRESSION ::= DEFAULT ":" PRIMITIVETYPE ;
+ExpressionBracket.                    EXPRESSION ::= "(" EXPRESSION ")" ;
+
+ExpressionIdentD.                      DEFAULT ::= Ident ARRAYINDEXELEMENT ;
+ExpressionIntegerD.                    DEFAULT ::= Integer ;
+ExpressionRealD.                       DEFAULT ::= Double ;
+ExpressionStringD.                     DEFAULT ::= String ;
+ExpressionCharD.                       DEFAULT ::= Char ;
+ExpressionBooleanD.                    DEFAULT ::= Boolean ;
+
+UnaryOperationPositive.               UNARYOP ::= "+" ;   
+UnaryOperationNegative.               UNARYOP ::= "-" ;   
+UnaryOperationNot.                    UNARYOP ::= "!" ;   
+
+BinaryOperationPlus.                BINARYOP ::= "+" ;   
+BinaryOperationMinus.               BINARYOP ::= "-" ;   
+BinaryOperationProduct.             BINARYOP ::= "*" ; 
+BinaryOperationDivision.                BINARYOP ::= "/" ;   
+BinaryOperationModule.               BINARYOP ::= "%" ;   
+BinaryOperationPower.             BINARYOP ::= "**" ;   
+BinaryOperationAnd.             BINARYOP ::= "&&" ; 
+BinaryOperationOr.                BINARYOP ::= "||" ;   
+BinaryOperationEq.               BINARYOP ::= "==" ;   
+BinaryOperationNotEq.             BINARYOP ::= "!=" ;
+BinaryOperationGratherEq.                BINARYOP ::= ">=" ;   
+BinaryOperationGrather.               BINARYOP ::= ">" ;   
+BinaryOperationLessEq.             BINARYOP ::= "<=" ;  
+BinaryOperationLess.                BINARYOP ::= "<" ;    
+
+LvalueExpressions.              LVALUEEXPRESSION ::= Ident ARRAYINDEXELEMENT "," LVALUEEXPRESSION ;
+LvalueExpression.               LVALUEEXPRESSION ::= Ident ARRAYINDEXELEMENT ;
+
+ArrayIndexElement.                ARRAYINDEXELEMENT ::= "[" TYPEINDEX "]" ;
+ArrayIndexElementEmpty.           ARRAYINDEXELEMENT ::= {--empty--} ;
+
+TypeOfIndexInt.                 TYPEINDEX ::= Integer ;
+TypeOfIndexVar.                 TYPEINDEX ::= Ident ;
+
+comment "//" ;
+comment "/*" ;
