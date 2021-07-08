@@ -1,12 +1,14 @@
 entrypoints S ;
 rules Boolean ::= "true" | "false" | "True" | "False" ;
 
-BlockStatement.         S ::= "{" STATEMENTS "}" ;
+StartCode.              S ::= STATEMENTS ;
 
 ListStatements.         STATEMENTS ::= STATEMENT STATEMENTS ;
 EmptyStatement.         STATEMENTS ::= {--empty--} ;
 
-Statement.                      STATEMENT ::= S ;
+BlockStatement.                  B ::= "{" STATEMENTS "}" ;
+
+Statement.                      STATEMENT ::= B ;
 ExpressionStatement.            STATEMENT ::= EXPRESSIONSTATEMENT ";" ;
 AssignmentStatement.            STATEMENT ::= LVALUEEXPRESSION ASSIGNOP EXPRESSION ";" ;
 ConditionalStatement.           STATEMENT ::= CONDITIONALSTATE ;
@@ -48,47 +50,54 @@ IdentifierList.                 IDENTLIST ::= Ident "," IDENTLIST ;
 IdentifierSingle.               IDENTLIST ::= Ident ;
 
 TypePart.                       TYPEPART ::= ":" TYPEEXPRESSION ;
-TypePartEmpty.                  TYPEPART ::= {--empty--} ;
 
 InitializzationPart.            INITPART ::= "=" EXPRESSION ;
 InitializzationPartArray.       INITPART ::= "=" "[" LISTELEMENTARRAY ;
 InitializzationPartEmpty.       INITPART ::= {--empty--} ;
 
-ListElementsOfArray.             LISTELEMENTARRAY ::= Integer "," LISTELEMENTARRAY ;
-ListElementOfArray.              LISTELEMENTARRAY ::= Integer "]" ;
+ListElementsOfArray.             LISTELEMENTARRAY ::= EXPRESSION "," LISTELEMENTARRAY ;
+ListElementOfArray.              LISTELEMENTARRAY ::= EXPRESSION "]" ;
 
 TypeExpression.                 TYPEEXPRESSION ::= PRIMITIVETYPE ;
-TypeExpressionArraySimple.      TYPEEXPRESSION ::= "[" Integer ".." Integer "]" PRIMITIVETYPE ;
-TypeExpressionArray.            TYPEEXPRESSION ::= "[" "{" Integer ".." Integer "}" "]" PRIMITIVETYPE ;
+TypeExpressionArraySimple.      TYPEEXPRESSION ::= "[" RANGEEXP "]" PRIMITIVETYPE ;
+TypeExpressionArray.            TYPEEXPRESSION ::= "[" "{" RANGEEXP "}" "]" PRIMITIVETYPE ;
+TypeExpressionPointer.          TYPEEXPRESSION ::= PRIMITIVETYPE POINTER ;
+
+PointerSymbol.                  POINTER ::= POINTER "*" ;
+PointerSymbolSingle.            POINTER ::= "*" ;
+
+RangeExpression.                RANGEEXP ::= EXPRESSION ".." EXPRESSION "," RANGEEXP ;
+RangeExpressionSingle.          RANGEEXP ::= EXPRESSION ".." EXPRESSION  ;
 
 PrimitiveTypeVoid.              PRIMITIVETYPE ::= "void" ;     
 PrimitiveTypeBool.              PRIMITIVETYPE ::= "bool" ;     
 PrimitiveTypeInt.               PRIMITIVETYPE ::= "int" ;     
 PrimitiveTypeReal.              PRIMITIVETYPE ::= "real" ;     
 PrimitiveTypeString.            PRIMITIVETYPE ::= "string" ;  
-PrimitiveTypeChar.            PRIMITIVETYPE ::= "char" ;                   
+PrimitiveTypeChar.              PRIMITIVETYPE ::= "char" ;                   
+TypeArray.                      PRIMITIVETYPE ::= "[" "]" PRIMITIVETYPE ;
 
 ConditionalStatementSimpleThen.     CONDITIONALSTATE ::= "if" EXPRESSION "then" STATEMENT ELSESTATEMENT ;
-ConditionalStatementSimpleWThen.     CONDITIONALSTATE ::= "if" EXPRESSION S ELSESTATEMENT ;
+ConditionalStatementSimpleWThen.     CONDITIONALSTATE ::= "if" EXPRESSION B ELSESTATEMENT ;
 ConditionalStatementCtrlThen.     CONDITIONALSTATE ::= "if" CTRLDECSTATEMENT "then" STATEMENT ELSESTATEMENT ;
-ConditionalStatementCtrlWThen.     CONDITIONALSTATE ::= "if" CTRLDECSTATEMENT S ELSESTATEMENT ;
+ConditionalStatementCtrlWThen.     CONDITIONALSTATE ::= "if" CTRLDECSTATEMENT B ELSESTATEMENT ;
 
 WhileStateSimpleDo.                  WHILESTATEMENT ::= "while" EXPRESSION "do" STATEMENT ;
-WhileStateSimpleWDo.                 WHILESTATEMENT ::= "while" EXPRESSION S ;
+WhileStateSimpleWDo.                 WHILESTATEMENT ::= "while" EXPRESSION B ;
 WhileStateCtrlDo.                    WHILESTATEMENT ::= "while" CTRLDECSTATEMENT "do" STATEMENT ;
-WhileStateCtrlWDo.                   WHILESTATEMENT ::= "while" CTRLDECSTATEMENT S ;
+WhileStateCtrlWDo.                   WHILESTATEMENT ::= "while" CTRLDECSTATEMENT B ;
 
 DoWhileState.                       DOSTATEMENT ::= "do" STATEMENT "while" EXPRESSION ";" ;
 
 ForStateIndexDo.                        FORSTATEMENT ::= "for" INDEXVARDEC "in" EXPRESSION "do" STATEMENT ;
-ForStateIndexWDo.                       FORSTATEMENT ::= "for" INDEXVARDEC "in" EXPRESSION S ;
+ForStateIndexWDo.                       FORSTATEMENT ::= "for" INDEXVARDEC "in" EXPRESSION B ;
 ForStateExprDo.                         FORSTATEMENT ::= "for" EXPRESSION "do" STATEMENT ;
-ForStateExprWDo.                        FORSTATEMENT ::= "for" EXPRESSION S ;
+ForStateExprWDo.                        FORSTATEMENT ::= "for" EXPRESSION B ;
 
 ForAllStateIndexDo.                        FORALLSTATEMENT ::= "forall" INDEXVARDEC "in" EXPRESSION "do" STATEMENT ;
-ForAllStateIndexWDo.                       FORALLSTATEMENT ::= "forall" INDEXVARDEC "in" EXPRESSION S ;
+ForAllStateIndexWDo.                       FORALLSTATEMENT ::= "forall" INDEXVARDEC "in" EXPRESSION B ;
 ForAllStateExprDo.                         FORALLSTATEMENT ::= "forall" EXPRESSION "do" STATEMENT ;
-ForAllStateExprWDo.                        FORALLSTATEMENT ::= "forall" EXPRESSION S ;
+ForAllStateExprWDo.                        FORALLSTATEMENT ::= "forall" EXPRESSION B ;
 
 IndexVarDeclaration.                    INDEXVARDEC ::= Ident ;
 
@@ -130,10 +139,11 @@ ExpressionRealD.                       DEFAULT ::= Double ;
 ExpressionStringD.                     DEFAULT ::= String ;
 ExpressionCharD.                       DEFAULT ::= Char ;
 ExpressionBooleanD.                    DEFAULT ::= Boolean ;
+ExpressionBracketD.                    DEFAULT ::= "(" EXPRESSION ")" ;
 
 UnaryOperationPositive.               UNARYOP ::= "+" ;   
 UnaryOperationNegative.               UNARYOP ::= "-" ;   
-UnaryOperationNot.                    UNARYOP ::= "!" ;   
+UnaryOperationNot.                    UNARYOP ::= "!" ;    
 
 BinaryOperationPlus.                BINARYOP ::= "+" ;   
 BinaryOperationMinus.               BINARYOP ::= "-" ;   
@@ -156,8 +166,10 @@ LvalueExpression.               LVALUEEXPRESSION ::= Ident ARRAYINDEXELEMENT ;
 ArrayIndexElement.                ARRAYINDEXELEMENT ::= "[" TYPEINDEX "]" ;
 ArrayIndexElementEmpty.           ARRAYINDEXELEMENT ::= {--empty--} ;
 
-TypeOfIndexInt.                 TYPEINDEX ::= Integer ;
-TypeOfIndexVar.                 TYPEINDEX ::= Ident ;
+TypeOfIndexInt.                 TYPEINDEX ::= TYPEINDEX "," Integer ;
+TypeOfIndexIntSingle.           TYPEINDEX ::= Integer ;
+TypeOfIndexVar.                 TYPEINDEX ::= TYPEINDEX "," Ident ;
+TypeOfIndexVarSingle.           TYPEINDEX ::= Ident ;
 
 comment "//" ;
 comment "/*" ;
