@@ -143,7 +143,8 @@ ExpressionBracketD.                    DEFAULT ::= "(" EXPRESSION ")" ;
 
 UnaryOperationPositive.               UNARYOP ::= "+" ;   
 UnaryOperationNegative.               UNARYOP ::= "-" ;   
-UnaryOperationNot.                    UNARYOP ::= "!" ;    
+UnaryOperationNot.                    UNARYOP ::= "!" ; 
+UnaryOperationPointer.                UNARYOP ::= "&" ;    
 
 BinaryOperationPlus.                BINARYOP ::= "+" ;   
 BinaryOperationMinus.               BINARYOP ::= "-" ;   
