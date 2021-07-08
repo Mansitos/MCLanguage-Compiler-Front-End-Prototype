@@ -35,10 +35,10 @@ note: tolto quasi tutto...
 
 type-expression:
   primitive-type
-  lvalue-expression (todo)
-  if-expression
-  unary-expression
-  binary-expression
+  lvalue-expression (todo) (no?)
+  if-expression (no?)
+  unary-expression (no?)
+  binary-expression (no?)
 
 primitive-type:
   'void'
@@ -61,7 +61,7 @@ expression:
 -  binary-expression
 -  if-expression
 -  for-expression
-  forall-expression (todo)
+- forall-expression (todo)
   module-access-expression (per ora no)
 
 if-expression:
@@ -78,7 +78,7 @@ binary-expression:
   expression binary-operator expression
 
 binary-operator: one of
-  + - * / % ** & | ^ << >> && || == != <= >= < > 'by' #
+  + - * / % ** & | ^ << >> && || == != <= >= < > 'by' # (alcuni rimossi)
 
 literal-expression:
   bool-literal
@@ -95,7 +95,7 @@ parenthesized-expression:
   ( expression )
 
 lvalue-expression:
-  variable-expression
+  variable-expression (solo ident?)
   call-expression
   parenthesized-expression
 
@@ -137,10 +137,10 @@ statement:
 -  for-statement
 -  break-statement
 -  continue-statement
--  empty-statement
+-  empty-statement (non serviva)
 -  return-statement
-  procedure-declaration-statement (?!?!)
-  method-declaration-statement (?!?!)
+-  procedure-declaration-statement (?!?!)
+-  method-declaration-statement (?!?!)
 -  variable-declaration-statement
 -  forall-statement
 

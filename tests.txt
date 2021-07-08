@@ -1,0 +1,17 @@
+{
+var x:int = 50;
+var y:char = 100;
+var z:string = "ciaone";
+
+if(x > 10) then {x=100;}
+
+if(z == "ciaone") then print("miao");
+
+while(true) do print("deadlock");
+}
+
+{{x=100;}}
+
+for x in x<100 do {x+=1;}
+
+
