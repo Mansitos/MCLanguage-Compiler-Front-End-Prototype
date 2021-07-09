@@ -26,248 +26,248 @@ transBoolean x = case x of
 
 transS :: Show attr => (AbsProgettoPar.S attr) -> Result
 transS x = case x of
-  AbsProgettoPar.StartCode statements -> failure x
+  AbsProgettoPar.StartCode _ statements -> failure x
 
 transSTATEMENTS :: Show attr => (AbsProgettoPar.STATEMENTS attr) -> Result
 transSTATEMENTS x = case x of
-  AbsProgettoPar.ListStatements statement statements -> failure x
-  AbsProgettoPar.EmptyStatement -> failure x
+  AbsProgettoPar.ListStatements _ statement statements -> failure x
+  AbsProgettoPar.EmptyStatement _ -> failure x
 
 transB :: Show attr => (AbsProgettoPar.B attr) -> Result
 transB x = case x of
-  AbsProgettoPar.BlockStatement statements -> failure x
+  AbsProgettoPar.BlockStatement _ statements -> failure x
 
 transSTATEMENT :: Show attr => (AbsProgettoPar.STATEMENT attr) -> Result
 transSTATEMENT x = case x of
-  AbsProgettoPar.Statement b -> failure x
-  AbsProgettoPar.ExpressionStatement expressionstatement -> failure x
-  AbsProgettoPar.AssignmentStatement lvalueexpression assignop expression -> failure x
-  AbsProgettoPar.ConditionalStatement conditionalstate -> failure x
-  AbsProgettoPar.WhileDoStatement whilestatement -> failure x
-  AbsProgettoPar.DoWhileStatement dostatement -> failure x
-  AbsProgettoPar.ForStatement forstatement -> failure x
-  AbsProgettoPar.BreakStatement -> failure x
-  AbsProgettoPar.ContinueStatement -> failure x
-  AbsProgettoPar.ReturnStatement returnstatement -> failure x
-  AbsProgettoPar.VariableDeclarationStatement variabletype vardeclist -> failure x
-  AbsProgettoPar.ForAllStatement forallstatement -> failure x
-  AbsProgettoPar.ProcedureStatement ident parameters statements -> failure x
-  AbsProgettoPar.FunctionStatement ident parameters primitivetype statements -> failure x
+  AbsProgettoPar.Statement _ b -> failure x
+  AbsProgettoPar.ExpressionStatement _ expressionstatement -> failure x
+  AbsProgettoPar.AssignmentStatement _ lvalueexpression assignop expression -> failure x
+  AbsProgettoPar.ConditionalStatement _ conditionalstate -> failure x
+  AbsProgettoPar.WhileDoStatement _ whilestatement -> failure x
+  AbsProgettoPar.DoWhileStatement _ dostatement -> failure x
+  AbsProgettoPar.ForStatement _ forstatement -> failure x
+  AbsProgettoPar.BreakStatement _ -> failure x
+  AbsProgettoPar.ContinueStatement _ -> failure x
+  AbsProgettoPar.ReturnStatement _ returnstatement -> failure x
+  AbsProgettoPar.VariableDeclarationStatement _ variabletype vardeclist -> failure x
+  AbsProgettoPar.ForAllStatement _ forallstatement -> failure x
+  AbsProgettoPar.ProcedureStatement _ ident parameters statements -> failure x
+  AbsProgettoPar.FunctionStatement _ ident parameters primitivetype statements -> failure x
 
 transPARAMETERS :: Show attr => (AbsProgettoPar.PARAMETERS attr) -> Result
 transPARAMETERS x = case x of
-  AbsProgettoPar.ParameterList parameter parameters -> failure x
-  AbsProgettoPar.ParameterListSingle parameter -> failure x
-  AbsProgettoPar.ParameterListEmpty -> failure x
+  AbsProgettoPar.ParameterList _ parameter parameters -> failure x
+  AbsProgettoPar.ParameterListSingle _ parameter -> failure x
+  AbsProgettoPar.ParameterListEmpty _ -> failure x
 
 transPARAMETER :: Show attr => (AbsProgettoPar.PARAMETER attr) -> Result
 transPARAMETER x = case x of
-  AbsProgettoPar.Parameter ident primitivetype -> failure x
+  AbsProgettoPar.Parameter _ ident primitivetype -> failure x
 
 transASSIGNOP :: Show attr => (AbsProgettoPar.ASSIGNOP attr) -> Result
 transASSIGNOP x = case x of
-  AbsProgettoPar.AssignOperationEq -> failure x
-  AbsProgettoPar.AssignOperationEqPlus -> failure x
-  AbsProgettoPar.AssignOperationEqMinus -> failure x
-  AbsProgettoPar.AssignOperationEqProd -> failure x
-  AbsProgettoPar.AssignOperationEqFract -> failure x
-  AbsProgettoPar.AssignOperationEqPercent -> failure x
-  AbsProgettoPar.AssignOperationEqPower -> failure x
+  AbsProgettoPar.AssignOperationEq _ -> failure x
+  AbsProgettoPar.AssignOperationEqPlus _ -> failure x
+  AbsProgettoPar.AssignOperationEqMinus _ -> failure x
+  AbsProgettoPar.AssignOperationEqProd _ -> failure x
+  AbsProgettoPar.AssignOperationEqFract _ -> failure x
+  AbsProgettoPar.AssignOperationEqPercent _ -> failure x
+  AbsProgettoPar.AssignOperationEqPower _ -> failure x
 
 transVARIABLETYPE :: Show attr => (AbsProgettoPar.VARIABLETYPE attr) -> Result
 transVARIABLETYPE x = case x of
-  AbsProgettoPar.VariableTypeParam -> failure x
-  AbsProgettoPar.VariableTypeConst -> failure x
-  AbsProgettoPar.VariableTypeVar -> failure x
-  AbsProgettoPar.VariableTypeRef -> failure x
-  AbsProgettoPar.VariableTypeConstRef -> failure x
+  AbsProgettoPar.VariableTypeParam _ -> failure x
+  AbsProgettoPar.VariableTypeConst _ -> failure x
+  AbsProgettoPar.VariableTypeVar _ -> failure x
+  AbsProgettoPar.VariableTypeRef _ -> failure x
+  AbsProgettoPar.VariableTypeConstRef _ -> failure x
 
 transVARDECLIST :: Show attr => (AbsProgettoPar.VARDECLIST attr) -> Result
 transVARDECLIST x = case x of
-  AbsProgettoPar.VariableDeclarationSingle vardecid -> failure x
+  AbsProgettoPar.VariableDeclarationSingle _ vardecid -> failure x
 
 transVARDECID :: Show attr => (AbsProgettoPar.VARDECID attr) -> Result
 transVARDECID x = case x of
-  AbsProgettoPar.VariableDeclaration identlist typepart initpart -> failure x
+  AbsProgettoPar.VariableDeclaration _ identlist typepart initpart -> failure x
 
 transIDENTLIST :: Show attr => (AbsProgettoPar.IDENTLIST attr) -> Result
 transIDENTLIST x = case x of
-  AbsProgettoPar.IdentifierList ident identlist -> failure x
-  AbsProgettoPar.IdentifierSingle ident -> failure x
+  AbsProgettoPar.IdentifierList _ ident identlist -> failure x
+  AbsProgettoPar.IdentifierSingle _ ident -> failure x
 
 transTYPEPART :: Show attr => (AbsProgettoPar.TYPEPART attr) -> Result
 transTYPEPART x = case x of
-  AbsProgettoPar.TypePart typeexpression -> failure x
+  AbsProgettoPar.TypePart _ typeexpression -> failure x
 
 transINITPART :: Show attr => (AbsProgettoPar.INITPART attr) -> Result
 transINITPART x = case x of
-  AbsProgettoPar.InitializzationPart expression -> failure x
-  AbsProgettoPar.InitializzationPartArray listelementarray -> failure x
-  AbsProgettoPar.InitializzationPartEmpty -> failure x
+  AbsProgettoPar.InitializzationPart _ expression -> failure x
+  AbsProgettoPar.InitializzationPartArray _ listelementarray -> failure x
+  AbsProgettoPar.InitializzationPartEmpty _ -> failure x
 
 transLISTELEMENTARRAY :: Show attr => (AbsProgettoPar.LISTELEMENTARRAY attr) -> Result
 transLISTELEMENTARRAY x = case x of
-  AbsProgettoPar.ListElementsOfArray expression listelementarray -> failure x
-  AbsProgettoPar.ListElementOfArray expression -> failure x
+  AbsProgettoPar.ListElementsOfArray _ expression listelementarray -> failure x
+  AbsProgettoPar.ListElementOfArray _ expression -> failure x
 
 transTYPEEXPRESSION :: Show attr => (AbsProgettoPar.TYPEEXPRESSION attr) -> Result
 transTYPEEXPRESSION x = case x of
-  AbsProgettoPar.TypeExpression primitivetype -> failure x
-  AbsProgettoPar.TypeExpressionArraySimple rangeexp primitivetype -> failure x
-  AbsProgettoPar.TypeExpressionArray rangeexp primitivetype -> failure x
-  AbsProgettoPar.TypeExpressionPointer primitivetype pointer -> failure x
+  AbsProgettoPar.TypeExpression _ primitivetype -> failure x
+  AbsProgettoPar.TypeExpressionArraySimple _ rangeexp primitivetype -> failure x
+  AbsProgettoPar.TypeExpressionArray _ rangeexp primitivetype -> failure x
+  AbsProgettoPar.TypeExpressionPointer _ primitivetype pointer -> failure x
 
-transPOINTER :: AbsProgettoPar.POINTER -> Result
+transPOINTER :: Show attr => (AbsProgettoPar.POINTER attr) -> Result
 transPOINTER x = case x of
-  AbsProgettoPar.PointerSymbol pointer -> failure x
-  AbsProgettoPar.PointerSymbolSingle -> failure x
+  AbsProgettoPar.PointerSymbol _ pointer -> failure x
+  AbsProgettoPar.PointerSymbolSingle _ -> failure x
 
 transRANGEEXP :: Show attr => (AbsProgettoPar.RANGEEXP attr) -> Result
 transRANGEEXP x = case x of
-  AbsProgettoPar.RangeExpression expression1 expression2 rangeexp -> failure x
-  AbsProgettoPar.RangeExpressionSingle expression1 expression2 -> failure x
+  AbsProgettoPar.RangeExpression _ expression1 expression2 rangeexp -> failure x
+  AbsProgettoPar.RangeExpressionSingle _ expression1 expression2 -> failure x
 
 transPRIMITIVETYPE :: Show attr => (AbsProgettoPar.PRIMITIVETYPE attr) -> Result
 transPRIMITIVETYPE x = case x of
-  AbsProgettoPar.PrimitiveTypeVoid -> failure x
-  AbsProgettoPar.PrimitiveTypeBool -> failure x
-  AbsProgettoPar.PrimitiveTypeInt -> failure x
-  AbsProgettoPar.PrimitiveTypeReal -> failure x
-  AbsProgettoPar.PrimitiveTypeString -> failure x
-  AbsProgettoPar.PrimitiveTypeChar -> failure x
-  AbsProgettoPar.TypeArray primitivetype -> failure x
+  AbsProgettoPar.PrimitiveTypeVoid _ -> failure x
+  AbsProgettoPar.PrimitiveTypeBool _ -> failure x
+  AbsProgettoPar.PrimitiveTypeInt _ -> failure x
+  AbsProgettoPar.PrimitiveTypeReal _ -> failure x
+  AbsProgettoPar.PrimitiveTypeString _ -> failure x
+  AbsProgettoPar.PrimitiveTypeChar _ -> failure x
+  AbsProgettoPar.TypeArray primitivetype _ -> failure x
 
 transCONDITIONALSTATE :: Show attr => (AbsProgettoPar.CONDITIONALSTATE attr) -> Result
 transCONDITIONALSTATE x = case x of
-  AbsProgettoPar.ConditionalStatementSimpleThen expression statement elsestatement -> failure x
-  AbsProgettoPar.ConditionalStatementSimpleWThen expression b elsestatement -> failure x
-  AbsProgettoPar.ConditionalStatementCtrlThen ctrldecstatement statement elsestatement -> failure x
-  AbsProgettoPar.ConditionalStatementCtrlWThen ctrldecstatement b elsestatement -> failure x
+  AbsProgettoPar.ConditionalStatementSimpleThen _ expression statement elsestatement -> failure x
+  AbsProgettoPar.ConditionalStatementSimpleWThen _ expression b elsestatement -> failure x
+  AbsProgettoPar.ConditionalStatementCtrlThen _ ctrldecstatement statement elsestatement -> failure x
+  AbsProgettoPar.ConditionalStatementCtrlWThen _ ctrldecstatement b elsestatement -> failure x
 
 transWHILESTATEMENT :: Show attr => (AbsProgettoPar.WHILESTATEMENT attr) -> Result
 transWHILESTATEMENT x = case x of
-  AbsProgettoPar.WhileStateSimpleDo expression statement -> failure x
-  AbsProgettoPar.WhileStateSimpleWDo expression b -> failure x
-  AbsProgettoPar.WhileStateCtrlDo ctrldecstatement statement -> failure x
-  AbsProgettoPar.WhileStateCtrlWDo ctrldecstatement b -> failure x
+  AbsProgettoPar.WhileStateSimpleDo _ expression statement -> failure x
+  AbsProgettoPar.WhileStateSimpleWDo _ expression b -> failure x
+  AbsProgettoPar.WhileStateCtrlDo _ ctrldecstatement statement -> failure x
+  AbsProgettoPar.WhileStateCtrlWDo _ ctrldecstatement b -> failure x
 
 transDOSTATEMENT :: Show attr => (AbsProgettoPar.DOSTATEMENT attr) -> Result
 transDOSTATEMENT x = case x of
-  AbsProgettoPar.DoWhileState statement expression -> failure x
+  AbsProgettoPar.DoWhileState _ statement expression -> failure x
 
 transFORSTATEMENT :: Show attr => (AbsProgettoPar.FORSTATEMENT attr) -> Result
 transFORSTATEMENT x = case x of
-  AbsProgettoPar.ForStateIndexDo indexvardec expression statement -> failure x
-  AbsProgettoPar.ForStateIndexWDo indexvardec expression b -> failure x
-  AbsProgettoPar.ForStateExprDo expression statement -> failure x
-  AbsProgettoPar.ForStateExprWDo expression b -> failure x
+  AbsProgettoPar.ForStateIndexDo _ indexvardec expression statement -> failure x
+  AbsProgettoPar.ForStateIndexWDo _ indexvardec expression b -> failure x
+  AbsProgettoPar.ForStateExprDo _ expression statement -> failure x
+  AbsProgettoPar.ForStateExprWDo _ expression b -> failure x
 
 transFORALLSTATEMENT :: Show attr => (AbsProgettoPar.FORALLSTATEMENT attr) -> Result
 transFORALLSTATEMENT x = case x of
-  AbsProgettoPar.ForAllStateIndexDo indexvardec expression statement -> failure x
-  AbsProgettoPar.ForAllStateIndexWDo indexvardec expression b -> failure x
-  AbsProgettoPar.ForAllStateExprDo expression statement -> failure x
-  AbsProgettoPar.ForAllStateExprWDo expression b -> failure x
+  AbsProgettoPar.ForAllStateIndexDo _ indexvardec expression statement -> failure x
+  AbsProgettoPar.ForAllStateIndexWDo _ indexvardec expression b -> failure x
+  AbsProgettoPar.ForAllStateExprDo _ expression statement -> failure x
+  AbsProgettoPar.ForAllStateExprWDo _ expression b -> failure x
 
 transINDEXVARDEC :: Show attr => (AbsProgettoPar.INDEXVARDEC attr) -> Result
 transINDEXVARDEC x = case x of
-  AbsProgettoPar.IndexVarDeclaration ident -> failure x
+  AbsProgettoPar.IndexVarDeclaration _ ident -> failure x
 
 transELSESTATEMENT :: Show attr => (AbsProgettoPar.ELSESTATEMENT attr) -> Result
 transELSESTATEMENT x = case x of
-  AbsProgettoPar.ElseStateEmpty -> failure x
-  AbsProgettoPar.ElseState statement -> failure x
+  AbsProgettoPar.ElseStateEmpty _ -> failure x
+  AbsProgettoPar.ElseState statement _ -> failure x
 
 transRETURNSTATEMENT :: Show attr => (AbsProgettoPar.RETURNSTATEMENT attr) -> Result
 transRETURNSTATEMENT x = case x of
-  AbsProgettoPar.ReturnState expression -> failure x
-  AbsProgettoPar.ReturnStateEmpty -> failure x
+  AbsProgettoPar.ReturnState _ expression -> failure x
+  AbsProgettoPar.ReturnStateEmpty _ -> failure x
 
 transCTRLDECSTATEMENT :: Show attr => (AbsProgettoPar.CTRLDECSTATEMENT attr) -> Result
 transCTRLDECSTATEMENT x = case x of
-  AbsProgettoPar.CtrlDecStateVar ident expression -> failure x
-  AbsProgettoPar.CtrlDecStateConst ident expression -> failure x
+  AbsProgettoPar.CtrlDecStateVar _ ident expression -> failure x
+  AbsProgettoPar.CtrlDecStateConst _ ident expression -> failure x
 
 transEXPRESSIONSTATEMENT :: Show attr => (AbsProgettoPar.EXPRESSIONSTATEMENT attr) -> Result
 transEXPRESSIONSTATEMENT x = case x of
-  AbsProgettoPar.VariableExpression ident -> failure x
-  AbsProgettoPar.CallExpression callexpression -> failure x
+  AbsProgettoPar.VariableExpression _ ident -> failure x
+  AbsProgettoPar.CallExpression _ callexpression -> failure x
 
 transCALLEXPRESSION :: Show attr => (AbsProgettoPar.CALLEXPRESSION attr) -> Result
 transCALLEXPRESSION x = case x of
-  AbsProgettoPar.CallExpressionParentheses ident namedexpressionlist -> failure x
-  AbsProgettoPar.CallExpressionQuadre ident namedexpressionlist -> failure x
+  AbsProgettoPar.CallExpressionParentheses _ ident namedexpressionlist -> failure x
+  AbsProgettoPar.CallExpressionQuadre _ ident namedexpressionlist -> failure x
 
 transNAMEDEXPRESSIONLIST :: Show attr => (AbsProgettoPar.NAMEDEXPRESSIONLIST attr) -> Result
 transNAMEDEXPRESSIONLIST x = case x of
-  AbsProgettoPar.NamedExpressionList namedexpression -> failure x
-  AbsProgettoPar.NamedExpressionLists namedexpression namedexpressionlist -> failure x
-  AbsProgettoPar.NamedExpressionAssigned ident expression -> failure x
+  AbsProgettoPar.NamedExpressionList _ namedexpression -> failure x
+  AbsProgettoPar.NamedExpressionLists _ namedexpression namedexpressionlist -> failure x
+  AbsProgettoPar.NamedExpressionAssigned _ ident expression -> failure x
 
 transNAMEDEXPRESSION :: Show attr => (AbsProgettoPar.NAMEDEXPRESSION attr) -> Result
 transNAMEDEXPRESSION x = case x of
-  AbsProgettoPar.NamedExpression expression -> failure x
+  AbsProgettoPar.NamedExpression _ expression -> failure x
 
 transEXPRESSION :: Show attr => (AbsProgettoPar.EXPRESSION attr) -> Result
 transEXPRESSION x = case x of
-  AbsProgettoPar.ExpressionIdent ident arrayindexelement -> failure x
-  AbsProgettoPar.ExpressionInteger integer -> failure x
-  AbsProgettoPar.ExpressionReal double -> failure x
-  AbsProgettoPar.ExpressionString string -> failure x
-  AbsProgettoPar.ExpressionChar char -> failure x
-  AbsProgettoPar.ExpressionBoolean boolean -> failure x
-  AbsProgettoPar.ExpressionBinary default_ binaryop expression -> failure x
-  AbsProgettoPar.ExpressionUnary unaryop expression -> failure x
-  AbsProgettoPar.ExpressionCast default_ primitivetype -> failure x
-  AbsProgettoPar.ExpressionBracket expression -> failure x
+  AbsProgettoPar.ExpressionIdent _ ident arrayindexelement -> failure x
+  AbsProgettoPar.ExpressionInteger _ integer -> failure x
+  AbsProgettoPar.ExpressionReal _ double -> failure x
+  AbsProgettoPar.ExpressionString _ string -> failure x
+  AbsProgettoPar.ExpressionChar _ char -> failure x
+  AbsProgettoPar.ExpressionBoolean _ boolean -> failure x
+  AbsProgettoPar.ExpressionBinary _ default_ binaryop expression -> failure x
+  AbsProgettoPar.ExpressionUnary _ unaryop expression -> failure x
+  AbsProgettoPar.ExpressionCast _ default_ primitivetype -> failure x
+  AbsProgettoPar.ExpressionBracket _ expression -> failure x
 
 transDEFAULT :: Show attr => (AbsProgettoPar.DEFAULT attr) -> Result
 transDEFAULT x = case x of
-  AbsProgettoPar.ExpressionIdentD ident arrayindexelement -> failure x
-  AbsProgettoPar.ExpressionIntegerD integer -> failure x
-  AbsProgettoPar.ExpressionRealD double -> failure x
-  AbsProgettoPar.ExpressionStringD string -> failure x
-  AbsProgettoPar.ExpressionCharD char -> failure x
-  AbsProgettoPar.ExpressionBooleanD boolean -> failure x
-  AbsProgettoPar.ExpressionBracketD expression -> failure x
+  AbsProgettoPar.ExpressionIdentD _ ident arrayindexelement -> failure x
+  AbsProgettoPar.ExpressionIntegerD _ integer -> failure x
+  AbsProgettoPar.ExpressionRealD _ double -> failure x
+  AbsProgettoPar.ExpressionStringD _ string -> failure x
+  AbsProgettoPar.ExpressionCharD _ char -> failure x
+  AbsProgettoPar.ExpressionBooleanD _ boolean -> failure x
+  AbsProgettoPar.ExpressionBracketD _ expression -> failure x
 
 transUNARYOP :: Show attr => (AbsProgettoPar.UNARYOP attr) -> Result
 transUNARYOP x = case x of
-  AbsProgettoPar.UnaryOperationPositive -> failure x
-  AbsProgettoPar.UnaryOperationNegative -> failure x
-  AbsProgettoPar.UnaryOperationNot -> failure x
-  AbsProgettoPar.UnaryOperationPointer -> failure x
+  AbsProgettoPar.UnaryOperationPositive _ -> failure x
+  AbsProgettoPar.UnaryOperationNegative _ -> failure x
+  AbsProgettoPar.UnaryOperationNot _ -> failure x
+  AbsProgettoPar.UnaryOperationPointer _ -> failure x
 
 transBINARYOP :: Show attr => (AbsProgettoPar.BINARYOP attr)  -> Result
 transBINARYOP x = case x of
-  AbsProgettoPar.BinaryOperationPlus -> failure x
-  AbsProgettoPar.BinaryOperationMinus -> failure x
-  AbsProgettoPar.BinaryOperationProduct -> failure x
-  AbsProgettoPar.BinaryOperationDivision -> failure x
-  AbsProgettoPar.BinaryOperationModule -> failure x
-  AbsProgettoPar.BinaryOperationPower -> failure x
-  AbsProgettoPar.BinaryOperationAnd -> failure x
-  AbsProgettoPar.BinaryOperationOr -> failure x
-  AbsProgettoPar.BinaryOperationEq -> failure x
-  AbsProgettoPar.BinaryOperationNotEq -> failure x
-  AbsProgettoPar.BinaryOperationGratherEq -> failure x
-  AbsProgettoPar.BinaryOperationGrather -> failure x
-  AbsProgettoPar.BinaryOperationLessEq -> failure x
-  AbsProgettoPar.BinaryOperationLess -> failure x
+  AbsProgettoPar.BinaryOperationPlus _ -> failure x
+  AbsProgettoPar.BinaryOperationMinus _ -> failure x
+  AbsProgettoPar.BinaryOperationProduct _ -> failure x
+  AbsProgettoPar.BinaryOperationDivision _ -> failure x
+  AbsProgettoPar.BinaryOperationModule _ -> failure x
+  AbsProgettoPar.BinaryOperationPower _ -> failure x
+  AbsProgettoPar.BinaryOperationAnd _ -> failure x
+  AbsProgettoPar.BinaryOperationOr _ -> failure x
+  AbsProgettoPar.BinaryOperationEq _ -> failure x
+  AbsProgettoPar.BinaryOperationNotEq _ -> failure x
+  AbsProgettoPar.BinaryOperationGratherEq _ -> failure x
+  AbsProgettoPar.BinaryOperationGrather _ -> failure x
+  AbsProgettoPar.BinaryOperationLessEq _ -> failure x
+  AbsProgettoPar.BinaryOperationLess _ -> failure x
 
 transLVALUEEXPRESSION :: Show attr => (AbsProgettoPar.LVALUEEXPRESSION attr) -> Result
 transLVALUEEXPRESSION x = case x of
-  AbsProgettoPar.LvalueExpressions ident arrayindexelement lvalueexpression -> failure x
-  AbsProgettoPar.LvalueExpression ident arrayindexelement -> failure x
+  AbsProgettoPar.LvalueExpressions _ ident arrayindexelement lvalueexpression -> failure x
+  AbsProgettoPar.LvalueExpression _ ident arrayindexelement -> failure x
 
 transARRAYINDEXELEMENT :: Show attr => (AbsProgettoPar.ARRAYINDEXELEMENT attr) -> Result
 transARRAYINDEXELEMENT x = case x of
-  AbsProgettoPar.ArrayIndexElement typeindex -> failure x
-  AbsProgettoPar.ArrayIndexElementEmpty -> failure x
+  AbsProgettoPar.ArrayIndexElement _ typeindex -> failure x
+  AbsProgettoPar.ArrayIndexElementEmpty _ -> failure x
 
 transTYPEINDEX :: Show attr => (AbsProgettoPar.TYPEINDEX attr) -> Result
 transTYPEINDEX x = case x of
-  AbsProgettoPar.TypeOfIndexInt typeindex integer -> failure x
-  AbsProgettoPar.TypeOfIndexIntSingle integer -> failure x
-  AbsProgettoPar.TypeOfIndexVar typeindex ident -> failure x
-  AbsProgettoPar.TypeOfIndexVarSingle ident -> failure x
+  AbsProgettoPar.TypeOfIndexInt _ typeindex integer -> failure x
+  AbsProgettoPar.TypeOfIndexIntSingle _ integer -> failure x
+  AbsProgettoPar.TypeOfIndexVar _ typeindex ident -> failure x
+  AbsProgettoPar.TypeOfIndexVarSingle _ ident -> failure x

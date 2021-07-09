@@ -46,32 +46,33 @@ run v p s =
       showTree v tree
       exitSuccess
   where
-  ts = myLexer (modifyInput s [] [])
+  ts = myLexer (pointersSyntaxPreprocessing s [] [])
 
-modifyInput :: String -> String -> String -> String
-modifyInput [] [] output = output
-modifyInput [] zs output = output
-modifyInput (x:xs) zs output= if x==' ' || x=='*' || x==':'
+-- Preprocessing of the input for multiple pointers compatibility "*******"
+pointersSyntaxPreprocessing :: String -> String -> String -> String
+pointersSyntaxPreprocessing [] [] output = output
+pointersSyntaxPreprocessing [] zs output = output
+pointersSyntaxPreprocessing (x:xs) zs output= if x==' ' || x=='*' || x==':'
                           then
                             if x==' '
                               then
-                                modifyInput xs [] (output++[x])
+                                pointersSyntaxPreprocessing xs [] (output++[x])
                               else
                                 if x==':'
                                   then
-                                    modifyInput xs [] (output++[x])
+                                    pointersSyntaxPreprocessing xs [] (output++[x])
                                   else
                                     if x=='*'
                                       then
                                         if zs=="int" || zs=="bool" || zs=="real" || zs=="string" || zs=="char"
                                           then
-                                            modifyInput xs zs ((output++[x] ) ++ [' '] )
+                                            pointersSyntaxPreprocessing xs zs ((output++[x] ) ++ [' '] )
                                           else
-                                            modifyInput xs [] (output++[x])
+                                            pointersSyntaxPreprocessing xs [] (output++[x])
                                       else
-                                        modifyInput xs [] (output++[x])
+                                        pointersSyntaxPreprocessing xs [] (output++[x])
                           else
-                            modifyInput xs (zs++[x]) (output++[x])
+                            pointersSyntaxPreprocessing xs (zs++[x]) (output++[x])
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()
 showTree v tree = do

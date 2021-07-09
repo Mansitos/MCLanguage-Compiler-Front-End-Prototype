@@ -9,7 +9,7 @@ module ParProgettoPar
 
 import Prelude
 
-import qualified AbsProgettoPar
+import qualified AbsProgettoPar as Abs
 import LexProgettoPar
 
 }
@@ -87,236 +87,236 @@ import LexProgettoPar
 
 %%
 
-Ident :: { AbsProgettoPar.Ident Posn }
-Ident  : L_Ident { AbsProgettoPar.Ident (getTokenContent $1) (tokenPosn $1) }
+Ident :: { Abs.Ident Posn }
+Ident  : L_Ident { Abs.Ident (getTokenContent $1) (tokenPosn $1) }
 
-Char    :: { AbsProgettoPar.Char Posn }
-Char     : L_charac { AbsProgettoPar.Char ((read (getTokenContent $1)) :: Prelude.Char  ) (tokenPosn $1) }
+Char    :: { Abs.Char Posn }
+Char     : L_charac { Abs.Char ((read (getTokenContent $1)) :: Prelude.Char  ) (tokenPosn $1) }
 
-Double  :: { AbsProgettoPar.Real Posn }
-Double   : L_doubl  { AbsProgettoPar.Real ((read (getTokenContent $1)) :: Prelude.Double  ) (tokenPosn $1) }
+Double  :: { Abs.Real Posn }
+Double   : L_doubl  { Abs.Real ((read (getTokenContent $1)) :: Prelude.Double  ) (tokenPosn $1) }
 
-Integer :: { AbsProgettoPar.Integer Posn }
-Integer  : L_integ  { AbsProgettoPar.Integer ((read (getTokenContent $1)) :: Prelude.Integer ) (tokenPosn $1) }
+Integer :: { Abs.Integer Posn }
+Integer  : L_integ  { Abs.Integer ((read (getTokenContent $1)) :: Prelude.Integer ) (tokenPosn $1) }
 
-String  :: { AbsProgettoPar.String  Posn }
-String   : L_quoted { AbsProgettoPar.String (getTokenContent $1) (tokenPosn $1) }
+String  :: { Abs.String  Posn }
+String   : L_quoted { Abs.String (getTokenContent $1) (tokenPosn $1) }
 
-Boolean :: { AbsProgettoPar.Boolean Posn }
-Boolean : 'true' { AbsProgettoPar.Boolean_true (tokenPosn $1) }
-        | 'false' { AbsProgettoPar.Boolean_false (tokenPosn $1) }
-        | 'True' { AbsProgettoPar.Boolean_True (tokenPosn $1) }
-        | 'False' { AbsProgettoPar.Boolean_False (tokenPosn $1) }
+Boolean :: { Abs.Boolean Posn }
+Boolean : 'true' { Abs.Boolean_true (tokenPosn $1) }
+        | 'false' { Abs.Boolean_false (tokenPosn $1) }
+        | 'True' { Abs.Boolean_True (tokenPosn $1) }
+        | 'False' { Abs.Boolean_False (tokenPosn $1) }
 
-S :: { AbsProgettoPar.S Posn }
-S : STATEMENTS { AbsProgettoPar.StartCode $1 }
+S :: { Abs.S Posn }
+S : STATEMENTS { Abs.StartCode (Abs.statements_content $1) $1 }
 
-STATEMENTS :: { AbsProgettoPar.STATEMENTS Posn }
-STATEMENTS : STATEMENT STATEMENTS { AbsProgettoPar.ListStatements $1 $2 }
-           | {- empty -} { AbsProgettoPar.EmptyStatement }
+STATEMENTS :: { Abs.STATEMENTS Posn }
+STATEMENTS : STATEMENT STATEMENTS { Abs.ListStatements (Abs.statement_content $1) $1 $2 }
+           | {- empty -} { Abs.EmptyStatement (Pn 0 0 0)}
 
-B :: { AbsProgettoPar.B Posn }
-B : '{' STATEMENTS '}' { AbsProgettoPar.BlockStatement $2 }
+B :: { Abs.B Posn }
+B : '{' STATEMENTS '}' { Abs.BlockStatement (Abs.statements_content $2) $2 }
 
-STATEMENT :: { AbsProgettoPar.STATEMENT Posn }
-STATEMENT : B { AbsProgettoPar.Statement $1 }
-          | EXPRESSIONSTATEMENT ';' { AbsProgettoPar.ExpressionStatement $1 }
-          | LVALUEEXPRESSION ASSIGNOP EXPRESSION ';' { AbsProgettoPar.AssignmentStatement $1 $2 $3 }
-          | CONDITIONALSTATE { AbsProgettoPar.ConditionalStatement $1 }
-          | WHILESTATEMENT { AbsProgettoPar.WhileDoStatement $1 }
-          | DOSTATEMENT { AbsProgettoPar.DoWhileStatement $1 }
-          | FORSTATEMENT { AbsProgettoPar.ForStatement $1 }
-          | 'break' ';' { AbsProgettoPar.BreakStatement }
-          | 'continue' ';' { AbsProgettoPar.ContinueStatement }
-          | RETURNSTATEMENT ';' { AbsProgettoPar.ReturnStatement  $1 }
-          | VARIABLETYPE VARDECLIST ';' { AbsProgettoPar.VariableDeclarationStatement $1 $2 }
-          | FORALLSTATEMENT { AbsProgettoPar.ForAllStatement $1 }
-          | 'proc' Ident '(' PARAMETERS ')' ':' 'void' '{' STATEMENTS '}' { AbsProgettoPar.ProcedureStatement $2 $4 $9 }
-          | 'function' Ident '(' PARAMETERS ')' ':' PRIMITIVETYPE '{' STATEMENTS '}' { AbsProgettoPar.FunctionStatement $2 $4 $7 $9 }
+STATEMENT :: { Abs.STATEMENT Posn }
+STATEMENT : B { Abs.Statement (Abs.b_content $1) $1 }
+          | EXPRESSIONSTATEMENT ';' { Abs.ExpressionStatement (Abs.expressionstatement_content $1) $1 }
+          | LVALUEEXPRESSION ASSIGNOP EXPRESSION ';' { Abs.AssignmentStatement (Abs.lvalueexpression_content $1) $1 $2 $3 }
+          | CONDITIONALSTATE { Abs.ConditionalStatement (Abs.conditionalstate_content $1) $1 }
+          | WHILESTATEMENT { Abs.WhileDoStatement (Abs.whilestatement_content $1) $1 }
+          | DOSTATEMENT { Abs.DoWhileStatement (Abs.dostatement_content $1) $1 }
+          | FORSTATEMENT { Abs.ForStatement (Abs.forstatement_content $1) $1 }
+          | 'break' ';' { Abs.BreakStatement (tokenPosn $1)}
+          | 'continue' ';' { Abs.ContinueStatement (tokenPosn $1)}
+          | RETURNSTATEMENT ';' { Abs.ReturnStatement  (Abs.returnstatement_content $1) $1 }
+          | VARIABLETYPE VARDECLIST ';' { Abs.VariableDeclarationStatement (Abs.variabletype_content $1) $1 $2 }
+          | FORALLSTATEMENT { Abs.ForAllStatement (Abs.forallstatement_content $1) $1 }
+          | 'proc' Ident '(' PARAMETERS ')' ':' 'void' '{' STATEMENTS '}' { Abs.ProcedureStatement (tokenPosn $1) $2 $4 $9 }
+          | 'function' Ident '(' PARAMETERS ')' ':' PRIMITIVETYPE '{' STATEMENTS '}' { Abs.FunctionStatement (tokenPosn $1) $2 $4 $7 $9 }
 
-PARAMETERS :: { AbsProgettoPar.PARAMETERS Posn }
-PARAMETERS : PARAMETER ',' PARAMETERS { AbsProgettoPar.ParameterList $1 $3 }
-           | PARAMETER  { AbsProgettoPar.ParameterListSingle $1 }
-           | {- empty -} { AbsProgettoPar.ParameterListEmpty }
+PARAMETERS :: { Abs.PARAMETERS Posn }
+PARAMETERS : PARAMETER ',' PARAMETERS { Abs.ParameterList (Abs.parameter_content $1) $1 $3 }
+           | PARAMETER  { Abs.ParameterListSingle (Abs.parameter_content $1) $1 }
+           | {- empty -} { Abs.ParameterListEmpty (Pn 0 0 0)}
 
-PARAMETER :: { AbsProgettoPar.PARAMETER Posn }
-PARAMETER : Ident ':' PRIMITIVETYPE { AbsProgettoPar.Parameter $1 $3 }
+PARAMETER :: { Abs.PARAMETER Posn }
+PARAMETER : Ident ':' PRIMITIVETYPE { Abs.Parameter (Abs.contentId $1) $1 $3 }
 
-ASSIGNOP :: { AbsProgettoPar.ASSIGNOP Posn }
-ASSIGNOP : '=' { AbsProgettoPar.AssignOperationEq }
-         | '+=' { AbsProgettoPar.AssignOperationEqPlus }
-         | '-=' { AbsProgettoPar.AssignOperationEqMinus }
-         | '*=' { AbsProgettoPar.AssignOperationEqProd }
-         | '/=' { AbsProgettoPar.AssignOperationEqFract }
-         | '%=' { AbsProgettoPar.AssignOperationEqPercent }
-         | '**=' { AbsProgettoPar.AssignOperationEqPower }
+ASSIGNOP :: { Abs.ASSIGNOP Posn }
+ASSIGNOP : '=' { Abs.AssignOperationEq (tokenPosn $1)}
+         | '+=' { Abs.AssignOperationEqPlus (tokenPosn $1)}
+         | '-=' { Abs.AssignOperationEqMinus (tokenPosn $1)}
+         | '*=' { Abs.AssignOperationEqProd (tokenPosn $1)}
+         | '/=' { Abs.AssignOperationEqFract (tokenPosn $1)}
+         | '%=' { Abs.AssignOperationEqPercent (tokenPosn $1)}
+         | '**=' { Abs.AssignOperationEqPower (tokenPosn $1)}
 
-VARIABLETYPE :: { AbsProgettoPar.VARIABLETYPE Posn }
-VARIABLETYPE : 'param' { AbsProgettoPar.VariableTypeParam }
-             | 'const' { AbsProgettoPar.VariableTypeConst }
-             | 'var' { AbsProgettoPar.VariableTypeVar }
-             | 'ref' { AbsProgettoPar.VariableTypeRef }
-             | 'const' 'ref' { AbsProgettoPar.VariableTypeConstRef }
+VARIABLETYPE :: { Abs.VARIABLETYPE Posn }
+VARIABLETYPE : 'param' { Abs.VariableTypeParam (tokenPosn $1)}
+             | 'const' { Abs.VariableTypeConst (tokenPosn $1)}
+             | 'var' { Abs.VariableTypeVar (tokenPosn $1)}
+             | 'ref' { Abs.VariableTypeRef (tokenPosn $1)}
+             | 'const' 'ref' { Abs.VariableTypeConstRef (tokenPosn $1)}
 
-VARDECLIST :: { AbsProgettoPar.VARDECLIST Posn }
-VARDECLIST : VARDECID { AbsProgettoPar.VariableDeclarationSingle $1 }
+VARDECLIST :: { Abs.VARDECLIST Posn }
+VARDECLIST : VARDECID { Abs.VariableDeclarationSingle (Abs.vardecid_content $1) $1 }
 
-VARDECID :: { AbsProgettoPar.VARDECID Posn }
-VARDECID : IDENTLIST TYPEPART INITPART { AbsProgettoPar.VariableDeclaration $1 $2 $3 }
+VARDECID :: { Abs.VARDECID Posn }
+VARDECID : IDENTLIST TYPEPART INITPART { Abs.VariableDeclaration (Abs.identlist_content $1) $1 $2 $3 }
 
-IDENTLIST :: { AbsProgettoPar.IDENTLIST Posn }
-IDENTLIST : Ident ',' IDENTLIST { AbsProgettoPar.IdentifierList $1 $3 }
-          | Ident { AbsProgettoPar.IdentifierSingle $1 }
+IDENTLIST :: { Abs.IDENTLIST Posn }
+IDENTLIST : Ident ',' IDENTLIST { Abs.IdentifierList (Abs.contentId $1) $1 $3 }
+          | Ident { Abs.IdentifierSingle (Abs.contentId $1) $1 }
 
-TYPEPART :: { AbsProgettoPar.TYPEPART Posn }
-TYPEPART : ':' TYPEEXPRESSION { AbsProgettoPar.TypePart $2 }
+TYPEPART :: { Abs.TYPEPART Posn }
+TYPEPART : ':' TYPEEXPRESSION { Abs.TypePart (tokenPosn $1) $2 }
 
-INITPART :: { AbsProgettoPar.INITPART Posn }
-INITPART : '=' EXPRESSION { AbsProgettoPar.InitializzationPart $2 }
-         | '=' '[' LISTELEMENTARRAY { AbsProgettoPar.InitializzationPartArray $3 }
-         | {- empty -} { AbsProgettoPar.InitializzationPartEmpty }
+INITPART :: { Abs.INITPART Posn }
+INITPART : '=' EXPRESSION { Abs.InitializzationPart (tokenPosn $1) $2 }
+         | '=' '[' LISTELEMENTARRAY { Abs.InitializzationPartArray (tokenPosn $1) $3 }
+         | {- empty -} { Abs.InitializzationPartEmpty (Pn 0 0 0)}
 
-LISTELEMENTARRAY :: { AbsProgettoPar.LISTELEMENTARRAY Posn }
-LISTELEMENTARRAY : EXPRESSION ',' LISTELEMENTARRAY { AbsProgettoPar.ListElementsOfArray $1 $3 }
-                 | EXPRESSION ']' { AbsProgettoPar.ListElementOfArray $1 }
+LISTELEMENTARRAY :: { Abs.LISTELEMENTARRAY Posn }
+LISTELEMENTARRAY : EXPRESSION ',' LISTELEMENTARRAY { Abs.ListElementsOfArray (Abs.expression_content $1) $1 $3 }
+                 | EXPRESSION ']' { Abs.ListElementOfArray (Abs.expression_content $1) $1 }
 
-TYPEEXPRESSION :: { AbsProgettoPar.TYPEEXPRESSION Posn }
-TYPEEXPRESSION : PRIMITIVETYPE { AbsProgettoPar.TypeExpression $1 }
-               | '[' RANGEEXP ']' PRIMITIVETYPE { AbsProgettoPar.TypeExpressionArraySimple $2 $4 }
-               | '[' '{' RANGEEXP '}' ']' PRIMITIVETYPE { AbsProgettoPar.TypeExpressionArray $3 $6 }
-               | PRIMITIVETYPE POINTER { AbsProgettoPar.TypeExpressionPointer $1 $2 }
+TYPEEXPRESSION :: { Abs.TYPEEXPRESSION Posn }
+TYPEEXPRESSION : PRIMITIVETYPE { Abs.TypeExpression (Abs.primitivetype_content $1) $1 }
+               | '[' RANGEEXP ']' PRIMITIVETYPE { Abs.TypeExpressionArraySimple (tokenPosn $1) $2 $4 }
+               | '[' '{' RANGEEXP '}' ']' PRIMITIVETYPE { Abs.TypeExpressionArray (tokenPosn $1) $3 $6 }
+               | PRIMITIVETYPE POINTER { Abs.TypeExpressionPointer (Abs.primitivetype_content $1) $1 $2 }
 
-POINTER :: { AbsProgettoPar.POINTER }
-POINTER : POINTER '*' { AbsProgettoPar.PointerSymbol $1 }
-        | '*' { AbsProgettoPar.PointerSymbolSingle }
+POINTER :: { Abs.POINTER Posn }
+POINTER : POINTER '*' { Abs.PointerSymbol (Abs.pointer_content $1) $1 }
+        | '*' { Abs.PointerSymbolSingle (tokenPosn $1)}
 
-RANGEEXP :: { AbsProgettoPar.RANGEEXP Posn }
-RANGEEXP : EXPRESSION '..' EXPRESSION ',' RANGEEXP { AbsProgettoPar.RangeExpression $1 $3 $5 }
-         | EXPRESSION '..' EXPRESSION { AbsProgettoPar.RangeExpressionSingle $1 $3 }
+RANGEEXP :: { Abs.RANGEEXP Posn }
+RANGEEXP : EXPRESSION '..' EXPRESSION ',' RANGEEXP { Abs.RangeExpression (Abs.expression_content $1) $1 $3 $5 }
+         | EXPRESSION '..' EXPRESSION { Abs.RangeExpressionSingle (Abs.expression_content $1) $1 $3 }
 
-PRIMITIVETYPE :: { AbsProgettoPar.PRIMITIVETYPE Posn }
-PRIMITIVETYPE : 'void' { AbsProgettoPar.PrimitiveTypeVoid }
-              | 'bool' { AbsProgettoPar.PrimitiveTypeBool }
-              | 'int' { AbsProgettoPar.PrimitiveTypeInt }
-              | 'real' { AbsProgettoPar.PrimitiveTypeReal }
-              | 'string' { AbsProgettoPar.PrimitiveTypeString }
-              | 'char' { AbsProgettoPar.PrimitiveTypeChar }
-              | '[' ']' PRIMITIVETYPE { AbsProgettoPar.TypeArray $3 }
+PRIMITIVETYPE :: { Abs.PRIMITIVETYPE Posn } 
+PRIMITIVETYPE : 'void' { Abs.PrimitiveTypeVoid (tokenPosn $1)}
+              | 'bool' { Abs.PrimitiveTypeBool (tokenPosn $1)}
+              | 'int' { Abs.PrimitiveTypeInt (tokenPosn $1)}
+              | 'real' { Abs.PrimitiveTypeReal (tokenPosn $1)}
+              | 'string' { Abs.PrimitiveTypeString (tokenPosn $1)}
+              | 'char' { Abs.PrimitiveTypeChar (tokenPosn $1)}
+              | '[' ']' PRIMITIVETYPE { Abs.TypeArray (tokenPosn $1) $3}
+              
+CONDITIONALSTATE :: { Abs.CONDITIONALSTATE Posn }
+CONDITIONALSTATE : 'if' EXPRESSION 'then' STATEMENT ELSESTATEMENT { Abs.ConditionalStatementSimpleThen (tokenPosn $1) $2 $4 $5 }
+                 | 'if' EXPRESSION B ELSESTATEMENT { Abs.ConditionalStatementSimpleWThen (tokenPosn $1) $2 $3 $4 }
+                 | 'if' CTRLDECSTATEMENT 'then' STATEMENT ELSESTATEMENT { Abs.ConditionalStatementCtrlThen (tokenPosn $1) $2 $4 $5 }
+                 | 'if' CTRLDECSTATEMENT B ELSESTATEMENT { Abs.ConditionalStatementCtrlWThen (tokenPosn $1) $2 $3 $4 }
 
-CONDITIONALSTATE :: { AbsProgettoPar.CONDITIONALSTATE Posn }
-CONDITIONALSTATE : 'if' EXPRESSION 'then' STATEMENT ELSESTATEMENT { AbsProgettoPar.ConditionalStatementSimpleThen $2 $4 $5 }
-                 | 'if' EXPRESSION B ELSESTATEMENT { AbsProgettoPar.ConditionalStatementSimpleWThen $2 $3 $4 }
-                 | 'if' CTRLDECSTATEMENT 'then' STATEMENT ELSESTATEMENT { AbsProgettoPar.ConditionalStatementCtrlThen $2 $4 $5 }
-                 | 'if' CTRLDECSTATEMENT B ELSESTATEMENT { AbsProgettoPar.ConditionalStatementCtrlWThen $2 $3 $4 }
+WHILESTATEMENT :: { Abs.WHILESTATEMENT Posn }
+WHILESTATEMENT : 'while' EXPRESSION 'do' STATEMENT { Abs.WhileStateSimpleDo (tokenPosn $1) $2 $4 }
+               | 'while' EXPRESSION B { Abs.WhileStateSimpleWDo (tokenPosn $1) $2 $3 }
+               | 'while' CTRLDECSTATEMENT 'do' STATEMENT { Abs.WhileStateCtrlDo (tokenPosn $1) $2 $4 }
+               | 'while' CTRLDECSTATEMENT B { Abs.WhileStateCtrlWDo (tokenPosn $1) $2 $3 }
 
-WHILESTATEMENT :: { AbsProgettoPar.WHILESTATEMENT Posn }
-WHILESTATEMENT : 'while' EXPRESSION 'do' STATEMENT { AbsProgettoPar.WhileStateSimpleDo $2 $4 }
-               | 'while' EXPRESSION B { AbsProgettoPar.WhileStateSimpleWDo $2 $3 }
-               | 'while' CTRLDECSTATEMENT 'do' STATEMENT { AbsProgettoPar.WhileStateCtrlDo $2 $4 }
-               | 'while' CTRLDECSTATEMENT B { AbsProgettoPar.WhileStateCtrlWDo $2 $3 }
+DOSTATEMENT :: { Abs.DOSTATEMENT Posn }
+DOSTATEMENT : 'do' STATEMENT 'while' EXPRESSION ';' { Abs.DoWhileState (tokenPosn $1) $2 $4 }
 
-DOSTATEMENT :: { AbsProgettoPar.DOSTATEMENT Posn }
-DOSTATEMENT : 'do' STATEMENT 'while' EXPRESSION ';' { AbsProgettoPar.DoWhileState $2 $4 }
+FORSTATEMENT :: { Abs.FORSTATEMENT Posn }
+FORSTATEMENT : 'for' INDEXVARDEC 'in' EXPRESSION 'do' STATEMENT { Abs.ForStateIndexDo (tokenPosn $1) $2 $4 $6 }
+             | 'for' INDEXVARDEC 'in' EXPRESSION B { Abs.ForStateIndexWDo (tokenPosn $1) $2 $4 $5 }
+             | 'for' EXPRESSION 'do' STATEMENT { Abs.ForStateExprDo (tokenPosn $1) $2 $4 }
+             | 'for' EXPRESSION B { Abs.ForStateExprWDo (tokenPosn $1) $2 $3 }
 
-FORSTATEMENT :: { AbsProgettoPar.FORSTATEMENT Posn }
-FORSTATEMENT : 'for' INDEXVARDEC 'in' EXPRESSION 'do' STATEMENT { AbsProgettoPar.ForStateIndexDo $2 $4 $6 }
-             | 'for' INDEXVARDEC 'in' EXPRESSION B { AbsProgettoPar.ForStateIndexWDo $2 $4 $5 }
-             | 'for' EXPRESSION 'do' STATEMENT { AbsProgettoPar.ForStateExprDo $2 $4 }
-             | 'for' EXPRESSION B { AbsProgettoPar.ForStateExprWDo $2 $3 }
+FORALLSTATEMENT :: { Abs.FORALLSTATEMENT Posn }
+FORALLSTATEMENT : 'forall' INDEXVARDEC 'in' EXPRESSION 'do' STATEMENT { Abs.ForAllStateIndexDo (tokenPosn $1) $2 $4 $6 }
+                | 'forall' INDEXVARDEC 'in' EXPRESSION B { Abs.ForAllStateIndexWDo (tokenPosn $1) $2 $4 $5 }
+                | 'forall' EXPRESSION 'do' STATEMENT { Abs.ForAllStateExprDo (tokenPosn $1) $2 $4 }
+                | 'forall' EXPRESSION B { Abs.ForAllStateExprWDo (tokenPosn $1) $2 $3 }
 
-FORALLSTATEMENT :: { AbsProgettoPar.FORALLSTATEMENT Posn }
-FORALLSTATEMENT : 'forall' INDEXVARDEC 'in' EXPRESSION 'do' STATEMENT { AbsProgettoPar.ForAllStateIndexDo $2 $4 $6 }
-                | 'forall' INDEXVARDEC 'in' EXPRESSION B { AbsProgettoPar.ForAllStateIndexWDo $2 $4 $5 }
-                | 'forall' EXPRESSION 'do' STATEMENT { AbsProgettoPar.ForAllStateExprDo $2 $4 }
-                | 'forall' EXPRESSION B { AbsProgettoPar.ForAllStateExprWDo $2 $3 }
+INDEXVARDEC :: { Abs.INDEXVARDEC Posn }
+INDEXVARDEC : Ident { Abs.IndexVarDeclaration (Abs.contentId $1) $1 }
 
-INDEXVARDEC :: { AbsProgettoPar.INDEXVARDEC Posn }
-INDEXVARDEC : Ident { AbsProgettoPar.IndexVarDeclaration $1 }
+ELSESTATEMENT :: { Abs.ELSESTATEMENT Posn }
+ELSESTATEMENT : {- empty -} { Abs.ElseStateEmpty (Pn 0 0 0)}
+              | 'else' STATEMENT { Abs.ElseState (tokenPosn $1) $2 }
 
-ELSESTATEMENT :: { AbsProgettoPar.ELSESTATEMENT Posn }
-ELSESTATEMENT : {- empty -} { AbsProgettoPar.ElseStateEmpty }
-              | 'else' STATEMENT { AbsProgettoPar.ElseState $2 }
+RETURNSTATEMENT :: { Abs.RETURNSTATEMENT Posn }
+RETURNSTATEMENT : 'return' EXPRESSION { Abs.ReturnState (tokenPosn $1) $2 }
+                | 'return' { Abs.ReturnStateEmpty (tokenPosn $1)}
 
-RETURNSTATEMENT :: { AbsProgettoPar.RETURNSTATEMENT Posn }
-RETURNSTATEMENT : 'return' EXPRESSION { AbsProgettoPar.ReturnState $2 }
-                | 'return' { AbsProgettoPar.ReturnStateEmpty }
+CTRLDECSTATEMENT :: { Abs.CTRLDECSTATEMENT Posn }
+CTRLDECSTATEMENT : 'var' Ident '=' EXPRESSION { Abs.CtrlDecStateVar (tokenPosn $1) $2 $4 }
+                 | 'const' Ident '=' EXPRESSION { Abs.CtrlDecStateConst (tokenPosn $1) $2 $4 }
 
-CTRLDECSTATEMENT :: { AbsProgettoPar.CTRLDECSTATEMENT Posn }
-CTRLDECSTATEMENT : 'var' Ident '=' EXPRESSION { AbsProgettoPar.CtrlDecStateVar $2 $4 }
-                 | 'const' Ident '=' EXPRESSION { AbsProgettoPar.CtrlDecStateConst $2 $4 }
+EXPRESSIONSTATEMENT :: { Abs.EXPRESSIONSTATEMENT Posn }
+EXPRESSIONSTATEMENT : Ident { Abs.VariableExpression (Abs.contentId $1) $1 }
+                    | CALLEXPRESSION { Abs.CallExpression (Abs.callexpression_content $1) $1 }
+                    
+CALLEXPRESSION :: { Abs.CALLEXPRESSION Posn }
+CALLEXPRESSION : Ident '(' NAMEDEXPRESSIONLIST ')' { Abs.CallExpressionParentheses (Abs.contentId $1) $1 $3 }
+               | Ident '[' NAMEDEXPRESSIONLIST ']' { Abs.CallExpressionQuadre (Abs.contentId $1) $1 $3 }
 
-EXPRESSIONSTATEMENT :: { AbsProgettoPar.EXPRESSIONSTATEMENT Posn }
-EXPRESSIONSTATEMENT : Ident { AbsProgettoPar.VariableExpression $1 }
-                    | CALLEXPRESSION { AbsProgettoPar.CallExpression $1 }
+NAMEDEXPRESSIONLIST :: { Abs.NAMEDEXPRESSIONLIST Posn }
+NAMEDEXPRESSIONLIST : NAMEDEXPRESSION { Abs.NamedExpressionList (Abs.namedexpression_content $1) $1 }
+                    | NAMEDEXPRESSION ',' NAMEDEXPRESSIONLIST { Abs.NamedExpressionLists (Abs.namedexpression_content $1) $1 $3 }
+                    | Ident '=' EXPRESSION { Abs.NamedExpressionAssigned (Abs.contentId $1) $1 $3 }
 
-CALLEXPRESSION :: { AbsProgettoPar.CALLEXPRESSION Posn }
-CALLEXPRESSION : Ident '(' NAMEDEXPRESSIONLIST ')' { AbsProgettoPar.CallExpressionParentheses $1 $3 }
-               | Ident '[' NAMEDEXPRESSIONLIST ']' { AbsProgettoPar.CallExpressionQuadre $1 $3 }
+NAMEDEXPRESSION :: { Abs.NAMEDEXPRESSION Posn }
+NAMEDEXPRESSION : EXPRESSION { Abs.NamedExpression (Abs.expression_content $1) $1 }
 
-NAMEDEXPRESSIONLIST :: { AbsProgettoPar.NAMEDEXPRESSIONLIST Posn }
-NAMEDEXPRESSIONLIST : NAMEDEXPRESSION { AbsProgettoPar.NamedExpressionList $1 }
-                    | NAMEDEXPRESSION ',' NAMEDEXPRESSIONLIST { AbsProgettoPar.NamedExpressionLists $1 $3 }
-                    | Ident '=' EXPRESSION { AbsProgettoPar.NamedExpressionAssigned $1 $3 }
+EXPRESSION :: { Abs.EXPRESSION Posn }
+EXPRESSION : Ident ARRAYINDEXELEMENT { Abs.ExpressionIdent (Abs.contentId $1) $1 $2 }
+           | Integer { Abs.ExpressionInteger (Abs.contentInt $1) $1 }
+           | Double { Abs.ExpressionReal (Abs.contentReal $1) $1 }
+           | String { Abs.ExpressionString (Abs.contentString $1) $1 }
+           | Char { Abs.ExpressionChar (Abs.contentChar $1) $1}
+           | Boolean { Abs.ExpressionBoolean (Abs.contentBoolean $1) $1 }
+           | DEFAULT BINARYOP EXPRESSION { Abs.ExpressionBinary (Abs.default_content $1) $1 $2 $3 }
+           | UNARYOP EXPRESSION { Abs.ExpressionUnary (Abs.unaryop_content $1) $1 $2 }
+           | DEFAULT ':' PRIMITIVETYPE { Abs.ExpressionCast (Abs.default_content $1) $1 $3 }
+           | '(' EXPRESSION ')' { Abs.ExpressionBracket (tokenPosn $1) $2 }
+           
+DEFAULT :: { Abs.DEFAULT Posn }
+DEFAULT : Ident ARRAYINDEXELEMENT { Abs.ExpressionIdentD (Abs.contentId $1) $1 $2 }
+        | Integer { Abs.ExpressionIntegerD (Abs.contentInt $1) $1 }
+        | Double { Abs.ExpressionRealD (Abs.contentReal $1) $1 }
+        | String { Abs.ExpressionStringD (Abs.contentString $1) $1 }
+        | Char { Abs.ExpressionCharD (Abs.contentChar $1) $1 }
+        | Boolean { Abs.ExpressionBooleanD (Abs.contentBoolean $1) $1 }
+        | '(' EXPRESSION ')' { Abs.ExpressionBracketD (tokenPosn $1) $2 }
 
-NAMEDEXPRESSION :: { AbsProgettoPar.NAMEDEXPRESSION Posn }
-NAMEDEXPRESSION : EXPRESSION { AbsProgettoPar.NamedExpression $1 }
+UNARYOP :: { Abs.UNARYOP Posn }
+UNARYOP : '+' { Abs.UnaryOperationPositive (tokenPosn $1)}
+        | '-' { Abs.UnaryOperationNegative (tokenPosn $1)}
+        | '!' { Abs.UnaryOperationNot (tokenPosn $1)}
+        | '&' { Abs.UnaryOperationPointer (tokenPosn $1)}
 
-EXPRESSION :: { AbsProgettoPar.EXPRESSION Posn }
-EXPRESSION : Ident ARRAYINDEXELEMENT { AbsProgettoPar.ExpressionIdent $1 $2 }
-           | Integer { AbsProgettoPar.ExpressionInteger $1 }
-           | Double { AbsProgettoPar.ExpressionReal $1 }
-           | String { AbsProgettoPar.ExpressionString $1 }
-           | Char { AbsProgettoPar.ExpressionChar $1 }
-           | Boolean { AbsProgettoPar.ExpressionBoolean $1 }
-           | DEFAULT BINARYOP EXPRESSION { AbsProgettoPar.ExpressionBinary $1 $2 $3 }
-           | UNARYOP EXPRESSION { AbsProgettoPar.ExpressionUnary $1 $2 }
-           | DEFAULT ':' PRIMITIVETYPE { AbsProgettoPar.ExpressionCast $1 $3 }
-           | '(' EXPRESSION ')' { AbsProgettoPar.ExpressionBracket $2 }
+BINARYOP :: { Abs.BINARYOP Posn}
+BINARYOP : '+' { Abs.BinaryOperationPlus (tokenPosn $1)}
+         | '-' { Abs.BinaryOperationMinus (tokenPosn $1)}
+         | '*' { Abs.BinaryOperationProduct (tokenPosn $1)}
+         | '/' { Abs.BinaryOperationDivision (tokenPosn $1)}
+         | '%' { Abs.BinaryOperationModule (tokenPosn $1)}
+         | '**' { Abs.BinaryOperationPower (tokenPosn $1)}
+         | '&&' { Abs.BinaryOperationAnd (tokenPosn $1)}
+         | '||' { Abs.BinaryOperationOr (tokenPosn $1)}
+         | '==' { Abs.BinaryOperationEq (tokenPosn $1)}
+         | '!=' { Abs.BinaryOperationNotEq (tokenPosn $1)}
+         | '>=' { Abs.BinaryOperationGratherEq (tokenPosn $1)}
+         | '>' { Abs.BinaryOperationGrather (tokenPosn $1)}
+         | '<=' { Abs.BinaryOperationLessEq (tokenPosn $1)}
+         | '<' { Abs.BinaryOperationLess (tokenPosn $1)}
 
-DEFAULT :: { AbsProgettoPar.DEFAULT Posn }
-DEFAULT : Ident ARRAYINDEXELEMENT { AbsProgettoPar.ExpressionIdentD $1 $2 }
-        | Integer { AbsProgettoPar.ExpressionIntegerD $1 }
-        | Double { AbsProgettoPar.ExpressionRealD $1 }
-        | String { AbsProgettoPar.ExpressionStringD $1 }
-        | Char { AbsProgettoPar.ExpressionCharD $1 }
-        | Boolean { AbsProgettoPar.ExpressionBooleanD $1 }
-        | '(' EXPRESSION ')' { AbsProgettoPar.ExpressionBracketD $2 }
+LVALUEEXPRESSION :: { Abs.LVALUEEXPRESSION Posn }
+LVALUEEXPRESSION : Ident ARRAYINDEXELEMENT ',' LVALUEEXPRESSION { Abs.LvalueExpressions (Abs.contentId $1) $1 $2 $4 }
+                 | Ident ARRAYINDEXELEMENT { Abs.LvalueExpression (Abs.contentId $1) $1 $2 }
 
-UNARYOP :: { AbsProgettoPar.UNARYOP Posn }
-UNARYOP : '+' { AbsProgettoPar.UnaryOperationPositive }
-        | '-' { AbsProgettoPar.UnaryOperationNegative }
-        | '!' { AbsProgettoPar.UnaryOperationNot }
-        | '&' { AbsProgettoPar.UnaryOperationPointer }
+ARRAYINDEXELEMENT :: { Abs.ARRAYINDEXELEMENT Posn }
+ARRAYINDEXELEMENT : '[' TYPEINDEX ']' { Abs.ArrayIndexElement(tokenPosn $1) $2 }
+                  | {- empty -} { Abs.ArrayIndexElementEmpty (Pn 0 0 0)}
 
-BINARYOP :: { AbsProgettoPar.BINARYOP Posn }
-BINARYOP : '+' { AbsProgettoPar.BinaryOperationPlus }
-         | '-' { AbsProgettoPar.BinaryOperationMinus }
-         | '*' { AbsProgettoPar.BinaryOperationProduct }
-         | '/' { AbsProgettoPar.BinaryOperationDivision }
-         | '%' { AbsProgettoPar.BinaryOperationModule }
-         | '**' { AbsProgettoPar.BinaryOperationPower }
-         | '&&' { AbsProgettoPar.BinaryOperationAnd }
-         | '||' { AbsProgettoPar.BinaryOperationOr }
-         | '==' { AbsProgettoPar.BinaryOperationEq }
-         | '!=' { AbsProgettoPar.BinaryOperationNotEq }
-         | '>=' { AbsProgettoPar.BinaryOperationGratherEq }
-         | '>' { AbsProgettoPar.BinaryOperationGrather }
-         | '<=' { AbsProgettoPar.BinaryOperationLessEq }
-         | '<' { AbsProgettoPar.BinaryOperationLess }
-
-LVALUEEXPRESSION :: { AbsProgettoPar.LVALUEEXPRESSION Posn }
-LVALUEEXPRESSION : Ident ARRAYINDEXELEMENT ',' LVALUEEXPRESSION { AbsProgettoPar.LvalueExpressions $1 $2 $4 }
-                 | Ident ARRAYINDEXELEMENT { AbsProgettoPar.LvalueExpression $1 $2 }
-
-ARRAYINDEXELEMENT :: { AbsProgettoPar.ARRAYINDEXELEMENT Posn }
-ARRAYINDEXELEMENT : '[' TYPEINDEX ']' { AbsProgettoPar.ArrayIndexElement $2 }
-                  | {- empty -} { AbsProgettoPar.ArrayIndexElementEmpty }
-
-TYPEINDEX :: { AbsProgettoPar.TYPEINDEX Posn }
-TYPEINDEX : TYPEINDEX ',' Integer { AbsProgettoPar.TypeOfIndexInt $1 $3 }
-          | Integer { AbsProgettoPar.TypeOfIndexIntSingle $1 }
-          | TYPEINDEX ',' Ident { AbsProgettoPar.TypeOfIndexVar $1 $3 }
-          | Ident { AbsProgettoPar.TypeOfIndexVarSingle $1 }
+TYPEINDEX :: { Abs.TYPEINDEX Posn }
+TYPEINDEX : TYPEINDEX ',' Integer { Abs.TypeOfIndexInt (Abs.typeindex_content $1) $1 $3 }
+          | Integer { Abs.TypeOfIndexIntSingle (Abs.contentInt $1) $1 }
+          | TYPEINDEX ',' Ident { Abs.TypeOfIndexVar (Abs.typeindex_content $1) $1 $3 }
+          | Ident { Abs.TypeOfIndexVarSingle (Abs.contentId $1) $1 }
 {
 
 type Err = Either String
