@@ -46,28 +46,32 @@ run v p s =
       showTree v tree
       exitSuccess
   where
-  ts = myLexer s --(modifyInput s [] [])
+  ts = myLexer (modifyInput s [] [])
 
 modifyInput :: String -> String -> String -> String
 modifyInput [] [] output = output
 modifyInput [] zs output = output
-modifyInput (x:xs) zs output= if x==' ' || x=='*'
+modifyInput (x:xs) zs output= if x==' ' || x=='*' || x==':'
                           then
                             if x==' '
                               then
                                 modifyInput xs [] (output++[x])
                               else
-                                if x=='*'
+                                if x==':'
                                   then
-                                    if zs=="int" || zs=="bool" || zs=="real" || zs=="string" || zs=="char"
+                                    modifyInput xs [] (output++[x])
+                                  else
+                                    if x=='*'
                                       then
-                                        modifyInput xs zs ((output++[x] ) ++ [' '] )
+                                        if zs=="int" || zs=="bool" || zs=="real" || zs=="string" || zs=="char"
+                                          then
+                                            modifyInput xs zs ((output++[x] ) ++ [' '] )
+                                          else
+                                            modifyInput xs [] (output++[x])
                                       else
                                         modifyInput xs [] (output++[x])
-                                  else
-                                    modifyInput xs [] (output++[x])
                           else
-                            modifyInput xs (x:zs) (output++[x])
+                            modifyInput xs (zs++[x]) (output++[x])
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()
 showTree v tree = do
