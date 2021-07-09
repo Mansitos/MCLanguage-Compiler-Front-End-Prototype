@@ -255,6 +255,7 @@ CALLEXPRESSION : Ident '(' NAMEDEXPRESSIONLIST ')' { Abs.CallExpressionParenthes
 
 NAMEDEXPRESSIONLIST :: { Abs.NAMEDEXPRESSIONLIST Posn }
 NAMEDEXPRESSIONLIST : NAMEDEXPRESSION { Abs.NamedExpressionList (Abs.namedexpression_content $1) $1 }
+                    | {- empty -} { Abs.NamedExpressionListEmpty (Pn 0 0 0) }
                     | NAMEDEXPRESSION ',' NAMEDEXPRESSIONLIST { Abs.NamedExpressionLists (Abs.namedexpression_content $1) $1 $3 }
                     | Ident '=' EXPRESSION { Abs.NamedExpressionAssigned (Abs.contentId $1) $1 $3 }
 

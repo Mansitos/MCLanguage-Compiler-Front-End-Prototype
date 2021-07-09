@@ -294,6 +294,7 @@ instance Print (AbsProgettoPar.CALLEXPRESSION attr) where
 instance Print (AbsProgettoPar.NAMEDEXPRESSIONLIST attr) where
   prt i = \case
     AbsProgettoPar.NamedExpressionList _ namedexpression -> prPrec i 0 (concatD [prt 0 namedexpression])
+    AbsProgettoPar.NamedExpressionListEmpty _-> prPrec i 0 (concatD [])
     AbsProgettoPar.NamedExpressionLists _ namedexpression namedexpressionlist -> prPrec i 0 (concatD [prt 0 namedexpression, doc (showString ","), prt 0 namedexpressionlist])
     AbsProgettoPar.NamedExpressionAssigned _ id_ expression -> prPrec i 0 (concatD [prt 0 id_, doc (showString "="), prt 0 expression])
 

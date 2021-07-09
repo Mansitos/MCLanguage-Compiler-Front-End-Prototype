@@ -7,8 +7,9 @@ import Prelude
   , Either(..)
   , Int, (>)
   , String, (++), unlines
-  , Show, show
-  , IO, (>>), (>>=), (==), (||), mapM_, putStrLn
+  ,Char
+  ,Show, show
+  , IO, (>>), (>>=), (==), (||), (&&) , mapM_, putStrLn
   , FilePath
   , getContents, readFile
   )
@@ -56,7 +57,11 @@ pointersSyntaxPreprocessing (x:xs) zs output= if x==' ' || x=='*' || x==':'
                           then
                             if x==' '
                               then
-                                pointersSyntaxPreprocessing xs [] (output++[x])
+                                if last zs ' '=='='
+                                  then
+                                    pointersSyntaxPreprocessing xs zs (output++[x])
+                                  else
+                                    pointersSyntaxPreprocessing xs [] (output++[x])
                               else
                                 if x==':'
                                   then
@@ -72,7 +77,17 @@ pointersSyntaxPreprocessing (x:xs) zs output= if x==' ' || x=='*' || x==':'
                                       else
                                         pointersSyntaxPreprocessing xs [] (output++[x])
                           else
-                            pointersSyntaxPreprocessing xs (zs++[x]) (output++[x])
+                            if x=='&' && last zs ' '=='='
+                              then
+                                pointersSyntaxPreprocessing xs zs (output++[x]++[' '])
+                              else
+                                pointersSyntaxPreprocessing xs (zs++[x]) (output++[x])
+
+last :: String -> Char -> Char
+last [] e = e
+last [x] e = last [] x
+last (x:xs) e = last xs x
+
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()
 showTree v tree = do
