@@ -11,45 +11,46 @@ import Prelude (Char, Double, Integer, String)
 import qualified Prelude as C (Eq, Ord, Show, Read)
 import qualified Data.String
 
-data Boolean
-    = Boolean_true | Boolean_false | Boolean_True | Boolean_False
+data Boolean a
+    = Boolean_true {contentBoolean::a}| Boolean_false {contentBoolean::a}
+    | Boolean_True {contentBoolean::a}| Boolean_False {contentBoolean::a}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data S = StartCode STATEMENTS
+newtype S a = StartCode (STATEMENTS a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data STATEMENTS
-    = ListStatements STATEMENT STATEMENTS | EmptyStatement
+data STATEMENTS a
+    = ListStatements (STATEMENT a) (STATEMENTS a) | EmptyStatement
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data B = BlockStatement STATEMENTS
+newtype B a = BlockStatement (STATEMENTS a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data STATEMENT
-    = Statement B
-    | ExpressionStatement EXPRESSIONSTATEMENT
-    | AssignmentStatement LVALUEEXPRESSION ASSIGNOP EXPRESSION
-    | ConditionalStatement CONDITIONALSTATE
-    | WhileDoStatement WHILESTATEMENT
-    | DoWhileStatement DOSTATEMENT
-    | ForStatement FORSTATEMENT
+data STATEMENT a
+    = Statement (B a)
+    | ExpressionStatement (EXPRESSIONSTATEMENT a)
+    | AssignmentStatement (LVALUEEXPRESSION a) (ASSIGNOP a) (EXPRESSION a)
+    | ConditionalStatement (CONDITIONALSTATE a)
+    | WhileDoStatement (WHILESTATEMENT a)
+    | DoWhileStatement (DOSTATEMENT a)
+    | ForStatement (FORSTATEMENT a)
     | BreakStatement
     | ContinueStatement
-    | ReturnStatement RETURNSTATEMENT
-    | VariableDeclarationStatement VARIABLETYPE VARDECLIST
-    | ForAllStatement FORALLSTATEMENT
-    | ProcedureStatement Ident PARAMETERS STATEMENTS
-    | FunctionStatement Ident PARAMETERS PRIMITIVETYPE STATEMENTS
+    | ReturnStatement (RETURNSTATEMENT a)
+    | VariableDeclarationStatement (VARIABLETYPE a) (VARDECLIST a)
+    | ForAllStatement (FORALLSTATEMENT a)
+    | ProcedureStatement (Ident a ) (PARAMETERS a) (STATEMENTS a)
+    | FunctionStatement (Ident a ) (PARAMETERS a) (PRIMITIVETYPE a) (STATEMENTS a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data PARAMETERS
-    = ParameterList PARAMETER PARAMETERS | ParameterListEmpty
+data PARAMETERS a
+    = ParameterList (PARAMETER a) (PARAMETERS a) | ParameterListEmpty
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data PARAMETER = Parameter Ident PRIMITIVETYPE
+data PARAMETER a = Parameter (Ident a ) (PRIMITIVETYPE a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data ASSIGNOP
+data ASSIGNOP a
     = AssignOperationEq
     | AssignOperationEqPlus
     | AssignOperationEqMinus
@@ -59,7 +60,7 @@ data ASSIGNOP
     | AssignOperationEqPower
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data VARIABLETYPE
+data VARIABLETYPE a
     = VariableTypeParam
     | VariableTypeConst
     | VariableTypeVar
@@ -67,149 +68,149 @@ data VARIABLETYPE
     | VariableTypeConstRef
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data VARDECLIST = VariableDeclarationSingle VARDECID
+newtype VARDECLIST a = VariableDeclarationSingle (VARDECID a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data VARDECID = VariableDeclaration IDENTLIST TYPEPART INITPART
+data VARDECID a = VariableDeclaration (IDENTLIST a) (TYPEPART a) (INITPART a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data IDENTLIST
-    = IdentifierList Ident IDENTLIST | IdentifierSingle Ident
+data IDENTLIST a
+    = IdentifierList (Ident a ) (IDENTLIST a) | IdentifierSingle (Ident a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data TYPEPART = TypePart TYPEEXPRESSION
+newtype TYPEPART a = TypePart (TYPEEXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data INITPART
-    = InitializzationPart EXPRESSION
-    | InitializzationPartArray LISTELEMENTARRAY
+data INITPART a
+    = InitializzationPart (EXPRESSION a)
+    | InitializzationPartArray (LISTELEMENTARRAY a)
     | InitializzationPartEmpty
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data LISTELEMENTARRAY
-    = ListElementsOfArray EXPRESSION LISTELEMENTARRAY
-    | ListElementOfArray EXPRESSION
+data LISTELEMENTARRAY a
+    = ListElementsOfArray (EXPRESSION a) (LISTELEMENTARRAY a)
+    | ListElementOfArray (EXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data TYPEEXPRESSION
-    = TypeExpression PRIMITIVETYPE
-    | TypeExpressionArraySimple RANGEEXP PRIMITIVETYPE
-    | TypeExpressionArray RANGEEXP PRIMITIVETYPE
-    | TypeExpressionPointer PRIMITIVETYPE POINTER
+data TYPEEXPRESSION a
+    = TypeExpression (PRIMITIVETYPE a)
+    | TypeExpressionArraySimple (RANGEEXP a) (PRIMITIVETYPE a)
+    | TypeExpressionArray (RANGEEXP a) (PRIMITIVETYPE a)
+    | TypeExpressionPointer (PRIMITIVETYPE a) POINTER
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data POINTER = PointerSymbol POINTER | PointerSymbolSingle
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data RANGEEXP
-    = RangeExpression EXPRESSION EXPRESSION RANGEEXP
-    | RangeExpressionSingle EXPRESSION EXPRESSION
+data RANGEEXP a
+    = RangeExpression (EXPRESSION a) (EXPRESSION a) (RANGEEXP a)
+    | RangeExpressionSingle (EXPRESSION a) (EXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data PRIMITIVETYPE
+data PRIMITIVETYPE a
     = PrimitiveTypeVoid
     | PrimitiveTypeBool
     | PrimitiveTypeInt
     | PrimitiveTypeReal
     | PrimitiveTypeString
     | PrimitiveTypeChar
-    | TypeArray PRIMITIVETYPE
+    | TypeArray (PRIMITIVETYPE a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data CONDITIONALSTATE
-    = ConditionalStatementSimpleThen EXPRESSION STATEMENT ELSESTATEMENT
-    | ConditionalStatementSimpleWThen EXPRESSION B ELSESTATEMENT
-    | ConditionalStatementCtrlThen CTRLDECSTATEMENT STATEMENT ELSESTATEMENT
-    | ConditionalStatementCtrlWThen CTRLDECSTATEMENT B ELSESTATEMENT
+data CONDITIONALSTATE a
+    = ConditionalStatementSimpleThen (EXPRESSION a) (STATEMENT a) (ELSESTATEMENT a)
+    | ConditionalStatementSimpleWThen (EXPRESSION a) (B a) (ELSESTATEMENT a)
+    | ConditionalStatementCtrlThen (CTRLDECSTATEMENT a) (STATEMENT a) (ELSESTATEMENT a)
+    | ConditionalStatementCtrlWThen (CTRLDECSTATEMENT a) (B a) (ELSESTATEMENT a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data WHILESTATEMENT
-    = WhileStateSimpleDo EXPRESSION STATEMENT
-    | WhileStateSimpleWDo EXPRESSION B
-    | WhileStateCtrlDo CTRLDECSTATEMENT STATEMENT
-    | WhileStateCtrlWDo CTRLDECSTATEMENT B
+data WHILESTATEMENT a
+    = WhileStateSimpleDo (EXPRESSION a) (STATEMENT a)
+    | WhileStateSimpleWDo (EXPRESSION a) (B a)
+    | WhileStateCtrlDo (CTRLDECSTATEMENT a) (STATEMENT a)
+    | WhileStateCtrlWDo (CTRLDECSTATEMENT a) (B a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data DOSTATEMENT = DoWhileState STATEMENT EXPRESSION
+data DOSTATEMENT a = DoWhileState (STATEMENT a) (EXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data FORSTATEMENT
-    = ForStateIndexDo INDEXVARDEC EXPRESSION STATEMENT
-    | ForStateIndexWDo INDEXVARDEC EXPRESSION B
-    | ForStateExprDo EXPRESSION STATEMENT
-    | ForStateExprWDo EXPRESSION B
+data FORSTATEMENT a
+    = ForStateIndexDo (INDEXVARDEC a) (EXPRESSION a) (STATEMENT a)
+    | ForStateIndexWDo (INDEXVARDEC a) (EXPRESSION a) (B a)
+    | ForStateExprDo (EXPRESSION a) (STATEMENT a)
+    | ForStateExprWDo (EXPRESSION a) (B a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data FORALLSTATEMENT
-    = ForAllStateIndexDo INDEXVARDEC EXPRESSION STATEMENT
-    | ForAllStateIndexWDo INDEXVARDEC EXPRESSION B
-    | ForAllStateExprDo EXPRESSION STATEMENT
-    | ForAllStateExprWDo EXPRESSION B
+data FORALLSTATEMENT a
+    = ForAllStateIndexDo (INDEXVARDEC a) (EXPRESSION a) (STATEMENT a)
+    | ForAllStateIndexWDo (INDEXVARDEC a) (EXPRESSION a) (B a)
+    | ForAllStateExprDo (EXPRESSION a) (STATEMENT a)
+    | ForAllStateExprWDo (EXPRESSION a) (B a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data INDEXVARDEC = IndexVarDeclaration Ident
+newtype INDEXVARDEC a = IndexVarDeclaration (Ident a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data ELSESTATEMENT = ElseStateEmpty | ElseState STATEMENT
+data ELSESTATEMENT a = ElseStateEmpty | ElseState (STATEMENT a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data RETURNSTATEMENT = ReturnState EXPRESSION | ReturnStateEmpty
+data RETURNSTATEMENT a = ReturnState (EXPRESSION a) | ReturnStateEmpty
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data CTRLDECSTATEMENT
-    = CtrlDecStateVar Ident EXPRESSION
-    | CtrlDecStateConst Ident EXPRESSION
+data CTRLDECSTATEMENT a
+    = CtrlDecStateVar (Ident a ) (EXPRESSION a)
+    | CtrlDecStateConst (Ident a ) (EXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data EXPRESSIONSTATEMENT
-    = VariableExpression Ident | CallExpression CALLEXPRESSION
+data EXPRESSIONSTATEMENT a
+    = VariableExpression (Ident a ) | CallExpression (CALLEXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data CALLEXPRESSION
-    = CallExpressionParentheses Ident NAMEDEXPRESSIONLIST
-    | CallExpressionQuadre Ident NAMEDEXPRESSIONLIST
+data CALLEXPRESSION a
+    = CallExpressionParentheses (Ident a ) (NAMEDEXPRESSIONLIST a)
+    | CallExpressionQuadre (Ident a ) (NAMEDEXPRESSIONLIST a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data NAMEDEXPRESSIONLIST
-    = NamedExpressionList NAMEDEXPRESSION
-    | NamedExpressionLists NAMEDEXPRESSION NAMEDEXPRESSIONLIST
-    | NamedExpressionAssigned Ident EXPRESSION
+data NAMEDEXPRESSIONLIST a
+    = NamedExpressionList (NAMEDEXPRESSION a)
+    | NamedExpressionLists (NAMEDEXPRESSION a) (NAMEDEXPRESSIONLIST a)
+    | NamedExpressionAssigned (Ident a ) (EXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data NAMEDEXPRESSION = NamedExpression EXPRESSION
+newtype NAMEDEXPRESSION a = NamedExpression (EXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data EXPRESSION
-    = ExpressionIdent Ident ARRAYINDEXELEMENT
-    | ExpressionInteger Integer
-    | ExpressionReal Double
-    | ExpressionString String
-    | ExpressionChar Char
-    | ExpressionBoolean Boolean
-    | ExpressionBinary DEFAULT BINARYOP EXPRESSION
-    | ExpressionUnary UNARYOP EXPRESSION
-    | ExpressionCast DEFAULT PRIMITIVETYPE
-    | ExpressionBracket EXPRESSION
+data EXPRESSION a
+    = ExpressionIdent (Ident a ) (ARRAYINDEXELEMENT a)
+    | ExpressionInteger (AbsProgettoPar.Integer a)
+    | ExpressionReal (Real a)
+    | ExpressionString (AbsProgettoPar.String a)
+    | ExpressionChar (AbsProgettoPar.Char a)
+    | ExpressionBoolean (Boolean a)
+    | ExpressionBinary (DEFAULT a) (BINARYOP a) (EXPRESSION a)
+    | ExpressionUnary (UNARYOP a) (EXPRESSION a)
+    | ExpressionCast (DEFAULT a) (PRIMITIVETYPE a)
+    | ExpressionBracket (EXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data DEFAULT
-    = ExpressionIdentD Ident ARRAYINDEXELEMENT
-    | ExpressionIntegerD Integer
-    | ExpressionRealD Double
-    | ExpressionStringD String
-    | ExpressionCharD Char
-    | ExpressionBooleanD Boolean
-    | ExpressionBracketD EXPRESSION
+data DEFAULT a
+    = ExpressionIdentD (Ident a ) (ARRAYINDEXELEMENT a)
+    | ExpressionIntegerD (AbsProgettoPar.Integer a)
+    | ExpressionRealD (Real a)
+    | ExpressionStringD (AbsProgettoPar.String a)
+    | ExpressionCharD (AbsProgettoPar.Char a)
+    | ExpressionBooleanD (Boolean a)
+    | ExpressionBracketD (EXPRESSION a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data UNARYOP
+data UNARYOP a
     = UnaryOperationPositive
     | UnaryOperationNegative
     | UnaryOperationNot
     | UnaryOperationPointer
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data BINARYOP
+data BINARYOP a
     = BinaryOperationPlus
     | BinaryOperationMinus
     | BinaryOperationProduct
@@ -226,22 +227,33 @@ data BINARYOP
     | BinaryOperationLess
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data LVALUEEXPRESSION
-    = LvalueExpressions Ident ARRAYINDEXELEMENT LVALUEEXPRESSION
-    | LvalueExpression Ident ARRAYINDEXELEMENT
+data LVALUEEXPRESSION a
+    = LvalueExpressions (Ident a ) (ARRAYINDEXELEMENT a) (LVALUEEXPRESSION a)
+    | LvalueExpression (Ident a ) (ARRAYINDEXELEMENT a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data ARRAYINDEXELEMENT
-    = ArrayIndexElement TYPEINDEX | ArrayIndexElementEmpty
+data ARRAYINDEXELEMENT a
+    = ArrayIndexElement (TYPEINDEX a) | ArrayIndexElementEmpty
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data TYPEINDEX
-    = TypeOfIndexInt TYPEINDEX Integer
-    | TypeOfIndexIntSingle Integer
-    | TypeOfIndexVar TYPEINDEX Ident
-    | TypeOfIndexVarSingle Ident
+data TYPEINDEX a
+    = TypeOfIndexInt (TYPEINDEX a) (AbsProgettoPar.Integer a)
+    | TypeOfIndexIntSingle (AbsProgettoPar.Integer a)
+    | TypeOfIndexVar (TYPEINDEX a) (Ident a)
+    | TypeOfIndexVarSingle (Ident a)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-newtype Ident = Ident String 
-  deriving (C.Eq, C.Ord, C.Show, C.Read, Data.String.IsString)
+data Ident a = Ident {valueId::Prelude.String, contentId::a}
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
 
+data Integer a = Integer {valueInt::Prelude.Integer, contentInt::a}
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data Real a = Real {valueReal::Prelude.Double , contentReal::a}
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data Char a = Char {valueChar::Prelude.Char, contentChar::a}
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data String a = String {valueString::Prelude.String, contentString::a}
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
