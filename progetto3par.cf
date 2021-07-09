@@ -23,8 +23,9 @@ ForAllStatement.                STATEMENT ::= FORALLSTATEMENT ;
 ProcedureStatement.             STATEMENT ::= "proc" Ident "(" PARAMETERS ")" ":" "void" "{" STATEMENTS "}" ;
 FunctionStatement.              STATEMENT ::= "function" Ident "(" PARAMETERS ")" ":" PRIMITIVETYPE "{" STATEMENTS "}" ;
 
-ParameterList.                  PARAMETERS ::= PARAMETER "," PARAMETERS ;
-ParameterListEmpty.             PARAMETERS ::= {--empty--} ;
+ParameterList.                    PARAMETERS ::= PARAMETER "," PARAMETERS ;
+ParameterSingle.                  PARAMETERS ::= PARAMETER  ;
+ParameterEmpty.                   PARAMETERS ::= {--empty--} ;
 
 Parameter.                      PARAMETER ::= Ident ":" PRIMITIVETYPE ;
 

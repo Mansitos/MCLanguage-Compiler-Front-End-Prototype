@@ -44,7 +44,7 @@ data STATEMENT a
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data PARAMETERS a
-    = ParameterList (PARAMETER a) (PARAMETERS a) | ParameterListEmpty
+    = ParameterList (PARAMETER a) (PARAMETERS a) | ParameterListSingle (PARAMETER a) | ParameterListEmpty
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data PARAMETER a = Parameter (Ident a ) (PRIMITIVETYPE a)

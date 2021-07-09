@@ -57,6 +57,7 @@ transSTATEMENT x = case x of
 transPARAMETERS :: Show attr => (AbsProgettoPar.PARAMETERS attr) -> Result
 transPARAMETERS x = case x of
   AbsProgettoPar.ParameterList parameter parameters -> failure x
+  AbsProgettoPar.ParameterListSingle parameter -> failure x
   AbsProgettoPar.ParameterListEmpty -> failure x
 
 transPARAMETER :: Show attr => (AbsProgettoPar.PARAMETER attr) -> Result

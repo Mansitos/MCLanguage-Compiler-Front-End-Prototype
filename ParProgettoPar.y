@@ -136,6 +136,7 @@ STATEMENT : B { AbsProgettoPar.Statement $1 }
 
 PARAMETERS :: { AbsProgettoPar.PARAMETERS Posn }
 PARAMETERS : PARAMETER ',' PARAMETERS { AbsProgettoPar.ParameterList $1 $3 }
+           | PARAMETER  { AbsProgettoPar.ParameterListSingle $1 }
            | {- empty -} { AbsProgettoPar.ParameterListEmpty }
 
 PARAMETER :: { AbsProgettoPar.PARAMETER Posn }

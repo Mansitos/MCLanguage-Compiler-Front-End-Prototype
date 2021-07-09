@@ -150,6 +150,7 @@ instance Print (AbsProgettoPar.STATEMENT attr) where
 instance Print (AbsProgettoPar.PARAMETERS attr) where
   prt i = \case
     AbsProgettoPar.ParameterList parameter parameters -> prPrec i 0 (concatD [prt 0 parameter, doc (showString ","), prt 0 parameters])
+    AbsProgettoPar.ParameterListSingle parameter -> prPrec i 0 (concatD [prt 0 parameter])
     AbsProgettoPar.ParameterListEmpty -> prPrec i 0 (concatD [])
 
 instance Print (AbsProgettoPar.PARAMETER attr) where

@@ -16,6 +16,7 @@ all : TestProgettoPar
 
 # Rules for building the parser.
 
+
 AbsProgettoPar.hs LexProgettoPar.x ParProgettoPar.y PrintProgettoPar.hs TestProgettoPar.hs : progetto3par.cf
 	bnfc --haskell progetto3par.cf
 
