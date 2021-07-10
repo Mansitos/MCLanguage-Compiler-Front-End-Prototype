@@ -1,0 +1,35 @@
+
+proc writeInt (input:int):void{
+	# write input
+}
+
+proc writeReal (input:int):void{
+	# write input
+}
+
+proc writeChar (input:int):void{
+	# write input
+}
+
+proc writeString (input:int):void{
+	# write input
+}
+
+function readInt ():int{
+	# read input
+}
+
+function readReal ():real{
+	# read input
+return
+}
+
+function readChar ():char{
+	# read input
+return
+}
+
+function readString ():string{
+	# read input
+return
+}
