@@ -17,11 +17,14 @@ import System.Environment ( getArgs )
 import System.Exit        ( exitFailure, exitSuccess )
 import Control.Monad      ( when )
 
-import AbsProgettoPar   ()
-import LexProgettoPar   ( Token )
+import AbsProgettoPar   ( S (StartCode))
+import LexProgettoPar   ( Token, Posn )
 import ParProgettoPar   ( pS, myLexer )
 import PrintProgettoPar ( Print, printTree )
 import SkelProgettoPar  ()
+import TypeChecker
+import Type
+import Data.Map
 
 type Err        = Either String
 type ParseFun a = [Token] -> Err a
@@ -30,10 +33,10 @@ type Verbosity  = Int
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = when (v > 1) $ putStrLn s
 
-runFile :: (Print a, Show a) => Verbosity -> ParseFun a -> FilePath -> IO ()
+runFile :: Verbosity -> ParseFun (S Posn) -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
 
-run :: (Print a, Show a) => Verbosity -> ParseFun a -> String -> IO ()
+run :: Verbosity -> ParseFun (S Posn) -> String -> IO ()
 run v p s =
   case p ts of
     Left err -> do
@@ -44,8 +47,11 @@ run v p s =
       exitFailure
     Right tree -> do
       putStrLn "\nParse Successful!"
-      showTree v tree
+      Main.showTree v tree
+      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
+        putStrLn (show typecheckRes)
       exitSuccess
+
   where
   ts = myLexer (pointersSyntaxPreprocessing s [] [])
 
