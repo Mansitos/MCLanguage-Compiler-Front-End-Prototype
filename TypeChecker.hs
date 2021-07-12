@@ -64,6 +64,7 @@ second (f,s) = s
 
 updateEnv :: (Abs.STATEMENTS Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
 updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
+                                                                Abs.VariableDeclarationStatement pos _ _ -> (insertWith (++) "test! :(((((((" [Variable (B_type Type_Integer) (Pn 0 1 1) False] env, err ++ checkErr env stat)                                                                                                 
                                                                 Abs.ReturnStatement pos ret-> (insertWith (++) "return" [Variable (B_type Type_Void) (Pn 0 1 1) False] env,err ++ checkErr env stat)
                                                                 Abs.ExpressionStatement pos exp -> case exp of
                                                                                                     Abs.VariableExpression pos (Abs.Ident id posId) -> (insertWith (++) id [Variable (B_type Type_Real) (Pn 0 1 1) False] env,err ++ checkErr env stat)
@@ -74,9 +75,9 @@ updateEnv node@(Abs.EmptyStatement  pos) env err = (env,err)
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []                    
 
---------------------------------------
--- MAIN FUNCTIONS FOR TYPE CHECKING --
---------------------------------------
+-------------------------
+-- EXECUTION FUNCTIONS --
+-------------------------
 
 -- Funzioni da implementare:
 
@@ -123,25 +124,36 @@ executeTipoDec :: Abs.TYPEPART Posn -> Env -> Abs.TYPEPART TCheckResult
 executeTipoDec node@(Abs.TypePart pos tipo) env = Abs.TypePart (checkTypeTypePart node env) (executeTypeExpression tipo env)
 
 executeInit :: Abs.INITPART Posn -> Env -> Abs.INITPART TCheckResult
-executeInit node@(Abs.InitializzationPart pos initExp) env = Abs.InitializzationPart (checkTypeInitializzationPart node env) (executeExpression initExp env) --aggiungere array ed empty
--- array and empty to do?
+executeInit node@(Abs.InitializzationPart pos initExp) env = Abs.InitializzationPart (checkTypeInitializzationPart node env) (executeExpression initExp env)
+executeInit node@(Abs.InitializzationPartArray pos listelementarray) env = Abs.InitializzationPartArray (checkTypeInitializzationPart node env) (executeListElementArray listelementarray env)
+executeInit node@(Abs.InitializzationPartEmpty pos) env = Abs.InitializzationPartEmpty (TResult env (B_type Type_Void) pos)
+
+executeListElementArray :: Abs.LISTELEMENTARRAY Posn -> Env -> Abs.LISTELEMENTARRAY TCheckResult
+executeListElementArray node@(Abs.ListElementsOfArray pos expr elementlist) env = Abs.ListElementsOfArray (checkListElementsOfArray node env) (executeExpression expr env) (executeListElementArray elementlist env)
+executeListElementArray node@(Abs.ListElementOfArray pos expr) env = Abs.ListElementOfArray (checkListElementsOfArray node env) (executeExpression expr env)
 
 executeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> Abs.TYPEEXPRESSION TCheckResult
-executeTypeExpression node@(Abs.TypeExpression pos primitivetype) env = Abs.TypeExpression (checkTypeTypeExpression primitivetype env) (executePrimitiveType primitivetype env)
--- n casi da aggiungere, per ora solo il primitivo c'è
+executeTypeExpression node@(Abs.TypeExpression pos primitivetype) env = Abs.TypeExpression (checkTypeTypeExpression node env) (executePrimitiveType primitivetype env)
+executeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp primitivetype) env = Abs.TypeExpressionArraySimple (checkTypeTypeExpression node env) (executeRangeExp rangeexp env) (executePrimitiveType primitivetype env)
+executeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp primitivetype) env = Abs.TypeExpressionArray (checkTypeTypeExpression node env) (executeRangeExp rangeexp env) (executePrimitiveType primitivetype env)
+executeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = Abs.TypeExpressionPointer (checkTypeTypeExpression node env) (executePrimitiveType primitivetype env) (executeTypeExpressionPointer pointer env)
+
+executeTypeExpressionPointer :: Abs.POINTER Posn -> Env -> Abs.POINTER TCheckResult
+executeTypeExpressionPointer node@(Abs.PointerSymbol pos pointer) env = Abs.PointerSymbol (checkTypeExpressionpointer node env) (executeTypeExpressionPointer pointer env)
+executeTypeExpressionPointer node@(Abs.PointerSymbolSingle pos) env = Abs.PointerSymbolSingle (checkTypeExpressionpointer node env)
+
+executeRangeExp :: Abs.RANGEEXP Posn -> Env -> Abs.RANGEEXP TCheckResult
+executeRangeExp node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = Abs.RangeExpression (checkRangeExpType node env) (executeExpression expr1 env)  (executeExpression expr2 env) (executeRangeExp rangexp env)
+executeRangeExp node@(Abs.RangeExpressionSingle pos expr1 expr2) env = Abs.RangeExpressionSingle (checkRangeExpType node env)  (executeExpression expr1 env)  (executeExpression expr2 env)
 
 executePrimitiveType :: Abs.PRIMITIVETYPE Posn -> Env -> Abs.PRIMITIVETYPE TCheckResult
 executePrimitiveType node@(Abs.PrimitiveTypeVoid pos) env = Abs.PrimitiveTypeVoid (TResult env (B_type Type_Void) pos)
--- executePrimitiveType Abs.PrimitiveTypeBool (token
--- executePrimitiveType Abs.PrimitiveTypeInt (tokenPo
--- executePrimitiveType Abs.PrimitiveTypeReal (token
--- executePrimitiveType Abs.PrimitiveTypeString (t
--- executePrimitiveType Abs.PrimitiveTypeChar (token
--- executePrimitiveType Abs.TypeArray
-
-
-checkTypeTypeExpression :: Abs.PRIMITIVETYPE Posn -> Env -> TCheckResult
-checkTypeTypeExpression node@(Abs.PrimitiveTypeVoid pos) env = TResult env (B_type Type_Void) pos
+executePrimitiveType node@(Abs.PrimitiveTypeBool pos) env = Abs.PrimitiveTypeBool (TResult env (B_type Type_Boolean ) pos)
+executePrimitiveType node@(Abs.PrimitiveTypeInt pos) env = Abs.PrimitiveTypeInt (TResult env (B_type Type_Integer) pos)
+executePrimitiveType node@(Abs.PrimitiveTypeReal pos) env = Abs.PrimitiveTypeReal (TResult env (B_type Type_Real) pos)
+executePrimitiveType node@(Abs.PrimitiveTypeString pos) env = Abs.PrimitiveTypeString (TResult env (B_type Type_String) pos)
+executePrimitiveType node@(Abs.PrimitiveTypeChar pos) env = Abs.PrimitiveTypeChar (TResult env (B_type Type_Char) pos)
+executePrimitiveType node@(Abs.TypeArray pos primitivetype) env = Abs.TypeArray (checkPrimitiveType node env) (executePrimitiveType primitivetype env)
 
 executeB :: Abs.B Posn -> Env -> Abs.B TCheckResult
 executeB node@(Abs.BlockStatement pos statements) env = let newEnv = updateEnv statements env [] in 
@@ -155,11 +167,11 @@ executeExpressionStatement :: Abs.EXPRESSIONSTATEMENT Posn -> Env -> Abs.EXPRESS
 executeExpressionStatement node@(Abs.VariableExpression _ id) env = Abs.VariableExpression (checkTypeExpressionStatement node env) (executeIdent id env)
 
 executeExpression :: Abs.EXPRESSION Posn -> Env -> Abs.EXPRESSION TCheckResult
-executeExpression node@(Abs.ExpressionInteger pos value) env = Abs.ExpressionInteger (checkTypeExpresion node env) (executeInteger value env)
-executeExpression node@(Abs.ExpressionBoolean pos value) env = Abs.ExpressionBoolean (checkTypeExpresion node env) (executeBoolean value env)
-executeExpression node@(Abs.ExpressionChar pos value) env = Abs.ExpressionChar (checkTypeExpresion node env) (executeChar value env)
-executeExpression node@(Abs.ExpressionString pos value) env = Abs.ExpressionString (checkTypeExpresion node env) (executeString value env)
-executeExpression node@(Abs.ExpressionReal pos value) env = Abs.ExpressionReal (checkTypeExpresion node env) (executeReal value env)
+executeExpression node@(Abs.ExpressionInteger pos value) env = Abs.ExpressionInteger (checkTypeExpression node env) (executeInteger value env)
+executeExpression node@(Abs.ExpressionBoolean pos value) env = Abs.ExpressionBoolean (checkTypeExpression node env) (executeBoolean value env)
+executeExpression node@(Abs.ExpressionChar pos value) env = Abs.ExpressionChar (checkTypeExpression node env) (executeChar value env)
+executeExpression node@(Abs.ExpressionString pos value) env = Abs.ExpressionString (checkTypeExpression node env) (executeString value env)
+executeExpression node@(Abs.ExpressionReal pos value) env = Abs.ExpressionReal (checkTypeExpression node env) (executeReal value env)
 executeExpression node@(Abs.ExpressionIdent pos id index) env = case index of
                                                                 Abs.ArrayIndexElementEmpty posIdx -> Abs.ExpressionIdent (checkTypeIdent id env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env)
                                                                 Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdent (checkTypeIdent id env) (executeIdent id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))
@@ -204,6 +216,10 @@ executeBoolean node@(Abs.Boolean_True pos) env = Abs.Boolean_True (TResult env (
 executeBoolean node@(Abs.Boolean_false pos) env = Abs.Boolean_false (TResult env (B_type Type_Boolean ) pos)
 executeBoolean node@(Abs.Boolean_False pos) env = Abs.Boolean_False (TResult env (B_type Type_Boolean ) pos)
 
+---------------------------
+-- TYPE CHECKS FUNCTIONS --
+---------------------------
+
 checkTypeStatements:: Abs.S Posn -> Env -> TCheckResult
 checkTypeStatements (Abs.StartCode _ statements) start_env = case statements of
                                                                 (Abs.EmptyStatement pos) -> checkEmptyStatement (Abs.EmptyStatement pos) start_env
@@ -225,7 +241,7 @@ checkTypeStatement node@(Abs.ContinueStatement pos) env = checkTypeContinueState
 checkTypeStatement node@(Abs.ReturnStatement pos ret) env = checkTypeReturnStatement node env
 checkTypeStatement node@(Abs.Statement pos b) env = checkTypeB b env
 checkTypeStatement node@(Abs.ExpressionStatement pos exp) env = checkTypeExpressionStatement exp env
-checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = checkTypeExpresion exp env --aggiungere controllo compatibilità lval con exp
+checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = checkTypeExpression exp env --aggiungere controllo compatibilità lval con exp
 checkTypeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = checkTypeType tipo env
 
 checkTypeType :: Abs.VARIABLETYPE Posn -> Env -> TCheckResult
@@ -255,7 +271,7 @@ checkTypeReturnStatement node@(Abs.ReturnStatement pos ret) env = checkTypeRetur
 
 checkTypeReturnState :: Abs.RETURNSTATEMENT Posn -> Env -> TCheckResult
 checkTypeReturnState node@(Abs.ReturnState pos retExp) env = case Data.Map.lookup "return" env of
-    Just result -> checkTypeExpresion retExp env
+    Just result -> checkTypeExpression retExp env
     Nothing -> TError ["Unexpected return at " ++ (show pos)]
 checkTypeReturnState node@(Abs.ReturnStateEmpty pos ) env = case Data.Map.lookup "return" env of
     Just result -> TResult env (B_type Type_Void) pos
@@ -264,13 +280,13 @@ checkTypeReturnState node@(Abs.ReturnStateEmpty pos ) env = case Data.Map.lookup
 checkTypeExpressionStatement :: Abs.EXPRESSIONSTATEMENT Posn -> Env -> TCheckResult
 checkTypeExpressionStatement node@(Abs.VariableExpression pos id) env = checkTypeIdent id env
 
-checkTypeExpresion :: Abs.EXPRESSION Posn -> Env -> TCheckResult
-checkTypeExpresion node@(Abs.ExpressionInteger pos value) env = checkTypeInteger value env
-checkTypeExpresion node@(Abs.ExpressionBoolean pos value) env = checkTypeBoolean value env
-checkTypeExpresion node@(Abs.ExpressionChar pos value) env = checkTypeChar value env
-checkTypeExpresion node@(Abs.ExpressionString pos value) env = checkTypeString value env
-checkTypeExpresion node@(Abs.ExpressionReal pos value) env = checkTypeReal value env
-checkTypeExpresion node@(Abs.ExpressionIdent pos value index) env = checkTypeIdent value env --gestire index
+checkTypeExpression :: Abs.EXPRESSION Posn -> Env -> TCheckResult
+checkTypeExpression node@(Abs.ExpressionInteger pos value) env = checkTypeInteger value env
+checkTypeExpression node@(Abs.ExpressionBoolean pos value) env = checkTypeBoolean value env
+checkTypeExpression node@(Abs.ExpressionChar pos value) env = checkTypeChar value env
+checkTypeExpression node@(Abs.ExpressionString pos value) env = checkTypeString value env
+checkTypeExpression node@(Abs.ExpressionReal pos value) env = checkTypeReal value env
+checkTypeExpression node@(Abs.ExpressionIdent pos value index) env = checkTypeIdent value env --gestire index
 
 checkTypeIdent :: Abs.Ident Posn -> Env -> TCheckResult
 checkTypeIdent node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
@@ -295,7 +311,6 @@ checkTypeBoolean node@(Abs.Boolean_True pos) env = TResult env (B_type Type_Bool
 checkTypeBoolean node@(Abs.Boolean_false pos) env = TResult env (B_type Type_Boolean ) pos
 checkTypeBoolean node@(Abs.Boolean_False pos) env = TResult env (B_type Type_Boolean ) pos
 
--- new
 
 checkTypeVardec :: Abs.VARDECLIST Posn -> Env -> TCheckResult
 checkTypeVardec node@(Abs.VariableDeclarationSingle pos vardecid) env = TError ["vardecidlistsingle todo"]
@@ -313,5 +328,32 @@ checkTypeTypePart node@(Abs.TypePart pos typexpr) env = TError ["typeaprt todo"]
 
 checkTypeInitializzationPart ::  Abs.INITPART Posn -> Env -> TCheckResult
 checkTypeInitializzationPart node@(Abs.InitializzationPart pos expr) env = TError ["todo :)"]
--- array todo?
--- empty todo?
+checkTypeInitializzationPart node@(Abs.InitializzationPartArray pos listelementarray) env = TError ["todo :)"]
+checkTypeInitializzationPart node@(Abs.InitializzationPartEmpty pos ) env = TError ["TODO"]
+
+checkTypeExpressionpointer :: Abs.POINTER Posn -> Env -> TCheckResult
+checkTypeExpressionpointer node@(Abs.PointerSymbol pos pointer) env = TError ["che tipo gli assegno? quello del primitive type... è un padre, serve un let! su executeTypeExpr?"]
+checkTypeExpressionpointer node@(Abs.PointerSymbolSingle pos) env = TError ["single pointer"]
+
+checkPrimitiveType :: Abs.PRIMITIVETYPE Posn -> Env -> TCheckResult
+checkPrimitiveType node@(Abs.PrimitiveTypeVoid pos) env = TResult env (B_type Type_Void) pos
+checkPrimitiveType node@(Abs.PrimitiveTypeBool pos) env = TResult env (B_type Type_Boolean) pos
+checkPrimitiveType node@(Abs.PrimitiveTypeInt pos) env = TResult env (B_type Type_Integer) pos
+checkPrimitiveType node@(Abs.PrimitiveTypeReal pos) env = TResult env (B_type Type_Real) pos
+checkPrimitiveType node@(Abs.PrimitiveTypeString pos) env = TResult env (B_type Type_String) pos
+checkPrimitiveType node@(Abs.PrimitiveTypeChar pos) env = TResult env (B_type Type_Char) pos
+checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env = TError["Todo......?bo"]
+
+checkTypeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> TCheckResult
+checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = TError ["mhh?"]
+checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp primitivetype) env = TError ["mhh?"]
+checkTypeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp primitivetype) env= TError ["mhh?"]
+checkTypeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = TError ["controllo pointer-primitive che coincida con l'expr? type? ..."]
+
+checkListElementsOfArray :: Abs.LISTELEMENTARRAY Posn -> Env -> TCheckResult
+checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env = TError ["CONTROLLA LA LISTA"]
+checkListElementsOfArray node@(Abs.ListElementOfArray pos expr) env = TError ["Ok? 1 elemento? ritorno il tipo?"]
+
+checkRangeExpType :: Abs.RANGEEXP Posn -> Env -> TCheckResult
+checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = TError ["Controlla rangexp"]
+checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = TError ["Controlla rangexp"]
