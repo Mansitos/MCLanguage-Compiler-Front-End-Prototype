@@ -117,14 +117,31 @@ executeVardecID node@(Abs.VariableDeclaration pos idlist tipo init) env = Abs.Va
 
 executeIDList :: Abs.IDENTLIST Posn -> Env -> Abs.IDENTLIST TCheckResult
 executeIDList node@(Abs.IdentifierList pos id next) env = Abs.IdentifierList (checkIdentifierList node env) (executeIdent id env) (executeIDList next env)
+executeIDList node@(Abs.IdentifierSingle pos id) env = Abs.IdentifierSingle (checkIdentifierList node env) (executeIdent id env)
 
 executeTipoDec :: Abs.TYPEPART Posn -> Env -> Abs.TYPEPART TCheckResult
-executeTipoDec node@(Abs.TypePart pos tipo) env = Abs.TypePart (checkTypeTypePart node env) (executeTipoPart tipo env)
+executeTipoDec node@(Abs.TypePart pos tipo) env = Abs.TypePart (checkTypeTypePart node env) (executeTypeExpression tipo env)
 
 executeInit :: Abs.INITPART Posn -> Env -> Abs.INITPART TCheckResult
 executeInit node@(Abs.InitializzationPart pos initExp) env = Abs.InitializzationPart (checkTypeInitializzationPart node env) (executeExpression initExp env) --aggiungere array ed empty
+-- array and empty to do?
 
---executeTipoPart :: Abs.
+executeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> Abs.TYPEEXPRESSION TCheckResult
+executeTypeExpression node@(Abs.TypeExpression pos primitivetype) env = Abs.TypeExpression (checkTypeTypeExpression primitivetype env) (executePrimitiveType primitivetype env)
+-- n casi da aggiungere, per ora solo il primitivo c'è
+
+executePrimitiveType :: Abs.PRIMITIVETYPE Posn -> Env -> Abs.PRIMITIVETYPE TCheckResult
+executePrimitiveType node@(Abs.PrimitiveTypeVoid pos) env = Abs.PrimitiveTypeVoid (TResult env (B_type Type_Void) pos)
+-- executePrimitiveType Abs.PrimitiveTypeBool (token
+-- executePrimitiveType Abs.PrimitiveTypeInt (tokenPo
+-- executePrimitiveType Abs.PrimitiveTypeReal (token
+-- executePrimitiveType Abs.PrimitiveTypeString (t
+-- executePrimitiveType Abs.PrimitiveTypeChar (token
+-- executePrimitiveType Abs.TypeArray
+
+
+checkTypeTypeExpression :: Abs.PRIMITIVETYPE Posn -> Env -> TCheckResult
+checkTypeTypeExpression node@(Abs.PrimitiveTypeVoid pos) env = TResult env (B_type Type_Void) pos
 
 executeB :: Abs.B Posn -> Env -> Abs.B TCheckResult
 executeB node@(Abs.BlockStatement pos statements) env = let newEnv = updateEnv statements env [] in 
@@ -277,3 +294,24 @@ checkTypeBoolean node@(Abs.Boolean_true pos) env = TResult env (B_type Type_Bool
 checkTypeBoolean node@(Abs.Boolean_True pos) env = TResult env (B_type Type_Boolean ) pos
 checkTypeBoolean node@(Abs.Boolean_false pos) env = TResult env (B_type Type_Boolean ) pos
 checkTypeBoolean node@(Abs.Boolean_False pos) env = TResult env (B_type Type_Boolean ) pos
+
+-- new
+
+checkTypeVardec :: Abs.VARDECLIST Posn -> Env -> TCheckResult
+checkTypeVardec node@(Abs.VariableDeclarationSingle pos vardecid) env = TError ["vardecidlistsingle todo"]
+
+checkTypeVariableDec :: Abs.VARDECID Posn -> Env -> TCheckResult
+checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typeart initpart) env = TError [" vardecid TODO"]
+
+checkIdentifierList :: Abs.IDENTLIST Posn -> Env -> TCheckResult
+checkIdentifierList node@(Abs.IdentifierList pos ident identlist) env = TError ["identlist todo"]
+checkIdentifierList node@(Abs.IdentifierSingle pos ident) env = TError ["SINGLEEEEEEEEEE"]
+-- single todo?
+
+checkTypeTypePart :: Abs.TYPEPART Posn -> Env -> TCheckResult
+checkTypeTypePart node@(Abs.TypePart pos typexpr) env = TError ["typeaprt todo"]
+
+checkTypeInitializzationPart ::  Abs.INITPART Posn -> Env -> TCheckResult
+checkTypeInitializzationPart node@(Abs.InitializzationPart pos expr) env = TError ["todo :)"]
+-- array todo?
+-- empty todo?
