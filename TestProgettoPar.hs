@@ -11,16 +11,16 @@ import Prelude
   ,Show, show
   , IO, (>>), (>>=), (==), (||), (&&) , mapM_, putStrLn
   , FilePath
-  , getContents, readFile, showString
+  , getContents, readFile
   )
 import System.Environment ( getArgs )
 import System.Exit        ( exitFailure, exitSuccess )
 import Control.Monad      ( when )
 
-import AbsProgettoPar   ( S (StartCode), STATEMENTS (ListStatements, EmptyStatement))
+import AbsProgettoPar   ( S (StartCode))
 import LexProgettoPar   ( Token, Posn )
 import ParProgettoPar   ( pS, myLexer )
-import PrintProgettoPar ( Print, printTree )
+import PrintProgettoPar ( Print, printTree)-- , printStringS )
 import SkelProgettoPar  ()
 import TypeChecker
 import Type
@@ -50,24 +50,10 @@ run v p s =
       Main.showTree v tree
       let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
         putStrLn (show typecheckRes)
-
-      putStrLn "\n\n Content of S:\n"
-
-      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in
-        putStrLn (showTypeCheckResult typecheckRes)
-
-      exitSuccess  
+      exitSuccess
 
   where
   ts = myLexer (pointersSyntaxPreprocessing s [] [])
-
-showTypeCheckResult:: (Show attr) => (AbsProgettoPar.S attr) -> String
-showTypeCheckResult (AbsProgettoPar.StartCode result statements) = showTypeCheckResultStatements statements
-
-showTypeCheckResultStatements:: (Show attr) => (AbsProgettoPar.STATEMENTS attr) -> String
-showTypeCheckResultStatements (AbsProgettoPar.ListStatements result statement statements) = show result ++ "\n" ++  (showTypeCheckResultStatements statements) 
-showTypeCheckResultStatements (AbsProgettoPar.EmptyStatement result) = ""
-
 
 -- Preprocessing of the input for multiple pointers compatibility "*******"
 pointersSyntaxPreprocessing :: String -> String -> String -> String
@@ -109,9 +95,9 @@ last [x] e = last [] x
 last (x:xs) e = last xs x
 
 
-showTree :: (Show a, Print a) => Int -> a -> IO ()
+showTree :: Int -> S Posn -> IO ()
 showTree v tree = do
-  putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
+  putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree --printStringS tree
   putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
 
 usage :: IO ()
