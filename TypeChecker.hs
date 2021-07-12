@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 module TypeChecker where
 
 import Type
@@ -8,22 +7,47 @@ import AbsProgettoPar as Abs
 import Data.Map
 import Prelude
 
+------------------------------
+--- ENVIRONMENT DATA TYPES ---
+------------------------------
+
 type Env = Map Prelude.String [EnvEntry]
             -- chiave, valore
 
 data EnvEntry
     = Variable {varType::Type, varPosition::LexProgettoPar.Posn, varConstat::Bool}
     | Function {funType::Type, funPosition::LexProgettoPar.Posn, funParameters::[Parameter]}
-    deriving (Show)
 
 data Parameter
     = Parameter {paramType::Type, paramPosition::LexProgettoPar.Posn}
-    deriving(Eq, Ord, Show)
+    deriving(Eq, Ord)
 
 data TCheckResult
     = TResult {environment::Env, t_type::Type, t_position::LexProgettoPar.Posn}
     | TError {errors::[Prelude.String]}
-    deriving (Show)
+
+----------------------------------------
+--- SHOW ISTANCES FOR ENV DATA TYPES ---
+----------------------------------------
+
+instance Show EnvEntry where
+    show entry = case entry of
+        TypeChecker.Variable ty pos varConst  -> "EnvEntry: [" ++ "var:" ++ show ty ++ "|" ++ show pos ++ "|const:" ++ show varConst ++ "]"
+        TypeChecker.Function ty pos params    -> "EnvEntry: [" ++ "fun:" ++ show ty ++ "|" ++ show pos ++ "|params:" ++ show params ++ "]"
+
+instance Show Parameter where
+    show param = case param of    
+        TypeChecker.Parameter ty pos    -> "(param:" ++ show ty ++ "|" ++ show pos ++ ")"
+
+instance Show TCheckResult where
+    show tres = case tres of
+        TypeChecker.TResult env ty pos  -> show env ++ "|" ++ show ty ++ "|" ++ show pos
+        TypeChecker.TError errs         -> "Errors: " ++ show errs
+
+
+--------------------------------
+--- ENV DATA TYPES FUNCTIONS ---
+--------------------------------
 
 getTypeEnvEntry :: [EnvEntry] -> Type
 getTypeEnvEntry [] = B_type Type_Void

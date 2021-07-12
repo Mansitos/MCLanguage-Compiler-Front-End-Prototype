@@ -11,13 +11,13 @@ import Prelude
   ,Show, show
   , IO, (>>), (>>=), (==), (||), (&&) , mapM_, putStrLn
   , FilePath
-  , getContents, readFile
+  , getContents, readFile, showString
   )
 import System.Environment ( getArgs )
 import System.Exit        ( exitFailure, exitSuccess )
 import Control.Monad      ( when )
 
-import AbsProgettoPar   ( S (StartCode))
+import AbsProgettoPar   ( S (StartCode), STATEMENTS (ListStatements, EmptyStatement))
 import LexProgettoPar   ( Token, Posn )
 import ParProgettoPar   ( pS, myLexer )
 import PrintProgettoPar ( Print, printTree )
@@ -50,10 +50,24 @@ run v p s =
       Main.showTree v tree
       let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
         putStrLn (show typecheckRes)
-      exitSuccess
+
+      putStrLn "\n\n Content of S:\n"
+
+      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in
+        putStrLn (showTypeCheckResult typecheckRes)
+
+      exitSuccess  
 
   where
   ts = myLexer (pointersSyntaxPreprocessing s [] [])
+
+showTypeCheckResult:: (Show attr) => (AbsProgettoPar.S attr) -> String
+showTypeCheckResult (AbsProgettoPar.StartCode result statements) = showTypeCheckResultStatements statements
+
+showTypeCheckResultStatements:: (Show attr) => (AbsProgettoPar.STATEMENTS attr) -> String
+showTypeCheckResultStatements (AbsProgettoPar.ListStatements result statement statements) = show result ++ "\n" ++  (showTypeCheckResultStatements statements) 
+showTypeCheckResultStatements (AbsProgettoPar.EmptyStatement result) = ""
+
 
 -- Preprocessing of the input for multiple pointers compatibility "*******"
 pointersSyntaxPreprocessing :: String -> String -> String -> String
