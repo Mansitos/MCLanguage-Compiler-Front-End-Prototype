@@ -22,14 +22,16 @@ for x in x<100 do {x+=1;}
 
 
 var x : int;
-function foo():int{
+function foooooooooo():int{
     var i:int;
     var o:char;
     o;
     function foo2():char{
         var u:string;
         o;
-        o;}
+        o;
+	proc foo3():void{x;}
+	}
     }
 var z : int;
 var u : int;

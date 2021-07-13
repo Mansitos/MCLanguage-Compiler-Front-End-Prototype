@@ -132,7 +132,11 @@ unescapeInitTail = id . unesc . tail . id
 -------------------------------------------------------------------
 
 data Posn = Pn !Int !Int !Int
-      deriving (Eq, Show,Ord)
+      deriving (Eq,Ord)
+ 
+instance Show Posn where
+  show pos = case pos of
+              Pn abs row col -> "absolute:" ++ show abs ++ "|row:" ++ show row ++ "|col:" ++ show col
 
 alexStartPos :: Posn
 alexStartPos = Pn 0 1 1
