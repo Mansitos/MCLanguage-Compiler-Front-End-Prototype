@@ -154,6 +154,16 @@ executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = Abs.WhileDo
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
 executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
 executeStatement node@(Abs.ForAllStatement pos forAllStatement) env = Abs.ForAllStatement (checkTypeStatement node env) (executeForAllState forAllStatement env)
+executeStatement node@(Abs.ProcedureStatement pos id param states) env = Abs.ProcedureStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executeStatements states env)
+executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = Abs.FunctionStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states env)
+
+executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
+executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeParameters node env) (executeParameter param env) (executeParam params env)
+executeParam node@(Abs.ParameterListSingle pos param) env = Abs.ParameterListSingle (checkTypeParameters node env) (executeParameter param env)
+executeParam node@(Abs.ParameterListEmpty pos) env = Abs.ParameterListEmpty (checkTypeParameters node env) 
+
+executeParameter :: Abs.PARAMETER Posn -> Env -> Abs.PARAMETER TCheckResult
+executeParameter node@(Abs.ParameterList pos param params) env
 
 executeConditionalState :: Abs.CONDITIONALSTATE Posn -> Env -> Abs.CONDITIONALSTATE TCheckResult
 executeConditionalState node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = Abs.ConditionalStatementSimpleThen (checkTypeCondition node env) (executeExpression exp env) (executeStatement state env) (executeElseStatement elseState env)
