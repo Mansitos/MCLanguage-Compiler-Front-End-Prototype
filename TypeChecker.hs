@@ -149,6 +149,49 @@ executeStatement node@(Abs.Statement _ b) env = Abs.Statement (checkTypeStatemen
 executeStatement node@(Abs.ExpressionStatement _ exp) env = Abs.ExpressionStatement (checkTypeStatement node env) (executeExpressionStatement exp env)
 executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = Abs.AssignmentStatement (checkTypeStatement node env) (executeLValue lval env) (executeAssignOp assignOp env) (executeExpression exp env)
 executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeVarType tipo env) (executeVarDecList vardec env)
+executeStatement node@(Abs.ConditionalStatement pos condition) env = Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition env)
+executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStaement env)
+executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
+executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
+executeStatement node@(Abs.ForAllStatement pos forAllStatement) env = Abs.ForAllStatement (checkTypeStatement node env) (executeForAllState forAllStatement env)
+
+executeConditionalState :: Abs.CONDITIONALSTATE Posn -> Env -> Abs.CONDITIONALSTATE TCheckResult
+executeConditionalState node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = Abs.ConditionalStatementSimpleThen (checkTypeCondition node env) (executeExpression exp env) (executeStatement state env) (executeElseStatement elseState env)
+executeConditionalState node@(Abs.ConditionalStatementSimpleWThen pos exp b elseState) env = Abs.ConditionalStatementSimpleWThen (checkTypeCondition node env) (executeExpression exp env) (executeB b env) (executeElseStatement elseState env)
+executeConditionalState node@(Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env = Abs.ConditionalStatementCtrlThen (checkTypeCondition node env) (executeCtrlStatement ctrlState env) (executeStatement state env) (executeElseStatement elseState env)
+executeConditionalState node@(Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env = Abs.ConditionalStatementCtrlWThen (checkTypeCondition node env) (executeCtrlStatement ctrlState env) (executeB b env) (executeElseStatement elseState env)
+
+executeElseStatement :: Abs.ELSESTATEMENT Posn -> Env -> Abs.ELSESTATEMENT TCheckResult
+executeElseStatement node@(Abs.ElseStateEmpty pos) env= Abs.ElseStateEmpty (checkTypeElseState node env)
+executeElseStatement node@(Abs.ElseState pos state) env= Abs.ElseState (checkTypeElseState node env) (executeStatement state env)
+
+executeCtrlStatement :: Abs.CTRLDECSTATEMENT Posn -> Env -> Abs.CTRLDECSTATEMENT TCheckResult
+executeCtrlStatement node@(Abs.CtrlDecStateVar pos id exp) env = Abs.CtrlDecStateVar (checkTypeCtrlState node env) (executeIdent id env) (executeExpression exp env)
+executeCtrlStatement node@(Abs.CtrlDecStateConst pos id exp) env = Abs.CtrlDecStateConst (checkTypeCtrlState node env) (executeIdent id env) (executeExpression exp env)
+
+executeWhileState :: Abs.WHILESTATEMENT Posn -> Env -> Abs.WHILESTATEMENT TCheckResult
+executeWhileState node@(Abs.WhileStateSimpleDo pos exp state) env = Abs.WhileStateSimpleDo (checkTypeWhile node env) (executeExpression exp env) (executeStatement state env)
+executeWhileState node@(Abs.WhileStateSimpleWDo pos exp b) env = Abs.WhileStateSimpleWDo (checkTypeWhile node env) (executeExpression exp env) (executeB b env)
+executeWhileState node@(Abs.WhileStateCtrlDo pos ctrl state) env = Abs.WhileStateCtrlDo (checkTypeWhile node env) (executeCtrlStatement ctrl env) (executeStatement state env)
+executeWhileState node@(Abs.WhileStateCtrlWDo pos ctrl b) env = Abs.WhileStateCtrlWDo (checkTypeWhile node env) (executeCtrlStatement ctrl env) (executeB b env)
+
+executeDoState :: Abs.DOSTATEMENT Posn -> Env -> Abs.DOSTATEMENT TCheckResult
+executeDoState node@(Abs.DoWhileState pos state exp) env = Abs.DoWhileState (checkTypeDo node env) (executeStatement state env) (executeExpression exp env)
+
+executeForState :: Abs.FORSTATEMENT Posn -> Env -> Abs.FORSTATEMENT TCheckResult
+executeForState node@(Abs.ForStateIndexDo pos index exp state) env = Abs.ForStateIndexDo (checkTypeForState node env) (executeIndex index env) (executeExpression exp env) (executeStatement state env)
+executeForState node@(Abs.ForStateIndexWDo pos index exp b) env = Abs.ForStateIndexWDo (checkTypeForState node env) (executeIndex index env) (executeExpression exp env) (executeB b env)
+executeForState node@(Abs.ForStateExprDo pos exp state) env = Abs.ForStateExprDo (checkTypeForState node env) (executeExpression exp env) (executeStatement state env)
+executeForState node@(Abs.ForStateExprWDo pos exp b) env = Abs.ForStateExprWDo (checkTypeForState node env) (executeExpression exp env) (executeB b env)
+
+executeIndex :: Abs.INDEXVARDEC Posn -> Env -> Abs.INDEXVARDEC TCheckResult
+executeIndex node@(Abs.IndexVarDeclaration pos id) env = Abs.IndexVarDeclaration (checkTypeIndexVarDec node env) (executeIdent id env)
+
+executeForAllState :: Abs.FORALLSTATEMENT Posn -> Env -> Abs.FORALLSTATEMENT TCheckResult
+executeForAllState node@(Abs.ForAllStateIndexDo pos index exp state) env = Abs.ForAllStateIndexDo (checkTypeForAllState node env) (executeIndex index env) (executeExpression exp env) (executeStatement state env)
+executeForAllState node@(Abs.ForAllStateIndexWDo pos index exp b) env = Abs.ForAllStateIndexWDo (checkTypeForAllState node env) (executeIndex index env) (executeExpression exp env) (executeB b env)
+executeForAllState node@(Abs.ForAllStateExprDo pos exp state) env = Abs.ForAllStateExprDo (checkTypeForAllState node env) (executeExpression exp env) (executeStatement state env)
+executeForAllState node@(Abs.ForAllStateExprWDo pos exp b) env = Abs.ForAllStateExprWDo (checkTypeForAllState node env) (executeExpression exp env) (executeB b env)
 
 executeVarType :: Abs.VARIABLETYPE Posn -> Env -> Abs.VARIABLETYPE TCheckResult
 executeVarType node@(Abs.VariableTypeParam pos) env = Abs.VariableTypeParam (checkTypeType node env)
@@ -220,10 +263,47 @@ executeExpression node@(Abs.ExpressionBoolean pos value) env = Abs.ExpressionBoo
 executeExpression node@(Abs.ExpressionChar pos value) env = Abs.ExpressionChar (checkTypeExpression node env) (executeChar value env)
 executeExpression node@(Abs.ExpressionString pos value) env = Abs.ExpressionString (checkTypeExpression node env) (executeString value env)
 executeExpression node@(Abs.ExpressionReal pos value) env = Abs.ExpressionReal (checkTypeExpression node env) (executeReal value env)
+executeExpression node@(Abs.ExpressionBracket pos exp) env = Abs.ExpressionBracket (checkTypeExpression node env) (executeExpression exp env)
+executeExpression node@(Abs.ExpressionCast pos def tipo) env = Abs.ExpressionCast (checkTypeExpression node env) (executeDefault def env) (executePrimitiveType tipo env)
+executeExpression node@(Abs.ExpressionUnary pos unary exp) env = Abs.ExpressionUnary (checkTypeExpression node env) (executeUnaryOp unary env) (executeExpression exp env)
+executeExpression node@(Abs.ExpressionBinary pos def binary exp) env = Abs.ExpressionBinary (checkTypeExpression node env) (executeDefault def env) (executeBinaryOp binary env) (executeExpression exp env)
 executeExpression node@(Abs.ExpressionIdent pos id index) env = case index of
                                                                 Abs.ArrayIndexElementEmpty posIdx -> Abs.ExpressionIdent (checkTypeIdent id env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env)
                                                                 Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdent (checkTypeIdent id env) (executeIdent id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))
--- cast unary e bracket binary
+-- cast unary binary
+
+executeUnaryOp :: Abs.UNARYOP Posn -> Env -> Abs.UNARYOP TCheckResult
+executeUnaryOp node@(Abs.UnaryOperationPositive pos) env = Abs.UnaryOperationPositive (checkTypeUnaryOp node env)
+executeUnaryOp node@(Abs.UnaryOperationNegative pos) env = Abs.UnaryOperationNegative (checkTypeUnaryOp node env)
+executeUnaryOp node@(Abs.UnaryOperationNot pos) env = Abs.UnaryOperationNot (checkTypeUnaryOp node env)
+executeUnaryOp node@(Abs.UnaryOperationPointer pos) env = Abs.UnaryOperationPointer (checkTypeUnaryOp node env)
+
+executeBinaryOp :: Abs.BINARYOP Posn -> Env -> Abs.BINARYOP TCheckResult
+executeBinaryOp node@(Abs.BinaryOperationPlus pos) env = Abs.BinaryOperationPlus (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationMinus pos) env = Abs.BinaryOperationMinus (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationProduct pos) env = Abs.BinaryOperationProduct (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationDivision pos) env = Abs.BinaryOperationDivision (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationModule pos) env = Abs.BinaryOperationModule (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationPower pos) env = Abs.BinaryOperationPower (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationAnd pos) env = Abs.BinaryOperationAnd (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationOr pos) env = Abs.BinaryOperationOr (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationEq pos) env = Abs.BinaryOperationEq (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationNotEq pos) env = Abs.BinaryOperationNotEq (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationGratherEq pos) env = Abs.BinaryOperationGratherEq (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationGrather pos) env = Abs.BinaryOperationGrather (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationLessEq pos) env = Abs.BinaryOperationLessEq (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationLess pos) env = Abs.BinaryOperationLess (checkTypeBinaryOp node env)
+
+executeDefault :: Abs.DEFAULT Posn -> Env -> Abs.DEFAULT TCheckResult
+executeDefault node@(Abs.ExpressionIntegerD pos value) env = Abs.ExpressionIntegerD (checkTypeDefault node env) (executeInteger value env)
+executeDefault node@(Abs.ExpressionBooleanD pos value) env = Abs.ExpressionBooleanD (checkTypeDefault node env) (executeBoolean value env)
+executeDefault node@(Abs.ExpressionCharD pos value) env = Abs.ExpressionCharD (checkTypeDefault node env) (executeChar value env)
+executeDefault node@(Abs.ExpressionStringD pos value) env = Abs.ExpressionStringD (checkTypeDefault node env) (executeString value env)
+executeDefault node@(Abs.ExpressionRealD pos value) env = Abs.ExpressionRealD (checkTypeDefault node env) (executeReal value env)
+executeDefault node@(Abs.ExpressionBracketD pos exp) env = Abs.ExpressionBracketD (checkTypeDefault node env) (executeExpression exp env)
+executeDefault node@(Abs.ExpressionIdentD pos id index) env = case index of
+                                                                Abs.ArrayIndexElementEmpty posIdx -> Abs.ExpressionIdentD (checkTypeIdent id env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env)
+                                                                Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdentD (checkTypeIdent id env) (executeIdent id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))
 
 
 executeLValue :: Abs.LVALUEEXPRESSION Posn -> Env -> Abs.LVALUEEXPRESSION TCheckResult
@@ -305,6 +385,50 @@ checkTypeStatement node@(Abs.Statement pos b) env = checkTypeB b env
 checkTypeStatement node@(Abs.ExpressionStatement pos exp) env = checkTypeExpressionStatement exp env
 checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = checkTypeExpression exp env --aggiungere controllo compatibilità lval con exp
 checkTypeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = checkTypeType tipo env
+checkTypeStatement node@(Abs.ConditionalStatement pos condition) env = checkTypeCondition condition env
+checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhile whileState env
+checkTypeStatement node@(Abs.DoWhileStatement pos doState) env = checkTypeDo doState env
+checkTypeStatement node@(Abs.ForStatement pos forState) env = checkTypeForState forState env
+checkTypeStatement node@(Abs.ForAllStatement pos forAllState) env = checkTypeForAllState forAllState env
+
+checkTypeCondition :: Abs.CONDITIONALSTATE Posn -> Env -> TCheckResult
+checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = TError ["if con then"]
+checkTypeCondition node@(Abs.ConditionalStatementSimpleWThen pos exp b elseState) env = TError ["if senza then"]
+checkTypeCondition node@(Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env = TError ["if con then e ctrl"] 
+checkTypeCondition node@(Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env = TError ["if senza then e con ctrl"]
+
+checkTypeElseState :: Abs.ELSESTATEMENT Posn -> Env -> TCheckResult
+checkTypeElseState node@(Abs.ElseState pos state) env = TError ["else non empty"] --non sicuri se diretto o bisogna andare sul figlio
+checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TError ["else empty"]
+
+checkTypeCtrlState :: Abs.CTRLDECSTATEMENT Posn -> Env -> TCheckResult
+checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id exp) env = TError ["ctrl const"] --da controllare come else
+checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id exp) env = TError ["ctrl var"] --da controllare come else
+
+checkTypeWhile :: Abs.WHILESTATEMENT Posn -> Env -> TCheckResult
+checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = TError ["while do"] --da controllare come else
+checkTypeWhile node@(Abs.WhileStateSimpleWDo pos exp b) env = TError ["while"] --da controllare come else
+checkTypeWhile node@(Abs.WhileStateCtrlDo pos ctrl state) env = TError ["while do ctrl"] --da controllare come else
+checkTypeWhile node@(Abs.WhileStateCtrlWDo pos ctrl b) env = TError ["while ctrl"] --da controllare come else
+
+checkTypeDo :: Abs.DOSTATEMENT Posn -> Env -> TCheckResult
+checkTypeDo node@(Abs.DoWhileState pos state exp) env = TError ["do "] --da controllare come else
+
+checkTypeForState :: Abs.FORSTATEMENT Posn -> Env -> TCheckResult
+checkTypeForState node@(Abs.ForStateIndexDo pos index exp state) env = TError ["for idx do"] --da controllare come else
+checkTypeForState node@(Abs.ForStateIndexWDo pos index exp b) env = TError ["for idx "] --da controllare come else
+checkTypeForState node@(Abs.ForStateExprDo pos exp state) env = TError ["for exp do"] --da controllare come else
+checkTypeForState node@(Abs.ForStateExprWDo pos exp b) env = TError ["for exp"] --da controllare come else
+
+checkTypeIndexVarDec :: Abs.INDEXVARDEC Posn -> Env -> TCheckResult
+checkTypeIndexVarDec node@(Abs.IndexVarDeclaration pos id) env =  TError ["index var dec"] --da controllare come else
+
+checkTypeForAllState :: Abs.FORALLSTATEMENT Posn -> Env -> TCheckResult
+checkTypeForAllState node@(Abs.ForAllStateIndexDo pos index exp state) env = TError ["forall idx do"] --da controllare come else
+checkTypeForAllState node@(Abs.ForAllStateIndexWDo pos index exp b) env = TError ["forall idx "] --da controllare come else
+checkTypeForAllState node@(Abs.ForAllStateExprDo pos exp state) env = TError ["forall exp do"] --da controllare come else
+checkTypeForAllState node@(Abs.ForAllStateExprWDo pos exp b) env = TError ["forall exp"] --da controllare come else
+
 
 checkTypeType :: Abs.VARIABLETYPE Posn -> Env -> TCheckResult
 checkTypeType node@(Abs.VariableTypeParam pos) env = TResult env (B_type Type_Void) pos
@@ -348,7 +472,43 @@ checkTypeExpression node@(Abs.ExpressionBoolean pos value) env = checkTypeBoolea
 checkTypeExpression node@(Abs.ExpressionChar pos value) env = checkTypeChar value env
 checkTypeExpression node@(Abs.ExpressionString pos value) env = checkTypeString value env
 checkTypeExpression node@(Abs.ExpressionReal pos value) env = checkTypeReal value env
+checkTypeExpression node@(Abs.ExpressionBracket pos exp) env = checkTypeExpression exp env
+checkTypeExpression node@(Abs.ExpressionCast pos def tipo) env = TError ["casting"] --da rivedere
+checkTypeExpression node@(Abs.ExpressionUnary pos unary exp) env = checkTypeUnaryOp unary env
+checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = checkTypeBinaryOp binary env
 checkTypeExpression node@(Abs.ExpressionIdent pos value index) env = checkTypeIdent value env --gestire index
+
+checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
+checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TError ["positive"] --da rivedere
+checkTypeUnaryOp node@(Abs.UnaryOperationNegative pos) env = TError ["negative"] --da rivedere
+checkTypeUnaryOp node@(Abs.UnaryOperationNot pos) env = TError ["not"] --da rivedere
+checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TError ["pointer"] --da rivedere
+
+checkTypeBinaryOp :: Abs.BINARYOP Posn -> Env -> TCheckResult
+checkTypeBinaryOp node@(Abs.BinaryOperationPlus pos) env = TError ["plus"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationMinus pos) env = TError ["minus"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationProduct pos) env = TError ["product"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationDivision pos) env = TError ["division"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationModule pos) env = TError ["module"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationPower pos) env = TError ["power"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationAnd pos) env = TError ["and"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationOr pos) env = TError ["or"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationEq pos) env = TError ["eq"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationNotEq pos) env = TError ["noteq"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationGratherEq pos) env = TError [">="] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationGrather pos) env = TError [">"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationLessEq pos) env = TError ["<="] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationLess pos) env = TError ["<"] --da rivedere
+
+
+checkTypeDefault :: Abs.DEFAULT Posn -> Env -> TCheckResult
+checkTypeDefault node@(Abs.ExpressionIntegerD pos value) env = checkTypeInteger value env
+checkTypeDefault node@(Abs.ExpressionBooleanD pos value) env = checkTypeBoolean value env
+checkTypeDefault node@(Abs.ExpressionCharD pos value) env = checkTypeChar value env
+checkTypeDefault node@(Abs.ExpressionStringD pos value) env = checkTypeString value env
+checkTypeDefault node@(Abs.ExpressionRealD pos value) env = checkTypeReal value env
+checkTypeDefault node@(Abs.ExpressionBracketD pos exp) env = checkTypeExpression exp env
+checkTypeDefault node@(Abs.ExpressionIdentD pos value index) env = checkTypeIdent value env --gestire index
 
 checkTypeIdent :: Abs.Ident Posn -> Env -> TCheckResult
 checkTypeIdent node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
