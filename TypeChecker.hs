@@ -15,7 +15,7 @@ type Env = Map Prelude.String [EnvEntry]
             -- chiave, valore
 
 data EnvEntry
-    = Variable {varType::Type, varPosition::LexProgettoPar.Posn, varConstat::Bool}
+    = Variable {varType::Type, varPosition::LexProgettoPar.Posn, varMode::Prelude.String}
     | Function {funType::Type, funPosition::LexProgettoPar.Posn, funParameters::[Parameter]}
 
 data Parameter
@@ -32,7 +32,7 @@ data TCheckResult
 
 instance Show EnvEntry where
     show entry = case entry of
-        TypeChecker.Variable ty pos varConst  -> "EnvEntry: [" ++ "var:" ++ show ty ++ "|" ++ show pos ++ "|const:" ++ show varConst ++ "]"
+        TypeChecker.Variable ty pos varMode -> "EnvEntry: [" ++ "var:" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show varMode ++"]"
         TypeChecker.Function ty pos params    -> "EnvEntry: [" ++ "fun:" ++ show ty ++ "|" ++ show pos ++ "|params:" ++ show params ++ "]"
 
 instance Show Parameter where
@@ -52,7 +52,7 @@ instance Show TCheckResult where
 getTypeEnvEntry :: [EnvEntry] -> Type
 getTypeEnvEntry [] = B_type Type_Void
 getTypeEnvEntry (x:xs) = case x of 
-                            (Variable t pos const) -> t
+                            (Variable t pos mode) -> t
                             (Function t pos parameters) -> t
                             _ -> B_type Type_Void
 
@@ -64,13 +64,60 @@ second (f,s) = s
 
 updateEnv :: (Abs.STATEMENTS Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
 updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
-                                                                Abs.VariableDeclarationStatement pos _ _ -> (insertWith (++) "test! :(((((((" [Variable (B_type Type_Integer) (Pn 0 1 1) False] env, err ++ checkErr env stat)                                                                                                 
-                                                                Abs.ReturnStatement pos ret-> (insertWith (++) "return" [Variable (B_type Type_Void) (Pn 0 1 1) False] env,err ++ checkErr env stat)
-                                                                Abs.ExpressionStatement pos exp -> case exp of
-                                                                                                    Abs.VariableExpression pos (Abs.Ident id posId) -> (insertWith (++) id [Variable (B_type Type_Real) (Pn 0 1 1) False] env,err ++ checkErr env stat)
-                                                                                                    _ -> (env,err)
+                                                                Abs.VariableDeclarationStatement pos varType vardec -> let ty = getVarType vardec in -- getting variable type (int etc.)
+                                                                                                                         (let varMode = getVarMode varType in -- getting variable mode (const etc.)
+                                                                                                                            (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
+                                                                                                                                (updateEnvFromList ids env pos varMode ty,err ++ checkErr env stat))) -- updating env for each declared var.
+
+                                                                -- Abs.ReturnStatement pos ret-> (insertWith (++) "return" [Variable (B_type Type_Void) (Pn 0 1 1) False] env,err ++ checkErr env stat)
+                                                                -- Abs.ExpressionStatement pos exp -> case exp of
+                                                                --                                    Abs.VariableExpression pos (Abs.Ident id posId) -> (insertWith (++) id [Variable (B_type Type_Real) (Pn 0 1 1) False] env,err ++ checkErr env stat)
+                                                                --                                    _ -> (env,err)
                                                                 _ -> (env,err)
 updateEnv node@(Abs.EmptyStatement  pos) env err = (env,err)
+
+updateEnvFromList :: [Prelude.String] -> Env -> Posn -> Prelude.String -> Type -> Env
+updateEnvFromList [] env pos varMode ty = env
+updateEnvFromList (x:xs) env pos varMode ty = updateEnvFromList xs (insertWith (++) x [Variable ty pos varMode] env) pos varMode ty
+
+----------------------------------------------------------------------
+--- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY --
+----------------------------------------------------------------------
+
+getVarMode :: Abs.VARIABLETYPE Posn -> Prelude.String
+getVarMode (Abs.VariableTypeParam _) = "param"
+getVarMode (Abs.VariableTypeConst _) = "const"
+getVarMode (Abs.VariableTypeVar _) = "var"
+getVarMode (Abs.VariableTypeRef _) = "ref"
+getVarMode (Abs.VariableTypeConstRef _) = "constRef"
+
+getVarType :: Abs.VARDECLIST Posn -> Type
+getVarType (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ _ ty _)) = getTypePart ty
+
+getTypePart :: Abs.TYPEPART Posn -> Type
+getTypePart (Abs.TypePart _ typeExpr) = getTypeExpr typeExpr
+
+getTypeExpr :: Abs.TYPEEXPRESSION Posn -> Type
+getTypeExpr (Abs.TypeExpression _ primitive) = getTypeFromPrimitive primitive
+getTypeExpr (Abs.TypeExpressionArraySimple _ _ _) = (B_type Type_Void) -- TODO
+getTypeExpr (Abs.TypeExpressionArray _ _ _) = (B_type Type_Void) -- TODO
+getTypeExpr (Abs.TypeExpressionPointer _ _ _) = (B_type Type_Void) -- TODO
+
+getTypeFromPrimitive :: Abs.PRIMITIVETYPE Posn -> Type
+getTypeFromPrimitive (Abs.PrimitiveTypeVoid _) = (B_type Type_Void)
+getTypeFromPrimitive (Abs.PrimitiveTypeBool _) = (B_type Type_Boolean)
+getTypeFromPrimitive (Abs.PrimitiveTypeInt _) = (B_type Type_Integer)
+getTypeFromPrimitive (Abs.PrimitiveTypeReal _) = (B_type Type_Real)
+getTypeFromPrimitive (Abs.PrimitiveTypeString _) = (B_type Type_String)
+getTypeFromPrimitive (Abs.PrimitiveTypeChar _) = (B_type Type_Char)
+getTypeFromPrimitive (Abs.TypeArray _ prim) =  (Type.Array (getTypeFromPrimitive prim))
+
+getVariableDeclStatNames :: Abs.VARDECLIST Posn -> [Prelude.String]
+getVariableDeclStatNames (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ id _ _)) = getIdList id
+
+getIdList :: Abs.IDENTLIST Posn -> [Prelude.String]
+getIdList (Abs.IdentifierList _ (Abs.Ident s _) identlist) = [s] ++ getIdList identlist
+getIdList (Abs.IdentifierSingle _ (Abs.Ident s _)) = [s] 
 
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []                    
@@ -101,32 +148,32 @@ executeStatement node@(Abs.ReturnStatement _ ret) env = Abs.ReturnStatement (che
 executeStatement node@(Abs.Statement _ b) env = Abs.Statement (checkTypeStatement node env) (executeB b env)
 executeStatement node@(Abs.ExpressionStatement _ exp) env = Abs.ExpressionStatement (checkTypeStatement node env) (executeExpressionStatement exp env)
 executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = Abs.AssignmentStatement (checkTypeStatement node env) (executeLValue lval env) (executeAssignOp assignOp env) (executeExpression exp env)
-executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeType tipo env) (executeVarDec vardec env)
+executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeVarType tipo env) (executeVarDecList vardec env)
 
-executeType :: Abs.VARIABLETYPE Posn -> Env -> Abs.VARIABLETYPE TCheckResult
-executeType node@(Abs.VariableTypeParam pos) env = Abs.VariableTypeParam (checkTypeType node env)
-executeType node@(Abs.VariableTypeConst pos) env = Abs.VariableTypeConst (checkTypeType node env)
-executeType node@(Abs.VariableTypeVar pos) env = Abs.VariableTypeVar (checkTypeType node env)
-executeType node@(Abs.VariableTypeRef pos) env = Abs.VariableTypeRef (checkTypeType node env)
-executeType node@(Abs.VariableTypeConstRef pos) env = Abs.VariableTypeConstRef (checkTypeType node env)
+executeVarType :: Abs.VARIABLETYPE Posn -> Env -> Abs.VARIABLETYPE TCheckResult
+executeVarType node@(Abs.VariableTypeParam pos) env = Abs.VariableTypeParam (checkTypeType node env)
+executeVarType node@(Abs.VariableTypeConst pos) env = Abs.VariableTypeConst (checkTypeType node env)
+executeVarType node@(Abs.VariableTypeVar pos) env = Abs.VariableTypeVar (checkTypeType node env)
+executeVarType node@(Abs.VariableTypeRef pos) env = Abs.VariableTypeRef (checkTypeType node env)
+executeVarType node@(Abs.VariableTypeConstRef pos) env = Abs.VariableTypeConstRef (checkTypeType node env)
 
-executeVarDec :: Abs.VARDECLIST Posn -> Env -> Abs.VARDECLIST TCheckResult
-executeVarDec node@(Abs.VariableDeclarationSingle pos vardec) env = Abs.VariableDeclarationSingle (checkTypeVardec node env) (executeVardecID vardec env)
+executeVarDecList :: Abs.VARDECLIST Posn -> Env -> Abs.VARDECLIST TCheckResult
+executeVarDecList node@(Abs.VariableDeclarationSingle pos vardec) env = Abs.VariableDeclarationSingle (checkTypeVardec node env) (executeVardecID vardec env)
 
 executeVardecID :: Abs.VARDECID Posn -> Env -> Abs.VARDECID TCheckResult
-executeVardecID node@(Abs.VariableDeclaration pos idlist tipo init) env = Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) (executeTipoDec tipo env) (executeInit init env)
+executeVardecID node@(Abs.VariableDeclaration pos idlist tipo init) env = Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) (executeTypePart tipo env) (executeInitPart init env)
 
 executeIDList :: Abs.IDENTLIST Posn -> Env -> Abs.IDENTLIST TCheckResult
 executeIDList node@(Abs.IdentifierList pos id next) env = Abs.IdentifierList (checkIdentifierList node env) (executeIdent id env) (executeIDList next env)
 executeIDList node@(Abs.IdentifierSingle pos id) env = Abs.IdentifierSingle (checkIdentifierList node env) (executeIdent id env)
 
-executeTipoDec :: Abs.TYPEPART Posn -> Env -> Abs.TYPEPART TCheckResult
-executeTipoDec node@(Abs.TypePart pos tipo) env = Abs.TypePart (checkTypeTypePart node env) (executeTypeExpression tipo env)
+executeTypePart :: Abs.TYPEPART Posn -> Env -> Abs.TYPEPART TCheckResult
+executeTypePart node@(Abs.TypePart pos tipo) env = Abs.TypePart (checkTypeTypePart node env) (executeTypeExpression tipo env)
 
-executeInit :: Abs.INITPART Posn -> Env -> Abs.INITPART TCheckResult
-executeInit node@(Abs.InitializzationPart pos initExp) env = Abs.InitializzationPart (checkTypeInitializzationPart node env) (executeExpression initExp env)
-executeInit node@(Abs.InitializzationPartArray pos listelementarray) env = Abs.InitializzationPartArray (checkTypeInitializzationPart node env) (executeListElementArray listelementarray env)
-executeInit node@(Abs.InitializzationPartEmpty pos) env = Abs.InitializzationPartEmpty (TResult env (B_type Type_Void) pos)
+executeInitPart :: Abs.INITPART Posn -> Env -> Abs.INITPART TCheckResult
+executeInitPart node@(Abs.InitializzationPart pos initExp) env = Abs.InitializzationPart (checkTypeInitializzationPart node env) (executeExpression initExp env)
+executeInitPart node@(Abs.InitializzationPartArray pos listelementarray) env = Abs.InitializzationPartArray (checkTypeInitializzationPart node env) (executeListElementArray listelementarray env)
+executeInitPart node@(Abs.InitializzationPartEmpty pos) env = Abs.InitializzationPartEmpty (TResult env (B_type Type_Void) pos)
 
 executeListElementArray :: Abs.LISTELEMENTARRAY Posn -> Env -> Abs.LISTELEMENTARRAY TCheckResult
 executeListElementArray node@(Abs.ListElementsOfArray pos expr elementlist) env = Abs.ListElementsOfArray (checkListElementsOfArray node env) (executeExpression expr env) (executeListElementArray elementlist env)
@@ -165,6 +212,7 @@ executeReturnStatement node@(Abs.ReturnStateEmpty _ ) env = Abs.ReturnStateEmpty
 
 executeExpressionStatement :: Abs.EXPRESSIONSTATEMENT Posn -> Env -> Abs.EXPRESSIONSTATEMENT TCheckResult
 executeExpressionStatement node@(Abs.VariableExpression _ id) env = Abs.VariableExpression (checkTypeExpressionStatement node env) (executeIdent id env)
+-- add for call
 
 executeExpression :: Abs.EXPRESSION Posn -> Env -> Abs.EXPRESSION TCheckResult
 executeExpression node@(Abs.ExpressionInteger pos value) env = Abs.ExpressionInteger (checkTypeExpression node env) (executeInteger value env)
@@ -175,6 +223,8 @@ executeExpression node@(Abs.ExpressionReal pos value) env = Abs.ExpressionReal (
 executeExpression node@(Abs.ExpressionIdent pos id index) env = case index of
                                                                 Abs.ArrayIndexElementEmpty posIdx -> Abs.ExpressionIdent (checkTypeIdent id env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env)
                                                                 Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdent (checkTypeIdent id env) (executeIdent id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))
+-- cast unary e bracket binary
+
 
 executeLValue :: Abs.LVALUEEXPRESSION Posn -> Env -> Abs.LVALUEEXPRESSION TCheckResult
 executeLValue node@(Abs.LvalueExpression pos id ident) env = case ident of
@@ -189,11 +239,23 @@ executeAssignOp node@(Abs.AssignOperationEq pos) env = Abs.AssignOperationEq (TR
 executeAssignOp node@(Abs.AssignOperationEqPlus pos) env = Abs.AssignOperationEqPlus (TResult env (B_type Type_Void) pos)
 executeAssignOp node@(Abs.AssignOperationEqMinus pos) env = Abs.AssignOperationEqMinus (TResult env (B_type Type_Void) pos)
 executeAssignOp node@(Abs.AssignOperationEqProd pos) env = Abs.AssignOperationEqProd (TResult env (B_type Type_Void) pos)
+executeAssignOp node@(Abs.AssignOperationEqFract pos) env = Abs.AssignOperationEqFract (TResult env (B_type Type_Void) pos)
 executeAssignOp node@(Abs.AssignOperationEqPercent pos) env = Abs.AssignOperationEqPercent (TResult env (B_type Type_Void) pos)
 executeAssignOp node@(Abs.AssignOperationEqPower pos) env = Abs.AssignOperationEqPower (TResult env (B_type Type_Void) pos)
 
 executeArrayIndexElement :: Abs.ARRAYINDEXELEMENT Posn -> Env -> Abs.ARRAYINDEXELEMENT TCheckResult
-executeArrayIndexElement node@(Abs.ArrayIndexElementEmpty pos) env = Abs.ArrayIndexElementEmpty (checkArrayIndexElementEmpty node env)
+executeArrayIndexElement node@(Abs.ArrayIndexElement pos index) env = Abs.ArrayIndexElement (checkArrayIndexElement node env) (executeTypeTypeIndex index env)
+executeArrayIndexElement node@(Abs.ArrayIndexElementEmpty pos) env = Abs.ArrayIndexElementEmpty (checkArrayIndexElement node env)
+
+checkArrayIndexElement :: Abs.ARRAYINDEXELEMENT Posn -> Env -> TCheckResult
+checkArrayIndexElement node@(Abs.ArrayIndexElement pos index) env = checkTypeTypeIndex index env
+checkArrayIndexElement node@(Abs.ArrayIndexElementEmpty pos) env = (TResult env (B_type Type_Void ) pos)
+
+executeTypeTypeIndex :: Abs.TYPEINDEX Posn -> Env -> Abs.TYPEINDEX TCheckResult
+executeTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = Abs.TypeOfIndexInt (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeInteger integer env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexIntSingle pos integer) env = Abs.TypeOfIndexIntSingle (checkTypeTypeIndex node env) (executeInteger integer env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexVar pos typeindex id) env = Abs.TypeOfIndexVar (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeIdent id env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexVarSingle pos id) env = Abs.TypeOfIndexVarSingle (checkTypeTypeIndex node env) (executeIdent id env)
 
 executeIdent :: Abs.Ident Posn -> Env -> Abs.Ident TCheckResult
 executeIdent node@(Abs.Ident id pos) env = Abs.Ident id (checkTypeIdent node env)
@@ -311,7 +373,6 @@ checkTypeBoolean node@(Abs.Boolean_True pos) env = TResult env (B_type Type_Bool
 checkTypeBoolean node@(Abs.Boolean_false pos) env = TResult env (B_type Type_Boolean ) pos
 checkTypeBoolean node@(Abs.Boolean_False pos) env = TResult env (B_type Type_Boolean ) pos
 
-
 checkTypeVardec :: Abs.VARDECLIST Posn -> Env -> TCheckResult
 checkTypeVardec node@(Abs.VariableDeclarationSingle pos vardecid) env = TError ["vardecidlistsingle todo"]
 
@@ -357,3 +418,11 @@ checkListElementsOfArray node@(Abs.ListElementOfArray pos expr) env = TError ["O
 checkRangeExpType :: Abs.RANGEEXP Posn -> Env -> TCheckResult
 checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = TError ["Controlla rangexp"]
 checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = TError ["Controlla rangexp"]
+
+checkTypeTypeIndex :: Abs.TYPEINDEX Posn -> Env -> TCheckResult
+checkTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = TError ["todo"]
+checkTypeTypeIndex node@(Abs.TypeOfIndexIntSingle pos integer) env = TResult env (B_type Type_Integer) pos
+checkTypeTypeIndex node@(Abs.TypeOfIndexVar pos typeindex id) env = TError ["todo"]
+checkTypeTypeIndex node@(Abs.TypeOfIndexVarSingle _ (Abs.Ident id pos)) env = case Data.Map.lookup id env of
+                                    Just ident -> TResult env (getTypeEnvEntry ident) pos
+                                    Nothing -> TError [" ?? var not def. Unexpected ident at " ++ (show pos)]
