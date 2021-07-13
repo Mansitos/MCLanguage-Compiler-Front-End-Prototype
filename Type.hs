@@ -14,7 +14,7 @@ data BasicType
 data Type
     = B_type {b_type::BasicType}
     | Array {c_type::Type}
-    | Pointer {c_type::Type}
+    | Pointer {c_type::Type, depth::Integer}
     deriving (Eq, Ord, Read)
 
 -- Show for types
@@ -32,4 +32,5 @@ instance Show Type where
     show tb_type = case tb_type of
         B_type b_type -> show b_type
         Array c_type -> "array[" ++ show c_type ++"]"
-        Pointer c_type -> "pointer:" ++ show c_type        
+        Pointer c_type depth -> "pointer:" ++ show c_type ++ " of depth:" ++ show depth      
+    
