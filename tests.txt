@@ -15,3 +15,23 @@ while(true) do print("deadlock");
 for x in x<100 do {x+=1;}
 
 
+
+
+
+
+
+
+var x : int;
+function foo():int{
+    var i:int;
+    var o:char;
+    o;
+    function foo2():char{
+        var u:string;
+        o;
+        o;}
+    }
+var z : int;
+var u : int;
+
+

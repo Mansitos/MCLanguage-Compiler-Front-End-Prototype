@@ -64,11 +64,14 @@ second (f,s) = s
 
 updateEnv :: (Abs.STATEMENTS Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
 updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
+                                                                -- Variables
                                                                 Abs.VariableDeclarationStatement pos varType vardec -> let ty = getVarType vardec in -- getting variable type (int etc.)
                                                                                                                          (let varMode = getVarMode varType in -- getting variable mode (const etc.)
                                                                                                                             (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
                                                                                                                                 (updateEnvFromList ids env pos varMode ty,err ++ checkErr env stat))) -- updating env for each declared var.
-
+                                                                -- Functions and Procedures
+                                                                Abs.ProcedureStatement res id params stats -> (insertWith (++) "foo" [Function (B_type Type_Void) (Pn 0 1 1) []] env,err ++ checkErr env stat)
+                                                                Abs.FunctionStatement res id params ty stats -> (insertWith (++) "foo" [Function (B_type Type_Void) (Pn 0 1 1) []] env,err ++ checkErr env stat)
                                                                 -- Abs.ReturnStatement pos ret-> (insertWith (++) "return" [Variable (B_type Type_Void) (Pn 0 1 1) False] env,err ++ checkErr env stat)
                                                                 -- Abs.ExpressionStatement pos exp -> case exp of
                                                                 --                                    Abs.VariableExpression pos (Abs.Ident id posId) -> (insertWith (++) id [Variable (B_type Type_Real) (Pn 0 1 1) False] env,err ++ checkErr env stat)
@@ -154,16 +157,24 @@ executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = Abs.WhileDo
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
 executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
 executeStatement node@(Abs.ForAllStatement pos forAllStatement) env = Abs.ForAllStatement (checkTypeStatement node env) (executeForAllState forAllStatement env)
-executeStatement node@(Abs.ProcedureStatement pos id param states) env = Abs.ProcedureStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executeStatements states env)
-executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = Abs.FunctionStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states env)
+executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = updateEnv states env [] in (Abs.ProcedureStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executeStatements states (first newEnv)))
+executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = updateEnv states env [] in (Abs.FunctionStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states (first newEnv)))
 
 executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
-executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeParameters node env) (executeParameter param env) (executeParam params env)
-executeParam node@(Abs.ParameterListSingle pos param) env = Abs.ParameterListSingle (checkTypeParameters node env) (executeParameter param env)
-executeParam node@(Abs.ParameterListEmpty pos) env = Abs.ParameterListEmpty (checkTypeParameters node env) 
+executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeExecuteParameter node env) (executeParameter param env) (executeParam params env)
+executeParam node@(Abs.ParameterListSingle pos param) env = Abs.ParameterListSingle (checkTypeExecuteParameter node env) (executeParameter param env)
+executeParam node@(Abs.ParameterListEmpty pos) env = Abs.ParameterListEmpty (checkTypeExecuteParameter node env) 
 
 executeParameter :: Abs.PARAMETER Posn -> Env -> Abs.PARAMETER TCheckResult
-executeParameter node@(Abs.ParameterList pos param params) env
+executeParameter node@(Abs.Parameter pos id ty) env = Abs.Parameter (checkTypeParameter node env) (executeIdent id env) (executePrimitiveType ty env)
+
+checkTypeExecuteParameter :: Abs.PARAMETERS Posn -> Env -> TCheckResult
+checkTypeExecuteParameter node@(Abs.ParameterList pos param params) env = TError ["todo"]
+checkTypeExecuteParameter node@(Abs.ParameterListSingle pos param) env = TError ["todo"]
+checkTypeExecuteParameter node@(Abs.ParameterListEmpty pos) env = TError ["todo"]
+
+checkTypeParameter:: Abs.PARAMETER Posn -> Env -> TCheckResult
+checkTypeParameter node@(Abs.Parameter pos id ty) env = TError ["todo"]
 
 executeConditionalState :: Abs.CONDITIONALSTATE Posn -> Env -> Abs.CONDITIONALSTATE TCheckResult
 executeConditionalState node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = Abs.ConditionalStatementSimpleThen (checkTypeCondition node env) (executeExpression exp env) (executeStatement state env) (executeElseStatement elseState env)
@@ -400,6 +411,9 @@ checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhi
 checkTypeStatement node@(Abs.DoWhileStatement pos doState) env = checkTypeDo doState env
 checkTypeStatement node@(Abs.ForStatement pos forState) env = checkTypeForState forState env
 checkTypeStatement node@(Abs.ForAllStatement pos forAllState) env = checkTypeForAllState forAllState env
+checkTypeStatement node@(Abs.ProcedureStatement pos id param states) env = TError ["todo proc"]
+checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = TError ["todo funz"]
+
 
 checkTypeCondition :: Abs.CONDITIONALSTATE Posn -> Env -> TCheckResult
 checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = TError ["if con then"]

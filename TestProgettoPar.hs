@@ -17,7 +17,7 @@ import System.Environment ( getArgs )
 import System.Exit        ( exitFailure, exitSuccess )
 import Control.Monad      ( when )
 
-import AbsProgettoPar   ( S (StartCode), STATEMENTS (ListStatements, EmptyStatement))
+import AbsProgettoPar   ( S (StartCode), STATEMENTS (ListStatements, EmptyStatement), STATEMENT (ProcedureStatement, FunctionStatement))
 import LexProgettoPar   ( Token, Posn )
 import ParProgettoPar   ( pS, myLexer )
 import PrintProgettoPar ( Print, printTree )
@@ -51,7 +51,7 @@ run v p s =
       let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
         putStrLn (show typecheckRes)
 
-      putStrLn "\n\n Content of S:\n"
+      putStrLn "\n\n[TypeChecker Result]\n"
 
       let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in
         putStrLn (showTypeCheckResult typecheckRes)
@@ -62,11 +62,21 @@ run v p s =
   ts = myLexer (pointersSyntaxPreprocessing s [] [])
 
 showTypeCheckResult:: (Show attr) => (AbsProgettoPar.S attr) -> String
-showTypeCheckResult (AbsProgettoPar.StartCode result statements) = showTypeCheckResultStatements statements
+showTypeCheckResult (AbsProgettoPar.StartCode result statements) = showTypeCheckResultStatements statements ""
 
-showTypeCheckResultStatements:: (Show attr) => (AbsProgettoPar.STATEMENTS attr) -> String
-showTypeCheckResultStatements (AbsProgettoPar.ListStatements result statement statements) = show result ++ "\n" ++  (showTypeCheckResultStatements statements) 
-showTypeCheckResultStatements (AbsProgettoPar.EmptyStatement result) = ""
+showTypeCheckResultStatements :: (Show attr) => (AbsProgettoPar.STATEMENTS attr) -> String -> String
+showTypeCheckResultStatements (AbsProgettoPar.ListStatements result statement statements) spacer = show result ++ case statement of
+                                                                                               (AbsProgettoPar.ProcedureStatement res id params stats) -> "\n---" ++ spacer ++ (showTypeCheckResultStatement statement spacer)  ++ (showTypeCheckResultStatements statements spacer) 
+                                                                                               (AbsProgettoPar.FunctionStatement res id params ty stats) -> "\n---" ++ spacer ++ (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
+                                                                                               _ -> "\n" ++ case statements of
+                                                                                                      (AbsProgettoPar.EmptyStatement result) -> ""
+                                                                                                      _ -> spacer ++ (showTypeCheckResultStatements statements spacer)
+showTypeCheckResultStatements (AbsProgettoPar.EmptyStatement result) spacer = ""   -- gestione empty
+
+showTypeCheckResultStatement :: (Show attr) => (AbsProgettoPar.STATEMENT attr) -> String -> String
+showTypeCheckResultStatement (AbsProgettoPar.ProcedureStatement res id params stats) spacer = showTypeCheckResultStatements stats (spacer ++ "---")
+showTypeCheckResultStatement (AbsProgettoPar.FunctionStatement res id params ty stats) spacer = showTypeCheckResultStatements stats (spacer ++ "---")
+
 
 
 -- Preprocessing of the input for multiple pointers compatibility "*******"
