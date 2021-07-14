@@ -197,8 +197,10 @@ executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = Abs.WhileDo
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
 executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
 executeStatement node@(Abs.ForAllStatement pos forAllStatement) env = Abs.ForAllStatement (checkTypeStatement node env) (executeForAllState forAllStatement env)
-executeStatement node@(Abs.ProcedureStatement pos id param states) env = Abs.ProcedureStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executeStatements states env)
-executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = Abs.FunctionStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states env)
+executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env [] in 
+                                                                        Abs.ProcedureStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executeStatements states (first newEnv))
+executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env [] in  
+                                                                        Abs.FunctionStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states (first newEnv))
 
 executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
 executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeExecuteParameter node env) (executeParameter param env) (executeParam params env)
