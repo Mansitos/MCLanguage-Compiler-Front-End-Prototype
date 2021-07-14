@@ -136,7 +136,7 @@ data Posn = Pn !Int !Int !Int
  
 instance Show Posn where
   show pos = case pos of
-              Pn abs row col -> "absolute:" ++ show abs ++ "|row:" ++ show row ++ "|col:" ++ show col
+              Pn abs row col -> "abs:" ++ show abs ++ ",row:" ++ show row ++ ",col:" ++ show col
 
 alexStartPos :: Posn
 alexStartPos = Pn 0 1 1

@@ -1,3 +1,5 @@
+-- Progetto LC 2021 -- Mansi/Cagnoni UNIUD --
+
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module TypeChecker where
 
@@ -19,7 +21,7 @@ data EnvEntry
     | Function {funType::Type, funPosition::LexProgettoPar.Posn, funParameters::[Parameter]}
 
 data Parameter
-    = Parameter {paramType::Type, paramPosition::LexProgettoPar.Posn}
+    = Parameter {paramType::Type, paramPosition::LexProgettoPar.Posn, paramMode::Prelude.String, identifier::Prelude.String}
     deriving(Eq, Ord)
 
 data TCheckResult
@@ -37,7 +39,7 @@ instance Show EnvEntry where
 
 instance Show Parameter where
     show param = case param of    
-        TypeChecker.Parameter ty pos    -> "(param:" ++ show ty ++ "|" ++ show pos ++ ")"
+        TypeChecker.Parameter ty pos mode id   -> "(" ++ show id ++ ":" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show mode ++ ")"
 
 instance Show TCheckResult where
     show tres = case tres of
@@ -70,19 +72,16 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                                                                             (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
                                                                                                                                 (updateEnvFromList ids env pos varMode ty,err ++ checkErr env stat))) -- updating env for each declared var.
                                                                 -- Functions and Procedures (TODO PARAMETERS)
-                                                                Abs.ProcedureStatement pos id params stats -> let fid = getFunId id in
-                                                                                                                    ((insertWith (++) fid [Function (B_type Type_Void) pos []] env,err ++ checkErr env stat))
+                                                                Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
+                                                                                                                let fid = getIdFromIdent id in
+                                                                                                                    ((insertWith (++) fid [Function (B_type Type_Void) pos parameters] env,err ++ checkErr env stat))
                                                                 
-                                                                Abs.FunctionStatement pos id params ty stats -> let fty = getTypeFromPrimitive ty in
-                                                                                                                    (let fid = getFunId id in 
-                                                                                                                        (insertWith (++) fid [Function fty pos []] env,err ++ checkErr env stat))
-
-
-                                                                -- Abs.ReturnStatement pos ret-> (insertWith (++) "return" [Variable (B_type Type_Void) (Pn 0 1 1) False] env,err ++ checkErr env stat)
-                                                                -- Abs.ExpressionStatement pos exp -> case exp of
-                                                                --                                    Abs.VariableExpression pos (Abs.Ident id posId) -> (insertWith (++) id [Variable (B_type Type_Real) (Pn 0 1 1) False] env,err ++ checkErr env stat)
-                                                                --                                    _ -> (env,err)
-                                                                _ -> (env,err)
+                                                                Abs.FunctionStatement pos id params ty stats -> let parameters = getParamList params in
+                                                                                                                    let fty = getTypeFromPrimitive ty in
+                                                                                                                        (let fid = getIdFromIdent id in 
+                                                                                                                            (insertWith (++) fid [Function fty pos parameters] env,err ++ checkErr env stat))
+                                                                -- generic case
+                                                                _ -> (env,err) 
 updateEnv node@(Abs.EmptyStatement  pos) env err = (env,err)
 
 updateEnvFromList :: [Prelude.String] -> Env -> Posn -> Prelude.String -> Type -> Env
@@ -93,8 +92,16 @@ updateEnvFromList (x:xs) env pos varMode ty = updateEnvFromList xs (insertWith (
 --- FUNCTIONS FOR GETTING INFOS FROM FUNCTIONS-DECLARATIONS FOR ENV ENTRY ---
 -----------------------------------------------------------------------------
 
-getFunId :: Abs.Ident Posn -> Prelude.String
-getFunId (Abs.Ident s _) = s 
+getIdFromIdent :: Abs.Ident Posn -> Prelude.String
+getIdFromIdent (Abs.Ident s _) = s 
+
+getParamList :: Abs.PARAMETERS Posn -> [Parameter]
+getParamList (Abs.ParameterList pos param params) = let p = buildParam param in [p] ++ getParamList params
+getParamList (Abs.ParameterListSingle pos param)  = let p = buildParam param in [p]
+getParamList (Abs.ParameterListEmpty pos)         = []
+
+buildParam :: Abs.PARAMETER Posn -> Parameter
+buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromPrimitive ty) pos "_mode_" (getIdFromIdent id)) 
 
 -----------------------------------------------------------------------
 --- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY ---
