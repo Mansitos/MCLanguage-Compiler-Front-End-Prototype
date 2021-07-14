@@ -309,8 +309,7 @@ executePrimitiveType node@(Abs.PrimitiveTypeChar pos) env = Abs.PrimitiveTypeCha
 executePrimitiveType node@(Abs.TypeArray pos primitivetype) env = Abs.TypeArray (checkPrimitiveType node env) (executePrimitiveType primitivetype env)
 
 executeB :: Abs.B Posn -> Env -> Abs.B TCheckResult
-executeB node@(Abs.BlockStatement pos statements) env = let newEnv = updateEnv statements env [] in 
-                                                                 Abs.BlockStatement (checkTypeB node env) (executeStatements statements (first newEnv))
+executeB node@(Abs.BlockStatement pos statements) env = Abs.BlockStatement (checkTypeB node env) (executeStatements statements env)
 
 executeReturnStatement :: Abs.RETURNSTATEMENT Posn -> Env -> Abs.RETURNSTATEMENT TCheckResult
 executeReturnStatement node@(Abs.ReturnState pos retExp) env = Abs.ReturnState (checkTypeReturnState node env) (executeExpression retExp env)

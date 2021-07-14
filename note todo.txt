@@ -1,3 +1,6 @@
-parametri?
+parametri nelle func env entry - done
+chiamate ricorsive - done
 
-chiamate ricorsive 
+---
+
+if then con control decl --> il tipo esplicito? l'env da aggiornare?

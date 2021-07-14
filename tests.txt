@@ -37,3 +37,28 @@ var z : int;
 var u : int;
 
 
+
+
+
+var x : int;
+{
+  var y : int;
+  y;
+  x;
+  {
+    y;
+    var z:char;
+  }
+  x;
+  z;
+  }
+x;
+
+
+if true then var x : int;
+x;
+
+
+if var x = 3+2 then var x:int;
+
+
