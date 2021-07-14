@@ -262,6 +262,11 @@ NAMEDEXPRESSIONLIST : NAMEDEXPRESSION { Abs.NamedExpressionList (Abs.namedexpres
 NAMEDEXPRESSION :: { Abs.NAMEDEXPRESSION Posn }
 NAMEDEXPRESSION : EXPRESSION { Abs.NamedExpression (Abs.expression_content $1) $1 }
 
+EXPRESSIONS :: {Abs.EXPRESSIONS Posn}
+EXPRESSIONS : EXPRESSION ',' EXPRESSIONS { Abs.Expressions (Abs.expression_content $1) $1 $3 }
+            | EXPRESSION  { Abs.Expression (Abs.expression_content $1) $1 }
+            | {- empty -} {Abs.ExpressionEmpty (Pn 0 0 0) }
+
 EXPRESSION :: { Abs.EXPRESSION Posn }
 EXPRESSION : Ident ARRAYINDEXELEMENT { Abs.ExpressionIdent (Abs.contentId $1) $1 $2 }
            | Integer { Abs.ExpressionInteger (Abs.contentInt $1) $1 }
@@ -273,6 +278,7 @@ EXPRESSION : Ident ARRAYINDEXELEMENT { Abs.ExpressionIdent (Abs.contentId $1) $1
            | UNARYOP EXPRESSION { Abs.ExpressionUnary (Abs.unaryop_content $1) $1 $2 }
            | DEFAULT ':' PRIMITIVETYPE { Abs.ExpressionCast (Abs.default_content $1) $1 $3 }
            | '(' EXPRESSION ')' { Abs.ExpressionBracket (tokenPosn $1) $2 }
+           | Ident '(' EXPRESSIONS ')' { Abs.ExpressionCall (Abs.contentId $1) $1 $3 }
            
 DEFAULT :: { Abs.DEFAULT Posn }
 DEFAULT : Ident ARRAYINDEXELEMENT { Abs.ExpressionIdentD (Abs.contentId $1) $1 $2 }

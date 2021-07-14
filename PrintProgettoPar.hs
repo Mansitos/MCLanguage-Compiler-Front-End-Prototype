@@ -303,6 +303,12 @@ instance Print (AbsProgettoPar.NAMEDEXPRESSION attr) where
   prt i = \case
     AbsProgettoPar.NamedExpression _ expression -> prPrec i 0 (concatD [prt 0 expression])
 
+instance Print (AbsProgettoPar.EXPRESSIONS attr) where
+  prt i = \case
+    AbsProgettoPar.Expressions _ expression expressions -> prPrec i 0 (concatD [prt 0 expression,doc (showString ","), prt 0 expressions])
+    AbsProgettoPar.Expression _ expression -> prPrec i 0 (concatD [prt 0 expression])
+    AbsProgettoPar.ExpressionEmpty _ -> prPrec i 0 (concatD [])
+
 instance Print (AbsProgettoPar.EXPRESSION attr) where
   prt i = \case
     AbsProgettoPar.ExpressionIdent _ id_ arrayindexelement -> prPrec i 0 (concatD [prt 0 id_, prt 0 arrayindexelement])
@@ -315,6 +321,7 @@ instance Print (AbsProgettoPar.EXPRESSION attr) where
     AbsProgettoPar.ExpressionUnary _ unaryop expression -> prPrec i 0 (concatD [prt 0 unaryop, prt 0 expression])
     AbsProgettoPar.ExpressionCast _ default_ primitivetype -> prPrec i 0 (concatD [prt 0 default_, doc (showString ":"), prt 0 primitivetype])
     AbsProgettoPar.ExpressionBracket _ expression -> prPrec i 0 (concatD [doc (showString "("), prt 0 expression, doc (showString ")")])
+    AbsProgettoPar.ExpressionCall _ id_ expressions -> prPrec i 0 (concatD [prt 0 id_,doc (showString "("), prt 0 expressions,doc (showString ")")])
 
 instance Print (AbsProgettoPar.DEFAULT attr) where
   prt i = \case

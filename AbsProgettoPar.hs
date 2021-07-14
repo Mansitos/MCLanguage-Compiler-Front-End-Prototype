@@ -191,6 +191,12 @@ data NAMEDEXPRESSIONLIST a
 data NAMEDEXPRESSION a = NamedExpression {namedexpression_content::a, namedexpression_expression::(EXPRESSION a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
+data EXPRESSIONS a
+    =  Expressions {expressions_content::a, expressions_expression::(EXPRESSION a), expressions_expressions::(EXPRESSIONS a)}
+    |  Expression {expressions_content::a,expressions_expression::(EXPRESSION a)}
+    |  ExpressionEmpty {expressions_content::a}
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
 data EXPRESSION a
     = ExpressionIdent {expression_content::a, expression_ident::(Ident a), expression_arrayindexelement::(ARRAYINDEXELEMENT a)}
     | ExpressionInteger {expression_content::a, expression_integer::(AbsProgettoPar.Integer a)}
@@ -202,6 +208,7 @@ data EXPRESSION a
     | ExpressionUnary {expression_content::a, expression_unaryop::(UNARYOP a), expression_expression::(EXPRESSION a)}
     | ExpressionCast {expression_content::a, expression_default::(DEFAULT a), expression_primitivetype::(PRIMITIVETYPE a)}
     | ExpressionBracket {expression_content::a, expression_expression::(EXPRESSION a)}
+    | ExpressionCall {expression_content::a, expression_ident::(Ident a), expression_expressions::(EXPRESSIONS a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data DEFAULT a

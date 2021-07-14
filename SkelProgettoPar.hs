@@ -209,6 +209,12 @@ transNAMEDEXPRESSION :: Show attr => (AbsProgettoPar.NAMEDEXPRESSION attr) -> Re
 transNAMEDEXPRESSION x = case x of
   AbsProgettoPar.NamedExpression _ expression -> failure x
 
+transEXPRESSIONS :: Show attr => (AbsProgettoPar.EXPRESSIONS attr) -> Result
+transEXPRESSIONS x = case x of
+  AbsProgettoPar.Expressions _ expression expressions -> failure x
+  AbsProgettoPar.Expression _ expression -> failure x
+  AbsProgettoPar.ExpressionEmpty _ -> failure x
+
 transEXPRESSION :: Show attr => (AbsProgettoPar.EXPRESSION attr) -> Result
 transEXPRESSION x = case x of
   AbsProgettoPar.ExpressionIdent _ ident arrayindexelement -> failure x
@@ -221,6 +227,7 @@ transEXPRESSION x = case x of
   AbsProgettoPar.ExpressionUnary _ unaryop expression -> failure x
   AbsProgettoPar.ExpressionCast _ default_ primitivetype -> failure x
   AbsProgettoPar.ExpressionBracket _ expression -> failure x
+  AbsProgettoPar.ExpressionCall _ ident expressions -> failure x
 
 transDEFAULT :: Show attr => (AbsProgettoPar.DEFAULT attr) -> Result
 transDEFAULT x = case x of
