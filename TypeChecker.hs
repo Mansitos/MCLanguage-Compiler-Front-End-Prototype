@@ -331,6 +331,11 @@ executeNamedExpressionList node@(Abs.NamedExpressionAssigned pos id expr) env = 
 executeNamedExpression :: Abs.NAMEDEXPRESSION Posn -> Env -> Abs.NAMEDEXPRESSION TCheckResult
 executeNamedExpression node@(Abs.NamedExpression pos expr) env = Abs.NamedExpression (checkTypeNamedExpression node env) (executeExpression expr env)
 
+executeExpressions :: Abs.EXPRESSIONS Posn -> Env -> Abs.EXPRESSIONS TCheckResult
+executeExpressions node@(Abs.Expressions pos exp exps) env = Abs.Expressions (checkTypeExpressions node env) (executeExpression exp env) (executeExpressions exps env)
+executeExpressions node@(Abs.Expression pos exp) env = Abs.Expression (checkTypeExpressions node env) (executeExpression exp env)
+executeExpressions node@(Abs.ExpressionEmpty pos) env = Abs.ExpressionEmpty (checkTypeExpressions node env)
+
 executeExpression :: Abs.EXPRESSION Posn -> Env -> Abs.EXPRESSION TCheckResult
 executeExpression node@(Abs.ExpressionInteger pos value) env = Abs.ExpressionInteger (checkTypeExpression node env) (executeInteger value env)
 executeExpression node@(Abs.ExpressionBoolean pos value) env = Abs.ExpressionBoolean (checkTypeExpression node env) (executeBoolean value env)
@@ -344,6 +349,7 @@ executeExpression node@(Abs.ExpressionBinary pos def binary exp) env = Abs.Expre
 executeExpression node@(Abs.ExpressionIdent pos id index) env = case index of
                                                                 Abs.ArrayIndexElementEmpty posIdx -> Abs.ExpressionIdent (checkTypeIdent id env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env)
                                                                 Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdent (checkTypeIdent id env) (executeIdent id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))
+executeExpression node@(Abs.ExpressionCall pos id exps) env = Abs.ExpressionCall (checkTypeExpression node env) (executeIdent id env) (executeExpressions exps env) 
 
 executeUnaryOp :: Abs.UNARYOP Posn -> Env -> Abs.UNARYOP TCheckResult
 executeUnaryOp node@(Abs.UnaryOperationPositive pos) env = Abs.UnaryOperationPositive (checkTypeUnaryOp node env)
@@ -542,6 +548,11 @@ checkTypeReturnState node@(Abs.ReturnStateEmpty pos ) env = case Data.Map.lookup
 checkTypeExpressionStatement :: Abs.EXPRESSIONSTATEMENT Posn -> Env -> TCheckResult
 checkTypeExpressionStatement node@(Abs.VariableExpression pos id) env = checkTypeIdent id env
 
+checkTypeExpressions :: Abs.EXPRESSIONS Posn -> Env -> TCheckResult
+checkTypeExpressions node@(Abs.Expressions pos exp exps) env = TError ["exps"]
+checkTypeExpressions node@(Abs.Expression pos exp) env = TError ["exp"]
+checkTypeExpressions node@(Abs.ExpressionEmpty pos) env = TError ["empty"]
+
 checkTypeExpression :: Abs.EXPRESSION Posn -> Env -> TCheckResult
 checkTypeExpression node@(Abs.ExpressionInteger pos value) env = checkTypeInteger value env
 checkTypeExpression node@(Abs.ExpressionBoolean pos value) env = checkTypeBoolean value env
@@ -553,6 +564,7 @@ checkTypeExpression node@(Abs.ExpressionCast pos def tipo) env = TError ["castin
 checkTypeExpression node@(Abs.ExpressionUnary pos unary exp) env = checkTypeUnaryOp unary env
 checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = checkTypeBinaryOp binary env
 checkTypeExpression node@(Abs.ExpressionIdent pos value index) env = checkTypeIdent value env --gestire index
+checkTypeExpression node@(Abs.ExpressionCall pos id exps) env = checkTypeExpressions exps env --gestire compatibilità exps con id
 
 checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
 checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TError ["positive"] --da rivedere
