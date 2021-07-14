@@ -51,6 +51,7 @@ instance Show TCheckResult where
 --- ENV DATA TYPES FUNCTIONS ---
 --------------------------------
 
+-- Returns the type of a EnvEntry of the Environment -> Variable or Function entry
 getTypeEnvEntry :: [EnvEntry] -> Type
 getTypeEnvEntry [] = B_type Type_Void
 getTypeEnvEntry (x:xs) = case x of 
@@ -58,12 +59,18 @@ getTypeEnvEntry (x:xs) = case x of
                             (Function t pos parameters) -> t
                             _ -> B_type Type_Void
 
+-- Returns the Env from a Map (Env,Errors) entry
 first :: (Env,[Prelude.String]) -> Env
 first (f,s) = f
 
+-- Returns type checker Errors from a Map (Env,Errors) entry
 second :: (Env,[Prelude.String]) -> [Prelude.String]
 second (f,s) = s
 
+-- Called when an environment update is needed.
+-- It creates the right new env-entry when called with different types of statements
+-- Example: if called with a "Abs node of type funciton statements" it creates a new env-entry for that function,
+--          this is done by calling the required functions for getting the required infos for the entry: id, type, etc.
 updateEnv :: (Abs.STATEMENTS Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
 updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                 -- Variables
@@ -71,7 +78,7 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                                                                          (let varMode = getVarMode varType in -- getting variable mode (const etc.)
                                                                                                                             (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
                                                                                                                                 (updateEnvFromList ids env pos varMode ty,err ++ checkErr env stat))) -- updating env for each declared var.
-                                                                -- Functions and Procedures (TODO PARAMETERS)
+                                                                -- Functions and Procedures
                                                                 Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
                                                                                                                     ((insertWith (++) fid [Function (B_type Type_Void) pos parameters] env,err ++ checkErr env stat))
@@ -88,18 +95,24 @@ updateEnvFromList :: [Prelude.String] -> Env -> Posn -> Prelude.String -> Type -
 updateEnvFromList [] env pos varMode ty = env
 updateEnvFromList (x:xs) env pos varMode ty = updateEnvFromList xs (insertWith (++) x [Variable ty pos varMode] env) pos varMode ty
 
+checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
+checkErr env stat = []   
+
 -----------------------------------------------------------------------------
 --- FUNCTIONS FOR GETTING INFOS FROM FUNCTIONS-DECLARATIONS FOR ENV ENTRY ---
 -----------------------------------------------------------------------------
 
+-- Given an Ident node of the ABS, returns the string of the identifier
 getIdFromIdent :: Abs.Ident Posn -> Prelude.String
 getIdFromIdent (Abs.Ident s _) = s 
 
+-- Given a Parameters node of the ABS, returns a list of Parameters (constructor for the ENV)
 getParamList :: Abs.PARAMETERS Posn -> [Parameter]
 getParamList (Abs.ParameterList pos param params) = let p = buildParam param in [p] ++ getParamList params
 getParamList (Abs.ParameterListSingle pos param)  = let p = buildParam param in [p]
 getParamList (Abs.ParameterListEmpty pos)         = []
 
+-- Given a Parameter node of the ABS, return a single built Parameter data type (constructor for the ENV)
 buildParam :: Abs.PARAMETER Posn -> Parameter
 buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromPrimitive ty) pos "_mode_" (getIdFromIdent id)) 
 
@@ -107,6 +120,7 @@ buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromPrimit
 --- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY ---
 -----------------------------------------------------------------------
 
+-- Given a VariableType node of the ABS, returns a string indicating the type of variable
 getVarMode :: Abs.VARIABLETYPE Posn -> Prelude.String
 getVarMode (Abs.VariableTypeParam _) = "param"
 getVarMode (Abs.VariableTypeConst _) = "const"
@@ -120,16 +134,20 @@ getVarType (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ _ ty _)) 
 getTypePart :: Abs.TYPEPART Posn -> Type
 getTypePart (Abs.TypePart _ typeExpr) = getTypeExpr typeExpr
 
+-- Given a TypeExpression node of the abs, execute the right getType function for obtaining the Type
 getTypeExpr :: Abs.TYPEEXPRESSION Posn -> Type
 getTypeExpr (Abs.TypeExpression _ primitive) = getTypeFromPrimitive primitive
 getTypeExpr (Abs.TypeExpressionArraySimple _ _ primitive) = getTypeFromPrimitive primitive
 getTypeExpr (Abs.TypeExpressionArray _ _ primitive) = getTypeFromPrimitive primitive
 getTypeExpr (Abs.TypeExpressionPointer _ primitive pointer) = Pointer (getTypeFromPrimitive primitive) (checkPointerDepth pointer)
 
+-- Given a Pointer node of the ABS, it counts the depth (how much pointers '*' there are) of that pointer
+-- Example: var x:int***** -> depth: 5
 checkPointerDepth :: Abs.POINTER Posn -> Prelude.Integer
 checkPointerDepth (Abs.PointerSymbol _ p) = 1 + checkPointerDepth p
 checkPointerDepth (Abs.PointerSymbolSingle _) = 1
 
+-- Get a PrimitiveType node of the ABS, returns the correct Type
 getTypeFromPrimitive :: Abs.PRIMITIVETYPE Posn -> Type
 getTypeFromPrimitive (Abs.PrimitiveTypeVoid _) = (B_type Type_Void)
 getTypeFromPrimitive (Abs.PrimitiveTypeBool _) = (B_type Type_Boolean)
@@ -139,16 +157,14 @@ getTypeFromPrimitive (Abs.PrimitiveTypeString _) = (B_type Type_String)
 getTypeFromPrimitive (Abs.PrimitiveTypeChar _) = (B_type Type_Char)
 getTypeFromPrimitive (Abs.TypeArray _ prim) =  (Type.Array (getTypeFromPrimitive prim))
 
+-- Get a VarDecList (list of vars declarations) of the ABS, returns a list of strings, where each element is the id of the vars
 getVariableDeclStatNames :: Abs.VARDECLIST Posn -> [Prelude.String]
 getVariableDeclStatNames (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ id _ _)) = getIdList id
 
 getIdList :: Abs.IDENTLIST Posn -> [Prelude.String]
 getIdList (Abs.IdentifierList _ (Abs.Ident s _) identlist) = [s] ++ getIdList identlist
 getIdList (Abs.IdentifierSingle _ (Abs.Ident s _)) = [s] 
-
-checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
-checkErr env stat = []                    
-
+             
 ---------------------------
 --- EXECUTION FUNCTIONS ---
 ---------------------------
