@@ -1,11 +1,13 @@
-{
 var x:int = 50;
+{
 var y:char = 100;
-var z:string = "ciaone";
+x;
 
 if(x > 10) then {x=100;}
 
 if(z == "ciaone") then print("miao");
+
+function print(input:string):string { input; }
 
 while(true) do print("deadlock");
 }
@@ -13,8 +15,6 @@ while(true) do print("deadlock");
 {{x=100;}}
 
 for x in x<100 do {x+=1;}
-
-
 
 
 
@@ -55,7 +55,7 @@ var x : int;
 x;
 
 
-if true then var x : int;
+if true then {var x : int;x;}
 x;
 
 

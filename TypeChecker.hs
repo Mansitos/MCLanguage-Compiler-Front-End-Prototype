@@ -548,6 +548,7 @@ checkTypeReturnState node@(Abs.ReturnStateEmpty pos ) env = case Data.Map.lookup
 
 checkTypeExpressionStatement :: Abs.EXPRESSIONSTATEMENT Posn -> Env -> TCheckResult
 checkTypeExpressionStatement node@(Abs.VariableExpression pos id) env = checkTypeIdent id env
+checkTypeExpressionStatement node@(Abs.CallExpression pos callexpr) env = checkTypeCallExpression callexpr env
 
 checkTypeExpressions :: Abs.EXPRESSIONS Posn -> Env -> TCheckResult
 checkTypeExpressions node@(Abs.Expressions pos exp exps) env = TError ["exps"]

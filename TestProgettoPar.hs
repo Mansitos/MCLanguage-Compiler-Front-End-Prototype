@@ -17,7 +17,7 @@ import System.Environment (getArgs)
 import System.Exit        (exitFailure, exitSuccess)
 import Control.Monad      (when)
 
-import AbsProgettoPar   as Abs (S (StartCode), STATEMENTS (ListStatements, EmptyStatement), STATEMENT (..), B (BlockStatement), ELSESTATEMENT (..), CONDITIONALSTATE(..)) 
+import AbsProgettoPar   as Abs (S (StartCode), STATEMENTS (ListStatements, EmptyStatement), DOSTATEMENT (..), FORALLSTATEMENT (..), STATEMENT (..), B (BlockStatement), FORSTATEMENT (..), ELSESTATEMENT (..), CONDITIONALSTATE(..), WHILESTATEMENT (..)) 
 import LexProgettoPar   (Token, Posn)
 import ParProgettoPar   (pS, myLexer)
 import PrintProgettoPar (Print, printTree)
@@ -48,14 +48,14 @@ run v p s =
     Right tree -> do
       putStrLn "\nParse Successful!"
       Main.showTree v tree
-      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
-        putStrLn (show typecheckRes)
 
+      -- Naive brutal Abs print with Tcheck result (too heavy syntax)
+      -- let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
+      --  putStrLn (show typecheckRes)
+      
       putStrLn "\n\n[Statements TypeChecker Result]\n"
-
-      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in
+      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in  
         putStrLn (showTypeCheckResult typecheckRes)
-
       exitSuccess  
 
   where
@@ -74,30 +74,54 @@ showTypeCheckResultStatements (Abs.ListStatements result statement statements) s
                                                                                                (Abs.FunctionStatement res id params ty stats) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
                                                                                                (Abs.Statement res (Abs.BlockStatement _ stats)) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)  -- block case
                                                                                                (Abs.ConditionalStatement res conditionalState) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
+                                                                                               (Abs.WhileDoStatement res whilestat) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
+                                                                                               (Abs.DoWhileStatement res dostat) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
+                                                                                               (Abs.ForStatement res forstats) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
+                                                                                               (Abs.ForAllStatement res forallstats) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
                                                                                                _ -> case statements of
                                                                                                       (Abs.EmptyStatement result) -> ""
                                                                                                       _ -> (showTypeCheckResultStatements statements spacer)
 showTypeCheckResultStatements (Abs.EmptyStatement result) spacer = ""   -- gestione empty
 
 showTypeCheckResultStatement :: (Show attr) => (Abs.STATEMENT attr) -> String -> String
-showTypeCheckResultStatement (Abs.ProcedureStatement res id params stats) spacer = showTypeCheckResultStatements stats (spacer ++ "---")
-showTypeCheckResultStatement (Abs.FunctionStatement res id params ty stats) spacer = showTypeCheckResultStatements stats (spacer ++ "---")
-showTypeCheckResultStatement (Abs.Statement res (Abs.BlockStatement _ stats)) spacer = showTypeCheckResultStatements stats (spacer ++ "---") -- block
-showTypeCheckResultStatement (Abs.ConditionalStatement res conditionalState) spacer = case conditionalState of 
-                                                                                        -- with else
+showTypeCheckResultStatement (Abs.ProcedureStatement res id params stats) spacer = showTypeCheckResultStatements stats (spacer ++ "---") -- procedure case
+showTypeCheckResultStatement (Abs.FunctionStatement res id params ty stats) spacer = showTypeCheckResultStatements stats (spacer ++ "---") -- function case
+showTypeCheckResultStatement (Abs.Statement res (Abs.BlockStatement _ stats)) spacer = showTypeCheckResultStatements stats (spacer ++ "---") -- block case
+showTypeCheckResultStatement (Abs.ConditionalStatement res conditionalState) spacer = case conditionalState of  -- if-then-else case
+                                                                                        -- with else statements
                                                                                         (Abs.ConditionalStatementSimpleThen res _ stat (Abs.ElseState r elsestat)) -> (showTypeCheckResultStatement stat (spacer ++ "---")) ++ (showTypeCheckResultStatement elsestat (spacer ++ "---"))
                                                                                         (Abs.ConditionalStatementSimpleWThen res _ (Abs.BlockStatement _ bstats) (Abs.ElseState r elsestat)) -> (showTypeCheckResultStatements bstats (spacer ++ "---")) ++ (showTypeCheckResultStatement elsestat (spacer ++ "---"))
                                                                                         (Abs.ConditionalStatementCtrlThen res _ stat (Abs.ElseState r elsestat)) -> (showTypeCheckResultStatement stat (spacer ++ "---")) ++ (showTypeCheckResultStatement elsestat (spacer ++ "---"))
                                                                                         (Abs.ConditionalStatementCtrlWThen res _ (Abs.BlockStatement _ bstats) (Abs.ElseState r elsestat)) -> (showTypeCheckResultStatements bstats (spacer ++ "---")) ++ (showTypeCheckResultStatement elsestat (spacer ++ "---"))
-                                                                                        -- without else
+                                                                                        -- without else statements
                                                                                         (Abs.ConditionalStatementSimpleThen res _ stat _) -> (showTypeCheckResultStatement stat (spacer ++ "---")) 
-                                                                                        (Abs.ConditionalStatementSimpleWThen res _ (Abs.BlockStatement _ bstats)_) -> (showTypeCheckResultStatements bstats (spacer ++ "---")) 
+                                                                                        (Abs.ConditionalStatementSimpleWThen res _ (Abs.BlockStatement _ bstats) _) -> (showTypeCheckResultStatements bstats (spacer ++ "---")) 
                                                                                         (Abs.ConditionalStatementCtrlThen res _ stat _) -> (showTypeCheckResultStatement stat (spacer ++ "---")) 
                                                                                         (Abs.ConditionalStatementCtrlWThen res _ (Abs.BlockStatement _ bstats) _) -> (showTypeCheckResultStatements bstats (spacer ++ "---")) 
-                                                                                        _ -> "asd"
-showTypeCheckResultStatement (Abs.VariableDeclarationStatement res _ _) spacer = "\n" ++ spacer ++ show res
+showTypeCheckResultStatement (Abs.WhileDoStatement res whilestat) spacer = case whilestat of -- while statements
+                                                                                        (Abs.WhileStateSimpleDo res _ stat) -> (showTypeCheckResultStatement stat (spacer ++ "---")) 
+                                                                                        (Abs.WhileStateSimpleWDo res _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---")) 
+                                                                                        (Abs.WhileStateCtrlDo res _ stat) -> (showTypeCheckResultStatement stat (spacer ++ "---")) 
+                                                                                        (Abs.WhileStateCtrlWDo res _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---"))                                                              
+showTypeCheckResultStatement (Abs.DoWhileStatement res (Abs.DoWhileState _ dostat _)) spacer = (showTypeCheckResultStatement dostat (spacer ++ "---")) -- do-while statements
+showTypeCheckResultStatement (Abs.ForStatement res forstats) spacer = case forstats of -- for statements
+                                                                                        (Abs.ForStateIndexDo res _ _ stat) -> (showTypeCheckResultStatement stat (spacer ++ "---"))
+                                                                                        (Abs.ForStateIndexWDo res _ _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---"))                                                              
+                                                                                        (Abs.ForStateExprDo res _ stat) -> (showTypeCheckResultStatement stat (spacer ++ "---"))
+                                                                                        (Abs.ForStateExprWDo res _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---"))                                                              
+showTypeCheckResultStatement (Abs.ForAllStatement res forallstats) spacer = case forallstats of -- forall statements
+                                                                                        (Abs.ForAllStateIndexDo res _ _ stat) -> (showTypeCheckResultStatement stat (spacer ++ "---"))
+                                                                                        (Abs.ForAllStateIndexWDo res _ _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---"))
+                                                                                        (Abs.ForAllStateExprDo res _ stat) -> (showTypeCheckResultStatement stat (spacer ++ "---"))
+                                                                                        (Abs.ForAllStateExprWDo res _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---"))
+-- Non-recursive cases of statements (no child statements)
+showTypeCheckResultStatement (Abs.VariableDeclarationStatement res _ _) spacer  = "\n" ++ spacer ++ show res -- var. decl. case
+showTypeCheckResultStatement (Abs.ExpressionStatement res _) spacer             = "\n" ++ spacer ++ show res -- expr. case
+showTypeCheckResultStatement (Abs.AssignmentStatement res _ _ _) spacer         = "\n" ++ spacer ++ show res -- assignment case
+showTypeCheckResultStatement (Abs.BreakStatement res) spacer                    = "\n" ++ spacer ++ show res -- break case
+showTypeCheckResultStatement (Abs.ContinueStatement res ) spacer                = "\n" ++ spacer ++ show res -- continue case
+showTypeCheckResultStatement (Abs.ReturnStatement res _) spacer                 = "\n" ++ spacer ++ show res -- return case
                                                                                         
-
 --------------------------------------------------------------------------------
 --- Preprocessing of the input for multiple pointers compatibility "*******" ---
 --------------------------------------------------------------------------------
