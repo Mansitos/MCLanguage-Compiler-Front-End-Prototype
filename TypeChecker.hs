@@ -28,6 +28,12 @@ data TCheckResult
     = TResult {environment::Env, t_type::Type, t_position::LexProgettoPar.Posn}
     | TError {errors::[Prelude.String]}
 
+--searchFunction [] (Pn abs row col) [Function t (Pn absf rowf colf) mode] =
+--searchFunction [] (Pn abs row col) [] = 
+--searchFunction ((x1,x2):xs) (Pn abs row col) zs= case x2 of
+--                                                    Variable t pos mode -> searchFunction xs (Pn abs row col) zs
+--                                                    Function t pos mode -> searchFunction xs (Pn abs row col) [Function t pos mode]
+
 ----------------------------------------
 --- SHOW ISTANCES FOR ENV DATA TYPES ---
 ----------------------------------------
@@ -46,6 +52,32 @@ instance Show TCheckResult where
         TypeChecker.TResult env ty pos  -> show env ++ "|" ++ show ty ++ "|" ++ show pos
         TypeChecker.TError errs         -> "Errors: " ++ show errs
 
+
+checkCompatibility :: TCheckResult -> TCheckResult -> Bool
+checkCompatibility (TError _) _ = False
+checkCompatibility _ (TError _) = False
+checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
+                                                                    B_type Type_Void -> case tC of
+                                                                                          B_type Type_Void -> True
+                                                                                          _ -> False 
+                                                                    B_type Type_Integer -> case tC of
+                                                                                          B_type Type_Integer -> True
+                                                                                          B_type Type_Real -> True
+                                                                                          _ -> False 
+                                                                    B_type Type_Real -> case tC of
+                                                                                          --B_type Type_Integer -> True
+                                                                                          B_type Type_Real -> True
+                                                                                          _ -> False 
+                                                                    B_type Type_Boolean  -> case tC of
+                                                                                          B_type Type_Boolean  -> True
+                                                                                          _ -> False 
+                                                                    B_type Type_Char  -> case tC of
+                                                                                          B_type Type_Char  -> True
+                                                                                          _ -> False 
+                                                                    B_type Type_String  -> case tC of
+                                                                                          B_type Type_String  -> True
+                                                                                          _ -> False
+                                                                    _ -> False 
 
 --------------------------------
 --- ENV DATA TYPES FUNCTIONS ---
@@ -463,7 +495,7 @@ checkTypeStatement node@(Abs.ContinueStatement pos) env = checkTypeContinueState
 checkTypeStatement node@(Abs.ReturnStatement pos ret) env = checkTypeReturnStatement node env
 checkTypeStatement node@(Abs.Statement pos b) env = checkTypeB b env
 checkTypeStatement node@(Abs.ExpressionStatement pos exp) env = checkTypeExpressionStatement exp env
-checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = checkTypeExpression exp env --aggiungere controllo compatibilità lval con exp
+checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = let expTCheck= checkTypeExpression exp env in if(checkCompatibility (checkTypeLvalueExpression lval env) expTCheck) then expTCheck else TError ["incompatible type at "++show pos]
 checkTypeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = checkTypeType tipo env
 checkTypeStatement node@(Abs.ConditionalStatement pos condition) env = checkTypeCondition condition env
 checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhile whileState env
@@ -542,7 +574,7 @@ checkTypeReturnState :: Abs.RETURNSTATEMENT Posn -> Env -> TCheckResult
 checkTypeReturnState node@(Abs.ReturnState pos retExp) env = case Data.Map.lookup "return" env of
     Just result -> checkTypeExpression retExp env
     Nothing -> TError ["Unexpected return at " ++ (show pos)]
-checkTypeReturnState node@(Abs.ReturnStateEmpty pos ) env = case Data.Map.lookup "return" env of
+checkTypeReturnState node@(Abs.ReturnStateEmpty pos ) env = case Data.Map.lookup "return" env of--(searchFunction (Data.Map.toList env) pos []) of
     Just result -> TResult env (B_type Type_Void) pos
     Nothing -> TError ["Unexpected return at " ++ (show pos)]
 
@@ -562,33 +594,33 @@ checkTypeExpression node@(Abs.ExpressionChar pos value) env = checkTypeChar valu
 checkTypeExpression node@(Abs.ExpressionString pos value) env = checkTypeString value env
 checkTypeExpression node@(Abs.ExpressionReal pos value) env = checkTypeReal value env
 checkTypeExpression node@(Abs.ExpressionBracket pos exp) env = checkTypeExpression exp env
-checkTypeExpression node@(Abs.ExpressionCast pos def tipo) env = TError ["casting"] --da rivedere
-checkTypeExpression node@(Abs.ExpressionUnary pos unary exp) env = checkTypeUnaryOp unary env
-checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = checkTypeBinaryOp binary env
+checkTypeExpression node@(Abs.ExpressionCast pos def tipo) env = let tipoTCheck = checkPrimitiveType tipo env in if(checkCompatibility (checkTypeDefault def env) tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++show pos]
+checkTypeExpression node@(Abs.ExpressionUnary pos unary exp) env = let unaryTCheck = checkTypeUnaryOp unary env in if(checkCompatibility unaryTCheck (checkTypeExpression exp env)) then unaryTCheck else TError ["Incompatibility type for unary operator at "++show pos]
+checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = let binaryTCheck = checkTypeBinaryOp binary env in if(checkCompatibility (checkTypeDefault def env) (checkTypeExpression exp env)) then binaryTCheck else TError ["Incompatibility type for binary operator at "++show pos]
 checkTypeExpression node@(Abs.ExpressionIdent pos value index) env = checkTypeIdent value env --gestire index
 checkTypeExpression node@(Abs.ExpressionCall pos id exps) env = checkTypeExpressions exps env --gestire compatibilità exps con id
 
 checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
-checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TError ["positive"] --da rivedere
-checkTypeUnaryOp node@(Abs.UnaryOperationNegative pos) env = TError ["negative"] --da rivedere
-checkTypeUnaryOp node@(Abs.UnaryOperationNot pos) env = TError ["not"] --da rivedere
+checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type Type_Real) pos
+checkTypeUnaryOp node@(Abs.UnaryOperationNegative pos) env = TResult env (B_type Type_Real) pos
+checkTypeUnaryOp node@(Abs.UnaryOperationNot pos) env = TResult env (B_type Type_Boolean) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TError ["pointer"] --da rivedere
 
 checkTypeBinaryOp :: Abs.BINARYOP Posn -> Env -> TCheckResult
-checkTypeBinaryOp node@(Abs.BinaryOperationPlus pos) env = TError ["plus"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationMinus pos) env = TError ["minus"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationProduct pos) env = TError ["product"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationDivision pos) env = TError ["division"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationModule pos) env = TError ["module"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationPower pos) env = TError ["power"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationAnd pos) env = TError ["and"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationOr pos) env = TError ["or"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationEq pos) env = TError ["eq"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationNotEq pos) env = TError ["noteq"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationGratherEq pos) env = TError [">="] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationGrather pos) env = TError [">"] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationLessEq pos) env = TError ["<="] --da rivedere
-checkTypeBinaryOp node@(Abs.BinaryOperationLess pos) env = TError ["<"] --da rivedere
+checkTypeBinaryOp node@(Abs.BinaryOperationPlus pos) env = TResult env (B_type Type_Real) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationMinus pos) env = TResult env (B_type Type_Real) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationProduct pos) env = TResult env (B_type Type_Real) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationDivision pos) env = TResult env (B_type Type_Real) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationModule pos) env = TResult env (B_type Type_Real) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationPower pos) env = TResult env (B_type Type_Real) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationAnd pos) env = TResult env (B_type Type_Boolean) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationOr pos) env = TResult env (B_type Type_Boolean) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationEq pos) env = TResult env (B_type Type_Boolean) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationNotEq pos) env = TResult env (B_type Type_Boolean) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationGratherEq pos) env = TResult env (B_type Type_Boolean) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationGrather pos) env = TResult env (B_type Type_Boolean) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationLessEq pos) env = TResult env (B_type Type_Boolean) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationLess pos) env = TResult env (B_type Type_Boolean) pos
 
 
 checkTypeDefault :: Abs.DEFAULT Posn -> Env -> TCheckResult
