@@ -446,10 +446,10 @@ executeDefault node@(Abs.ExpressionIdentD pos id index) env = case index of
 executeLValue :: Abs.LVALUEEXPRESSION Posn -> Env -> Abs.LVALUEEXPRESSION TCheckResult
 executeLValue node@(Abs.LvalueExpression pos id ident) env = case ident of
                                                             Abs.ArrayIndexElementEmpty posIdx -> Abs.LvalueExpression (checkTypeLvalueExpression node env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env)
-                                                            Abs.ArrayIndexElement posIdx tipo -> Abs.LvalueExpression (checkTypeLvalueExpression node env) (executeIdent id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))
+                                                            Abs.ArrayIndexElement posIdx tipo -> Abs.LvalueExpression (checkTypeLvalueExpression node env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElement posIdx tipo ) env)
 executeLValue node@(Abs.LvalueExpressions pos id ident next) env = case ident of
-                                                            Abs.ArrayIndexElementEmpty posIdx -> Abs.LvalueExpressions (checkTypeLvalueExpression node env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env) (executeLValue next env)--aggiungere let newEnv
-                                                            Abs.ArrayIndexElement posIdx tipo -> Abs.LvalueExpressions (checkTypeLvalueExpression node env) (executeIdent id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))  (executeLValue next env)                --aggiungere let newEnv
+                                                            Abs.ArrayIndexElementEmpty posIdx -> Abs.LvalueExpressions (checkTypeLvalueExpression node env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env) (executeLValue next env)
+                                                            Abs.ArrayIndexElement posIdx tipo -> Abs.LvalueExpressions (checkTypeLvalueExpression node env) (executeIdent id env) (executeArrayIndexElement (Abs.ArrayIndexElement posIdx tipo ) env)  (executeLValue next env)                
                                                                                                 
 executeAssignOp :: Abs.ASSIGNOP Posn -> Env -> Abs.ASSIGNOP TCheckResult
 executeAssignOp node@(Abs.AssignOperationEq pos) env = Abs.AssignOperationEq (TResult env (B_type Type_Void) pos)
@@ -508,8 +508,8 @@ checkEmptyStatement :: Abs.STATEMENTS Posn -> Env -> TCheckResult
 checkEmptyStatement (Abs.EmptyStatement pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeLvalueExpression :: Abs.LVALUEEXPRESSION Posn -> Env -> TCheckResult
-checkTypeLvalueExpression node@(Abs.LvalueExpression pos id index) env = checkTypeIdent id env --da rivedere e modificare
-checkTypeLvalueExpression node@(Abs.LvalueExpressions pos id index next) env = checkTypeIdent id env --da rivedere e modificare e gestire next
+checkTypeLvalueExpression node@(Abs.LvalueExpression pos id index) env = checkTypeIdent id env 
+checkTypeLvalueExpression node@(Abs.LvalueExpressions pos id index next) env = if (checkCompatibility (checkTypeIdent id env) (checkTypeLvalueExpression next env)) then checkTypeIdent id env else TError ["not all ident have same type at "++show pos]
 
 checkArrayIndexElementEmpty :: Abs.ARRAYINDEXELEMENT Posn -> Env -> TCheckResult
 checkArrayIndexElementEmpty node@(Abs.ArrayIndexElementEmpty pos) env = TResult env (B_type Type_Void) pos --da rivedere
@@ -521,7 +521,7 @@ checkTypeStatement node@(Abs.ReturnStatement pos ret) env = checkTypeReturnState
 checkTypeStatement node@(Abs.Statement pos b) env = checkTypeB b env
 checkTypeStatement node@(Abs.ExpressionStatement pos exp) env = checkTypeExpressionStatement exp env
 checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = let expTCheck = checkTypeExpression exp env in if(checkCompatibility expTCheck (checkTypeLvalueExpression lval env)) then expTCheck else TError ["incompatible type at "++show pos]
-checkTypeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = checkTypeType tipo env
+checkTypeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = checkTypeVardec vardec env
 checkTypeStatement node@(Abs.ConditionalStatement pos condition) env = checkTypeCondition condition env
 checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhile whileState env
 checkTypeStatement node@(Abs.DoWhileStatement pos doState) env = checkTypeDo doState env
@@ -532,33 +532,34 @@ checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = T
 
 
 checkTypeCondition :: Abs.CONDITIONALSTATE Posn -> Env -> TCheckResult
-checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = TError ["if con then"]
-checkTypeCondition node@(Abs.ConditionalStatementSimpleWThen pos exp b elseState) env = TError ["if senza then"]
+checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for condition not is bool at "++show pos]
+checkTypeCondition node@(Abs.ConditionalStatementSimpleWThen pos exp b elseState) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for condition not is bool at "++show pos]
 checkTypeCondition node@(Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env = TError ["if con then e ctrl"] 
 checkTypeCondition node@(Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env = TError ["if senza then e con ctrl"]
 
 checkTypeElseState :: Abs.ELSESTATEMENT Posn -> Env -> TCheckResult
-checkTypeElseState node@(Abs.ElseState pos state) env = TError ["else non empty"] --non sicuri se diretto o bisogna andare sul figlio
-checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TError ["else empty"]
+checkTypeElseState node@(Abs.ElseState pos state) env = checkTypeStatement state env -- ???? da chiamare o usare void
+checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeCtrlState :: Abs.CTRLDECSTATEMENT Posn -> Env -> TCheckResult
 checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id exp) env = TError ["ctrl const"] --da controllare come else
 checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id exp) env = TError ["ctrl var"] --da controllare come else
 
 checkTypeWhile :: Abs.WHILESTATEMENT Posn -> Env -> TCheckResult
-checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = TError ["while do"] --da controllare come else
-checkTypeWhile node@(Abs.WhileStateSimpleWDo pos exp b) env = TError ["while"] --da controllare come else
+checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for while guard not is bool at "++show pos]
+checkTypeWhile node@(Abs.WhileStateSimpleWDo pos exp b) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for while guard not is bool at "++show pos]
 checkTypeWhile node@(Abs.WhileStateCtrlDo pos ctrl state) env = TError ["while do ctrl"] --da controllare come else
 checkTypeWhile node@(Abs.WhileStateCtrlWDo pos ctrl b) env = TError ["while ctrl"] --da controllare come else
 
 checkTypeDo :: Abs.DOSTATEMENT Posn -> Env -> TCheckResult
-checkTypeDo node@(Abs.DoWhileState pos state exp) env = TError ["do "] --da controllare come else
+checkTypeDo node@(Abs.DoWhileState pos state exp) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for do while guard not is bool at "++show pos]
 
 checkTypeForState :: Abs.FORSTATEMENT Posn -> Env -> TCheckResult
-checkTypeForState node@(Abs.ForStateIndexDo pos index exp state) env = TError ["for idx do"] --da controllare come else
+checkTypeForState node@(Abs.ForStateIndexDo pos index exp state) env = TError ["for idx do"] --da controllare come else 
 checkTypeForState node@(Abs.ForStateIndexWDo pos index exp b) env = TError ["for idx "] --da controllare come else
 checkTypeForState node@(Abs.ForStateExprDo pos exp state) env = TError ["for exp do"] --da controllare come else
 checkTypeForState node@(Abs.ForStateExprWDo pos exp b) env = TError ["for exp"] --da controllare come else
+-- da modificare ???
 
 checkTypeIndexVarDec :: Abs.INDEXVARDEC Posn -> Env -> TCheckResult
 checkTypeIndexVarDec node@(Abs.IndexVarDeclaration pos id) env =  TError ["index var dec"] --da controllare come else
@@ -568,7 +569,7 @@ checkTypeForAllState node@(Abs.ForAllStateIndexDo pos index exp state) env = TEr
 checkTypeForAllState node@(Abs.ForAllStateIndexWDo pos index exp b) env = TError ["forall idx "] --da controllare come else
 checkTypeForAllState node@(Abs.ForAllStateExprDo pos exp state) env = TError ["forall exp do"] --da controllare come else
 checkTypeForAllState node@(Abs.ForAllStateExprWDo pos exp b) env = TError ["forall exp"] --da controllare come else
-
+-- da modificare ???
 
 checkTypeType :: Abs.VARIABLETYPE Posn -> Env -> TCheckResult
 checkTypeType node@(Abs.VariableTypeParam pos) env = TResult env (B_type Type_Void) pos
@@ -627,17 +628,19 @@ checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = let exp
                                                                                     then let ty = returnSuperType expCheck defCheck in case binaryTCheck of
                                                                                         TResult _ (B_type Type_Real) _ -> if (checkCompatibility ty binaryTCheck) then ty else TError ["Incompatibility type for binary operator at "++show pos]
                                                                                         TResult _ (B_type Type_Boolean) _ -> case binary of
-                                                                                            (Abs.BinaryOperationOr pos) -> if (checkCompatibility ty binaryTCheck) then ty else TError ["Incompatibility type for binary operator at "++show pos]
-                                                                                            (Abs.BinaryOperationAnd pos) -> if (checkCompatibility ty binaryTCheck) then ty else TError ["Incompatibility type for binary operator at "++show pos]
-                                                                                            (Abs.BinaryOperationEq pos) -> ty
-                                                                                            (Abs.BinaryOperationNotEq pos) -> ty
+                                                                                            (Abs.BinaryOperationOr pos) -> if (checkCompatibility ty binaryTCheck) then binaryTCheck else TError ["Incompatibility type for binary operator at "++show pos]
+                                                                                            (Abs.BinaryOperationAnd pos) -> if (checkCompatibility ty binaryTCheck) then binaryTCheck else TError ["Incompatibility type for binary operator at "++show pos]
+                                                                                            (Abs.BinaryOperationEq pos) -> binaryTCheck
+                                                                                            (Abs.BinaryOperationNotEq pos) -> binaryTCheck
                                                                                             _ -> if (checkCompatibility ty (TResult env (B_type Type_Real) pos)) || (checkCompatibility ty (TResult env (B_type Type_String) pos)) || (checkCompatibility ty (TResult env (B_type Type_Char) pos)) 
-                                                                                                then ty 
+                                                                                                then binaryTCheck
                                                                                                 else TError ["Incompatibility type for binary operator at "++show pos]
                                                                                     else TError ["a and b incomp types? "++show pos]
                                                                                     ))
 checkTypeExpression node@(Abs.ExpressionIdent pos value index) env = checkTypeIdent value env --gestire index
-checkTypeExpression node@(Abs.ExpressionCall pos id exps) env = checkTypeExpressions exps env --gestire compatibilità exps con id
+checkTypeExpression node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
+                                                                Just [Function t posf param] -> TResult env t pos
+                                                                Nothing -> TError [" ?? function not def. Unexpected ident at " ++ (show pos)]
 
 checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
 checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type Type_Real) pos
@@ -694,10 +697,14 @@ checkTypeBoolean node@(Abs.Boolean_false pos) env = TResult env (B_type Type_Boo
 checkTypeBoolean node@(Abs.Boolean_False pos) env = TResult env (B_type Type_Boolean ) pos
 
 checkTypeVardec :: Abs.VARDECLIST Posn -> Env -> TCheckResult
-checkTypeVardec node@(Abs.VariableDeclarationSingle pos vardecid) env = TError ["vardecidlistsingle todo"]
+checkTypeVardec node@(Abs.VariableDeclarationSingle pos vardecid) env = checkTypeVariableDec vardecid env
 
 checkTypeVariableDec :: Abs.VARDECID Posn -> Env -> TCheckResult
-checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typeart initpart) env = TError [" vardecid TODO"]
+checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpart) env = case initpart of
+                                                                                        Abs.InitializzationPartEmpty _ -> checkTypeTypePart typepart env
+                                                                                        _ -> let typeCheck = checkTypeTypePart typepart env in
+                                                                                                let initCheck = checkTypeInitializzationPart initpart env in
+                                                                                                    if (checkCompatibility initCheck typeCheck) then typeCheck else TError ["initializzation incompatible type at "++show pos]
 
 checkIdentifierList :: Abs.IDENTLIST Posn -> Env -> TCheckResult
 checkIdentifierList node@(Abs.IdentifierList pos ident identlist) env = TError ["identlist todo"]
@@ -705,10 +712,10 @@ checkIdentifierList node@(Abs.IdentifierSingle pos ident) env = TError ["SINGLEE
 -- single todo?
 
 checkTypeTypePart :: Abs.TYPEPART Posn -> Env -> TCheckResult
-checkTypeTypePart node@(Abs.TypePart pos typexpr) env = TError ["typeaprt todo"]
+checkTypeTypePart node@(Abs.TypePart pos typexpr) env = checkTypeTypeExpression typexpr env
 
 checkTypeInitializzationPart ::  Abs.INITPART Posn -> Env -> TCheckResult
-checkTypeInitializzationPart node@(Abs.InitializzationPart pos expr) env = TError ["todo :)"]
+checkTypeInitializzationPart node@(Abs.InitializzationPart pos expr) env = checkTypeExpression expr env
 checkTypeInitializzationPart node@(Abs.InitializzationPartArray pos listelementarray) env = TError ["todo :)"]
 checkTypeInitializzationPart node@(Abs.InitializzationPartEmpty pos ) env = TError ["TODO"]
 
@@ -726,7 +733,7 @@ checkPrimitiveType node@(Abs.PrimitiveTypeChar pos) env = TResult env (B_type Ty
 checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env = TError["Todo......?bo"]
 
 checkTypeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> TCheckResult
-checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = TError ["mhh?"]
+checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = checkPrimitiveType primitiveType env
 checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp primitivetype) env = TError ["mhh?"]
 checkTypeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp primitivetype) env= TError ["mhh?"]
 checkTypeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = TError ["controllo pointer-primitive che coincida con l'expr? type? ..."]
