@@ -61,4 +61,27 @@ x;
 
 if var x = 3+2 then var x:int;
 
+--------------
+x real
+x = real + real OK
+x = int + real 	OK
+x = int + int 	OK
+x = real + int 	OK
 
+x int
+
+x = int + int OK
+
+var x : int;
+x = 1;
+x = + 1;
+x = 1.0;
+x = + 1.0;
+x;
+
+var y : real;
+y = 1;
+y = + 1;
+y = 1.0;
+y = + 1.0;
+y;
