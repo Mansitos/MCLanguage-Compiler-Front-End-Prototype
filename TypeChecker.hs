@@ -707,9 +707,8 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                     if (checkCompatibility initCheck typeCheck) then typeCheck else TError ["initializzation incompatible type at "++show pos]
 
 checkIdentifierList :: Abs.IDENTLIST Posn -> Env -> TCheckResult
-checkIdentifierList node@(Abs.IdentifierList pos ident identlist) env = TError ["identlist todo"]
-checkIdentifierList node@(Abs.IdentifierSingle pos ident) env = TError ["SINGLEEEEEEEEEE"]
--- single todo?
+checkIdentifierList node@(Abs.IdentifierList pos ident identlist) env = TResult env (B_type Type_Void) pos
+checkIdentifierList node@(Abs.IdentifierSingle pos ident) env = TResult env (B_type Type_Void) pos
 
 checkTypeTypePart :: Abs.TYPEPART Posn -> Env -> TCheckResult
 checkTypeTypePart node@(Abs.TypePart pos typexpr) env = checkTypeTypeExpression typexpr env
