@@ -9,9 +9,9 @@ import AbsProgettoPar as Abs
 import Data.Map
 import Prelude
 
-------------------------------
---- ENVIRONMENT DATA TYPES ---
-------------------------------
+-------------------------------------------------------------------------------------
+--- ENVIRONMENT DATA TYPES ----------------------------------------------------------
+-------------------------------------------------------------------------------------
 
 type Env = Map Prelude.String [EnvEntry]
             -- chiave, valore
@@ -34,9 +34,9 @@ data TCheckResult
 --                                                    Variable t pos mode -> searchFunction xs (Pn abs row col) zs
 --                                                    Function t pos mode -> searchFunction xs (Pn abs row col) [Function t pos mode]
 
-----------------------------------------
---- SHOW ISTANCES FOR ENV DATA TYPES ---
-----------------------------------------
+-------------------------------------------------------------------------------------------------
+--- SHOW ISTANCES FOR ENV DATA TYPES ------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
 
 instance Show EnvEntry where
     show entry = case entry of
@@ -52,7 +52,15 @@ instance Show TCheckResult where
         TypeChecker.TResult env ty pos  -> show env ++ "|" ++ show ty ++ "|" ++ show pos
         TypeChecker.TError errs         -> "Errors: " ++ show errs
 
+--------------------------------------------------------------------------------------------------
+--- GENERIC FUNCTIONS FOR TYPE-CHECKING  ---------------------------------------------------------
+--------------------------------------------------------------------------------------------------
 
+-- Checks if type A is compatible with type B
+-- Semantic: can A be where type B is required?
+--      Examples: int int -> true
+--                int real -> true (because 1 can be seen as 1.0)
+--                real int -> false
 checkCompatibility :: TCheckResult -> TCheckResult -> Bool
 checkCompatibility (TError _) _ = False
 checkCompatibility _ (TError _) = False
@@ -79,9 +87,9 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                           _ -> False
                                                                     _ -> False 
 
---------------------------------
---- ENV DATA TYPES FUNCTIONS ---
---------------------------------
+---------------------------------------------------------------------------------------------------
+--- ENV DATA TYPES FUNCTIONS ----------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 
 -- Returns the type of a EnvEntry of the Environment -> Variable or Function entry
 getTypeEnvEntry :: [EnvEntry] -> Type
@@ -130,9 +138,9 @@ updateEnvFromList (x:xs) env pos varMode ty = updateEnvFromList xs (insertWith (
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []   
 
------------------------------------------------------------------------------
---- FUNCTIONS FOR GETTING INFOS FROM FUNCTIONS-DECLARATIONS FOR ENV ENTRY ---
------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
+--- FUNCTIONS FOR GETTING INFOS FROM FUNCTIONS-DECLARATIONS FOR ENV ENTRY ----------------------------
+------------------------------------------------------------------------------------------------------
 
 -- Given an Ident node of the ABS, returns the string of the identifier
 getIdFromIdent :: Abs.Ident Posn -> Prelude.String
@@ -148,9 +156,9 @@ getParamList (Abs.ParameterListEmpty pos)         = []
 buildParam :: Abs.PARAMETER Posn -> Parameter
 buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromPrimitive ty) pos "_mode_" (getIdFromIdent id)) 
 
------------------------------------------------------------------------
---- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY ---
------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------
+--- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY -----------------------------------
+-------------------------------------------------------------------------------------------------------
 
 -- Given a VariableType node of the ABS, returns a string indicating the type of variable
 getVarMode :: Abs.VARIABLETYPE Posn -> Prelude.String
@@ -197,9 +205,9 @@ getIdList :: Abs.IDENTLIST Posn -> [Prelude.String]
 getIdList (Abs.IdentifierList _ (Abs.Ident s _) identlist) = [s] ++ getIdList identlist
 getIdList (Abs.IdentifierSingle _ (Abs.Ident s _)) = [s] 
              
----------------------------
---- EXECUTION FUNCTIONS ---
----------------------------
+---------------------------------------------------------------------------------------------------
+--- EXECUTION FUNCTIONS ---------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 
 -- Funzioni da implementare:
 
@@ -470,9 +478,9 @@ executeBoolean node@(Abs.Boolean_True pos) env = Abs.Boolean_True (TResult env (
 executeBoolean node@(Abs.Boolean_false pos) env = Abs.Boolean_false (TResult env (B_type Type_Boolean ) pos)
 executeBoolean node@(Abs.Boolean_False pos) env = Abs.Boolean_False (TResult env (B_type Type_Boolean ) pos)
 
----------------------------
--- TYPE CHECKS FUNCTIONS --
----------------------------
+-------------------------------------------------------------------------------------------------------
+-- TYPE CHECKS FUNCTIONS ------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------
 
 checkTypeStatements:: Abs.S Posn -> Env -> TCheckResult
 checkTypeStatements (Abs.StartCode _ statements) start_env = case statements of
