@@ -17,7 +17,7 @@ type Env = Map Prelude.String [EnvEntry]
             -- chiave, valore
 
 data EnvEntry
-    = Variable {varType::Type, varPosition::LexProgettoPar.Posn, varMode::Prelude.String}
+    = Variable {varType::Type, varPosition::LexProgettoPar.Posn, varMode::Prelude.String, canOverride::Prelude.Bool}
     | Function {funType::Type, funPosition::LexProgettoPar.Posn, funParameters::[Parameter]}
 
 data Parameter
@@ -40,8 +40,8 @@ data TCheckResult
 
 instance Show EnvEntry where
     show entry = case entry of
-        TypeChecker.Variable ty pos varMode -> "EnvEntry: [" ++ "var:" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show varMode ++"]"
-        TypeChecker.Function ty pos params  -> "EnvEntry: [" ++ "fun:" ++ show ty ++ "|" ++ show pos ++ "|params:" ++ show params ++ "]"
+        TypeChecker.Variable ty pos varMode canOverride -> "EnvEntry: [" ++ "var:" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show varMode ++ "|canOverride:" ++ show canOverride ++ "]"
+        TypeChecker.Function ty pos params              -> "EnvEntry: [" ++ "fun:" ++ show ty ++ "|" ++ show pos ++ "|params:" ++ show params ++ "]"
 
 instance Show Parameter where
     show param = case param of    
@@ -112,7 +112,7 @@ returnSuperType (TResult env t pos) (TResult envC tC posC) = case t of
 getTypeEnvEntry :: [EnvEntry] -> Type
 getTypeEnvEntry [] = B_type Type_Void
 getTypeEnvEntry (x:xs) = case x of 
-                            (Variable t pos mode) -> t
+                            (Variable t pos mode canOverride) -> t
                             (Function t pos parameters) -> t
                             _ -> B_type Type_Void
 
@@ -134,7 +134,9 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                 Abs.VariableDeclarationStatement pos varType vardec -> let ty = getVarType vardec in -- getting variable type (int etc.)
                                                                                                                          (let varMode = getVarMode varType in -- getting variable mode (const etc.)
                                                                                                                             (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
-                                                                                                                                (updateEnvFromList ids env pos varMode ty,err ++ checkErr env stat))) -- updating env for each declared var.
+                                                                                                                                if (checkIfCanOverride ids env) -- check if vars can be overrided (yes if inside a new block)
+                                                                                                                                then (updateEnvFromList ids env pos varMode ty,err ++ checkErr env stat) -- updating env for each declared var.
+                                                                                                                                else (env, err ++ ["Cannot redefine var ... mettere info"])))
                                                                 -- Functions and Procedures
                                                                 Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
@@ -150,7 +152,15 @@ updateEnv node@(Abs.EmptyStatement  pos) env err = (env,err)
 
 updateEnvFromList :: [Prelude.String] -> Env -> Posn -> Prelude.String -> Type -> Env
 updateEnvFromList [] env pos varMode ty = env
-updateEnvFromList (x:xs) env pos varMode ty = updateEnvFromList xs (insertWith (++) x [Variable ty pos varMode] env) pos varMode ty
+updateEnvFromList (x:xs) env pos varMode ty = updateEnvFromList xs (insertWith (++) x [Variable ty pos varMode False] env) pos varMode ty
+
+checkIfCanOverride :: [Prelude.String] -> Env -> Bool
+checkIfCanOverride (x:xs) env = case Data.Map.lookup x env of
+    Just (entry:entries) -> case entry of
+        Variable ty pos varMode canOverride -> canOverride && (checkIfCanOverride xs env)
+        _ -> True && (checkIfCanOverride xs env)
+    Nothing -> True && (checkIfCanOverride xs env)
+checkIfCanOverride [] env = True
 
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []   
