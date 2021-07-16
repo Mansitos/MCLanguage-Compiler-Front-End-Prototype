@@ -208,13 +208,13 @@ getTypeListFromFuncParams ((TypeChecker.Parameter ty _ _ _):xs) = [ty] ++ getTyp
 getTypeListFromFuncParams [] = []
 
 -- Given a list of variable ids, returns true if they can be overrided (false if at least one of them CANNOT be overrided)
-    checkIfCanOverride :: [Prelude.String] -> Env -> Bool
-    checkIfCanOverride (x:xs) env = case Data.Map.lookup x env of
-        Just (entry:entries) -> case entry of
-            Variable ty pos varMode canOverride -> canOverride && (checkIfCanOverride xs env)
-            _ -> True && (checkIfCanOverride xs env)
-        Nothing -> True && (checkIfCanOverride xs env)
-    checkIfCanOverride [] env = True
+checkIfCanOverride :: [Prelude.String] -> Env -> Bool
+checkIfCanOverride (x:xs) env = case Data.Map.lookup x env of
+    Just (entry:entries) -> case entry of
+        Variable ty pos varMode canOverride -> canOverride && (checkIfCanOverride xs env)
+        _ -> True && (checkIfCanOverride xs env)
+    Nothing -> True && (checkIfCanOverride xs env)
+checkIfCanOverride [] env = True
 
 -------------------------------------------------------------------------------------------------------
 --- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY -----------------------------------
