@@ -94,6 +94,11 @@ checkSuperTypeRangeExp (TResult env tipo pos) = case tipo of
                                                 B_type Type_String -> (TResult env tipo pos)
                                                 _ -> TError ["incompatible type for range expression at "++show pos]
 
+-- Given Type A and B (from TCheckResults) it returns the one which is more generic.
+-- Semantic: Which type is more generic; a or b?
+--      Examples: int int -> int
+--                int real -> real 
+--                real int -> real
 returnSuperType  :: TCheckResult -> TCheckResult -> TCheckResult
 returnSuperType (TError errs) _ = (TError errs)
 returnSuperType _ (TError errs) = (TError errs)
@@ -144,7 +149,7 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                                                                          (let varMode = getVarMode varType in -- getting variable mode (const etc.)
                                                                                                                             (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
                                                                                                                                 if (checkIfCanOverride ids env) -- check if vars can be overrided (yes if inside a new block)
-                                                                                                                                then (updateEnvFromList ids env pos varMode ty,err ++ checkErr env stat) -- updating env for each declared var.
+                                                                                                                                then (updateEnvFromListOfVarIds ids env pos varMode ty,err ++ checkErr env stat) -- updating env for each declared var.
                                                                                                                                 else (env, err ++ ["Cannot redefine var ... mettere info"])))
                                                                 -- Functions and Procedures
                                                                 Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
@@ -159,32 +164,22 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                 _ -> (env,err) 
 updateEnv node@(Abs.EmptyStatement  pos) env err = (env,err)
 
-updateEnvFromList :: [Prelude.String] -> Env -> Posn -> Prelude.String -> Type -> Env
-updateEnvFromList [] env pos varMode ty = env
-updateEnvFromList (x:xs) env pos varMode ty = updateEnvFromList xs (insertWith (++) x [Variable ty pos varMode False] env) pos varMode ty
+-- Given a list of var IDS and an Env, it update that env adding the variable enventries for each var id.
+updateEnvFromListOfVarIds :: [Prelude.String] -> Env -> Posn -> Prelude.String -> Type -> Env
+updateEnvFromListOfVarIds [] env pos varMode ty = env
+updateEnvFromListOfVarIds (x:xs) env pos varMode ty = updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty pos varMode False] env) pos varMode ty
 
-checkIfCanOverride :: [Prelude.String] -> Env -> Bool
-checkIfCanOverride (x:xs) env = case Data.Map.lookup x env of
-    Just (entry:entries) -> case entry of
-        Variable ty pos varMode canOverride -> canOverride && (checkIfCanOverride xs env)
-        _ -> True && (checkIfCanOverride xs env)
-    Nothing -> True && (checkIfCanOverride xs env)
-checkIfCanOverride [] env = True
-
+-- Given an Env set to TRUE in CanOverride for each variable!
+-- Used at the beginning of a new bloc (for example, after declaring a function, inside it is possible to override previous variable declaration (those outside))
 updateIfCanOverride :: Env -> Env
 updateIfCanOverride env = Data.Map.fromList (updateIfCanOverride_ (Data.Map.toList env))
 
+-- Implementation of the previous function
 updateIfCanOverride_ :: [(Prelude.String, [EnvEntry])] -> [(Prelude.String, [EnvEntry])]
 updateIfCanOverride_ ((str,entry:entries):xs) = case entry of
                     Variable ty pos varMode canOverride ->  [(str,(Variable ty pos varMode True):entries)] ++ updateIfCanOverride_ xs
                     _ -> [(str,entry:entries)] ++ updateIfCanOverride_ xs
 updateIfCanOverride_ [] = []
-
-
---case entry of
---       Variable ty pos varMode canOverride -> Data.Map.delete entry (entry:entries)           --(Variable ty pos varMode True)           --let f (Variable ty pos varMode canOverride) = (Variable ty pos varMode True)  -in Data.Map.update f 6 entry
---        _ -> (updateIfCanOverride_ entries) -- function, it's not a var to update
---updateIfCanOverride_ env = env -- finished, return the updated env
 
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []   
@@ -211,6 +206,15 @@ buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromPrimit
 getTypeListFromFuncParams :: [Parameter] -> [Type]
 getTypeListFromFuncParams ((TypeChecker.Parameter ty _ _ _):xs) = [ty] ++ getTypeListFromFuncParams xs
 getTypeListFromFuncParams [] = []
+
+-- Given a list of variable ids, returns true if they can be overrided (false if at least one of them CANNOT be overrided)
+    checkIfCanOverride :: [Prelude.String] -> Env -> Bool
+    checkIfCanOverride (x:xs) env = case Data.Map.lookup x env of
+        Just (entry:entries) -> case entry of
+            Variable ty pos varMode canOverride -> canOverride && (checkIfCanOverride xs env)
+            _ -> True && (checkIfCanOverride xs env)
+        Nothing -> True && (checkIfCanOverride xs env)
+    checkIfCanOverride [] env = True
 
 -------------------------------------------------------------------------------------------------------
 --- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY -----------------------------------
@@ -264,11 +268,6 @@ getIdList (Abs.IdentifierSingle _ (Abs.Ident s _)) = [s]
 ---------------------------------------------------------------------------------------------------
 --- EXECUTION FUNCTIONS ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------
-
--- Funzioni da implementare:
-
--- a subtype di b? -> bool
--- a compatibile con b -> bool
 
 -- Input: The entire Abstree + starting env
 -- Output: Type-checking result of the program
