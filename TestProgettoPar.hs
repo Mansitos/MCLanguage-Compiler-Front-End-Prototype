@@ -17,7 +17,8 @@ import System.Environment (getArgs)
 import System.Exit        (exitFailure, exitSuccess)
 import Control.Monad      (when)
 
-import AbsProgettoPar   as Abs (S (StartCode), STATEMENTS (ListStatements, EmptyStatement), DOSTATEMENT (..), FORALLSTATEMENT (..), STATEMENT (..), B (BlockStatement), FORSTATEMENT (..), ELSESTATEMENT (..), CONDITIONALSTATE(..), WHILESTATEMENT (..)) 
+import AbsProgettoPar   as Abs (S (StartCode), STATEMENTS (ListStatements, EmptyStatement), DOSTATEMENT (..), FORALLSTATEMENT (..), STATEMENT (..),
+                                B (BlockStatement), FORSTATEMENT (..), ELSESTATEMENT (..), CONDITIONALSTATE(..), WHILESTATEMENT (..)) 
 import LexProgettoPar   (Token, Posn)
 import ParProgettoPar   (pS, myLexer)
 import PrintProgettoPar (Print, printTree)
@@ -49,7 +50,7 @@ run v p s =
       putStrLn "\nParse Successful!"
       Main.showTree v tree
 
-      -- Naive brutal Abs print with Tcheck result (too heavy syntax)
+      -- Naive code for brutal Abs print with Tcheck results (too heavy syntax)
       -- let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
       --  putStrLn (show typecheckRes)
       
@@ -65,9 +66,13 @@ run v p s =
 --- TYPE CHECKING RESULTS PRINTING (Prints TCheckResults + env for each statement (recursively)) ---
 ----------------------------------------------------------------------------------------------------
 
+-- Given an AbstractSyntaxTree it prints, for each statement its attributes (used for tcheck result print-debugging).
+-- If a statement has child-statements (for example a function with n statements in its block) it prints recursively those statements attrs (with spacer for depth recognition)
 showTypeCheckResult:: (Show attr) => (Abs.S attr) -> String
 showTypeCheckResult (Abs.StartCode result statements) = showTypeCheckResultStatements statements ""
 
+-- Given an Abs node of type STATEMENTS it prints the result of the first one + its child 
+-- (if it has childs statements) and recursively call the func on the remaining statements
 showTypeCheckResultStatements :: (Show attr) => (Abs.STATEMENTS attr) -> String -> String
 showTypeCheckResultStatements (Abs.ListStatements result statement statements) spacer = "\n" ++ spacer ++ show result ++ case statement of
                                                                                                (Abs.ProcedureStatement res id params stats) -> (showTypeCheckResultStatement statement spacer)  ++ (showTypeCheckResultStatements statements spacer) 
@@ -83,6 +88,7 @@ showTypeCheckResultStatements (Abs.ListStatements result statement statements) s
                                                                                                       _ -> (showTypeCheckResultStatements statements spacer)
 showTypeCheckResultStatements (Abs.EmptyStatement result) spacer = ""   -- gestione empty
 
+-- Given an Abs node of type STATEMENT (single stat) it prints it's attribute
 showTypeCheckResultStatement :: (Show attr) => (Abs.STATEMENT attr) -> String -> String
 showTypeCheckResultStatement (Abs.ProcedureStatement res id params stats) spacer = showTypeCheckResultStatements stats (spacer ++ "---") -- procedure case
 showTypeCheckResultStatement (Abs.FunctionStatement res id params ty stats) spacer = showTypeCheckResultStatements stats (spacer ++ "---") -- function case
@@ -126,6 +132,7 @@ showTypeCheckResultStatement (Abs.ReturnStatement res _) spacer                 
 --- Preprocessing of the input for multiple pointers compatibility "*******" ---
 --------------------------------------------------------------------------------
 
+-- PreProcessing for pointer compatibility
 pointersSyntaxPreprocessing :: String -> String -> String -> String
 pointersSyntaxPreprocessing [] [] output = output
 pointersSyntaxPreprocessing [] zs output = output
