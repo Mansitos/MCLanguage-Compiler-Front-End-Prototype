@@ -86,6 +86,14 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                           _ -> False
                                                                     _ -> False 
 
+checkSuperTypeRangeExp :: TCheckResult -> TCheckResult
+checkSuperTypeRangeExp (TResult env tipo pos) = case tipo of
+                                                B_type Type_Integer -> (TResult env tipo pos)
+                                                B_type Type_Real -> (TResult env tipo pos)                                          
+                                                B_type Type_Char -> (TResult env tipo pos)                                            
+                                                B_type Type_String -> (TResult env tipo pos)
+                                                _ -> TError ["incompatible type for range expression at "++show pos]
+
 returnSuperType  :: TCheckResult -> TCheckResult -> TCheckResult
 returnSuperType (TError errs) _ = (TError errs)
 returnSuperType _ (TError errs) = (TError errs)
@@ -766,8 +774,12 @@ checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env
 checkListElementsOfArray node@(Abs.ListElementOfArray pos expr) env = TError ["Ok? 1 elemento? ritorno il tipo?"]
 
 checkRangeExpType :: Abs.RANGEEXP Posn -> Env -> TCheckResult
-checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = if (checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) then (checkRangeExpType rangexp env) else TError ["type of expressions of the range is incompatible"]
-checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if (checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) then returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) else TError ["type of expressions of the range is incompatible"]
+checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = if (checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) || checkCompatibility (checkTypeExpression expr2 env) (checkTypeExpression expr1 env)) then 
+                                                                                                                                                            if (checkCompatibility (returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) (checkRangeExpType rangexp env))
+                                                                                                                                                                then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env))
+                                                                                                                                                                else TError ["type of expressions of the range is incompatible"]
+                                                                                                                                                             else TError ["type of expressions of the range is incompatible"]
+checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if (checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) || checkCompatibility (checkTypeExpression expr2 env) (checkTypeExpression expr1 env)) then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) else TError ["type of expressions of the range is incompatible"]
 
 checkTypeTypeIndex :: Abs.TYPEINDEX Posn -> Env -> TCheckResult
 checkTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = TError ["todo"]
