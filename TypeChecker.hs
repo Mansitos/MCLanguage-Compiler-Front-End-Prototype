@@ -104,6 +104,7 @@ returnSuperType (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                           B_type Type_Char  -> (TResult env t pos)
                                                                     B_type Type_String  -> case tC of
                                                                                           B_type Type_String  -> (TResult env t pos)
+                                                  
 ---------------------------------------------------------------------------------------------------
 --- ENV DATA TYPES FUNCTIONS ----------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------
@@ -544,42 +545,40 @@ checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = T
 checkTypeCondition :: Abs.CONDITIONALSTATE Posn -> Env -> TCheckResult
 checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for condition not is bool at "++show pos]
 checkTypeCondition node@(Abs.ConditionalStatementSimpleWThen pos exp b elseState) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for condition not is bool at "++show pos]
-checkTypeCondition node@(Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env = TError ["if con then e ctrl"] 
-checkTypeCondition node@(Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env = TError ["if senza then e con ctrl"]
+checkTypeCondition node@(Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env = checkTypeCtrlState ctrlState env
+checkTypeCondition node@(Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env = checkTypeCtrlState ctrlState env
 
 checkTypeElseState :: Abs.ELSESTATEMENT Posn -> Env -> TCheckResult
 checkTypeElseState node@(Abs.ElseState pos state) env = checkTypeStatement state env -- ???? da chiamare o usare void
 checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeCtrlState :: Abs.CTRLDECSTATEMENT Posn -> Env -> TCheckResult
-checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env = TError ["ctrl const"] --da controllare come else
-checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env = TError ["ctrl var"] --da controllare come else
+checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env = if (checkCompatibility (checkTypeExpression exp env) (checkTypeTypePart typepart env)) then TResult env (B_type Type_Void) pos else TError ["expression for ctrl declaration constant is null at "++show pos]
+checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env = if (checkCompatibility (checkTypeExpression exp env) (checkTypeTypePart typepart env)) then TResult env (B_type Type_Void) pos else TError ["expression for ctrl declaration variable is null at "++show pos]
 
 checkTypeWhile :: Abs.WHILESTATEMENT Posn -> Env -> TCheckResult
 checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for while guard not is bool at "++show pos]
 checkTypeWhile node@(Abs.WhileStateSimpleWDo pos exp b) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for while guard not is bool at "++show pos]
-checkTypeWhile node@(Abs.WhileStateCtrlDo pos ctrl state) env = TError ["while do ctrl"] --da controllare come else
-checkTypeWhile node@(Abs.WhileStateCtrlWDo pos ctrl b) env = TError ["while ctrl"] --da controllare come else
+checkTypeWhile node@(Abs.WhileStateCtrlDo pos ctrl state) env = checkTypeCtrlState ctrl env
+checkTypeWhile node@(Abs.WhileStateCtrlWDo pos ctrl b) env = checkTypeCtrlState ctrl env
 
 checkTypeDo :: Abs.DOSTATEMENT Posn -> Env -> TCheckResult
 checkTypeDo node@(Abs.DoWhileState pos state exp) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for do while guard not is bool at "++show pos]
 
 checkTypeForState :: Abs.FORSTATEMENT Posn -> Env -> TCheckResult
-checkTypeForState node@(Abs.ForStateIndexDo pos index rangexp state) env = TError ["for idx do"] --da controllare come else 
-checkTypeForState node@(Abs.ForStateIndexWDo pos index rangexp b) env = TError ["for idx "] --da controllare come else
-checkTypeForState node@(Abs.ForStateExprDo pos rangexp state) env = TError ["for exp do"] --da controllare come else
-checkTypeForState node@(Abs.ForStateExprWDo pos rangexp b) env = TError ["for exp"] --da controllare come else
--- da modificare ???
+checkTypeForState node@(Abs.ForStateIndexDo pos index rangexp state) env = if(checkCompatibility (checkRangeExpType rangexp env) (checkTypeIndexVarDec index env) ) then TResult env (B_type Type_Void) pos else TError ["ident in for guard incompatible with range at "++show pos]
+checkTypeForState node@(Abs.ForStateIndexWDo pos index rangexp b) env = if(checkCompatibility (checkRangeExpType rangexp env) (checkTypeIndexVarDec index env) ) then TResult env (B_type Type_Void) pos else TError ["ident in for guard incompatible with range at "++show pos]
+checkTypeForState node@(Abs.ForStateExprDo pos rangexp state) env = TResult env (B_type Type_Void) pos
+checkTypeForState node@(Abs.ForStateExprWDo pos rangexp b) env = TResult env (B_type Type_Void) pos
 
 checkTypeIndexVarDec :: Abs.INDEXVARDEC Posn -> Env -> TCheckResult
-checkTypeIndexVarDec node@(Abs.IndexVarDeclaration pos id) env =  TError ["index var dec"] --da controllare come else
+checkTypeIndexVarDec node@(Abs.IndexVarDeclaration pos id) env =  checkTypeIdent id env
 
 checkTypeForAllState :: Abs.FORALLSTATEMENT Posn -> Env -> TCheckResult
-checkTypeForAllState node@(Abs.ForAllStateIndexDo pos index rangexp state) env = TError ["forall idx do"] --da controllare come else
-checkTypeForAllState node@(Abs.ForAllStateIndexWDo pos index rangexp b) env = TError ["forall idx "] --da controllare come else
-checkTypeForAllState node@(Abs.ForAllStateExprDo pos rangexp state) env = TError ["forall exp do"] --da controllare come else
-checkTypeForAllState node@(Abs.ForAllStateExprWDo pos rangexp b) env = TError ["forall exp"] --da controllare come else
--- da modificare ???
+checkTypeForAllState node@(Abs.ForAllStateIndexDo pos index rangexp state) env = if(checkCompatibility (checkRangeExpType rangexp env) (checkTypeIndexVarDec index env)) then TResult env (B_type Type_Void) pos else TError ["ident in for guard incompatible with range at "++show pos]
+checkTypeForAllState node@(Abs.ForAllStateIndexWDo pos index rangexp b) env = if(checkCompatibility (checkRangeExpType rangexp env) (checkTypeIndexVarDec index env)) then TResult env (B_type Type_Void) pos else TError ["ident in for guard incompatible with range at "++show pos]
+checkTypeForAllState node@(Abs.ForAllStateExprDo pos rangexp state) env = TResult env (B_type Type_Void) pos
+checkTypeForAllState node@(Abs.ForAllStateExprWDo pos rangexp b) env = TResult env (B_type Type_Void) pos
 
 checkTypeType :: Abs.VARIABLETYPE Posn -> Env -> TCheckResult
 checkTypeType node@(Abs.VariableTypeParam pos) env = TResult env (B_type Type_Void) pos
@@ -726,7 +725,7 @@ checkTypeTypePart node@(Abs.TypePart pos typexpr) env = checkTypeTypeExpression 
 checkTypeInitializzationPart ::  Abs.INITPART Posn -> Env -> TCheckResult
 checkTypeInitializzationPart node@(Abs.InitializzationPart pos expr) env = checkTypeExpression expr env
 checkTypeInitializzationPart node@(Abs.InitializzationPartArray pos listelementarray) env = TError ["todo :)"]
-checkTypeInitializzationPart node@(Abs.InitializzationPartEmpty pos ) env = TError ["TODO"]
+checkTypeInitializzationPart node@(Abs.InitializzationPartEmpty pos ) env = TResult env (B_type Type_Void) pos
 
 checkTypeExpressionpointer :: Abs.POINTER Posn -> Env -> TCheckResult
 checkTypeExpressionpointer node@(Abs.PointerSymbol pos pointer) env = TError ["che tipo gli assegno? quello del primitive type... è un padre, serve un let! su executeTypeExpr?"]
@@ -752,8 +751,8 @@ checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env
 checkListElementsOfArray node@(Abs.ListElementOfArray pos expr) env = TError ["Ok? 1 elemento? ritorno il tipo?"]
 
 checkRangeExpType :: Abs.RANGEEXP Posn -> Env -> TCheckResult
-checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = TError ["Controlla rangexp"]
-checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = TError ["Controlla rangexp"]
+checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = if (checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) then (checkRangeExpType rangexp env) else TError ["type of expressions of the range is incompatible"]
+checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if (checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) then returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) else TError ["type of expressions of the range is incompatible"]
 
 checkTypeTypeIndex :: Abs.TYPEINDEX Posn -> Env -> TCheckResult
 checkTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = TError ["todo"]
