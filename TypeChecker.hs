@@ -141,12 +141,12 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                 -- Functions and Procedures
                                                                 Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
-                                                                                                                    ((insertWith (++) fid [Function (B_type Type_Void) pos parameters] env,err ++ checkErr env stat))
+                                                                                                                    ((insertWith (++) fid [Function (B_type Type_Void) pos parameters] env, err ++ checkErr env stat))
                                                                 
                                                                 Abs.FunctionStatement pos id params ty stats -> let parameters = getParamList params in
                                                                                                                     let fty = getTypeFromPrimitive ty in
                                                                                                                         (let fid = getIdFromIdent id in 
-                                                                                                                            (insertWith (++) fid [Function fty pos parameters] env,err ++ checkErr env stat))
+                                                                                                                            (insertWith (++) fid [Function fty pos parameters] env, err ++ checkErr env stat))
                                                                 -- generic case
                                                                 _ -> (env,err) 
 updateEnv node@(Abs.EmptyStatement  pos) env err = (env,err)
@@ -162,6 +162,21 @@ checkIfCanOverride (x:xs) env = case Data.Map.lookup x env of
         _ -> True && (checkIfCanOverride xs env)
     Nothing -> True && (checkIfCanOverride xs env)
 checkIfCanOverride [] env = True
+
+updateIfCanOverride :: Env -> Env
+updateIfCanOverride env = Data.Map.fromList (updateIfCanOverride_ (Data.Map.toList env))
+
+updateIfCanOverride_ :: [(Prelude.String, [EnvEntry])] -> [(Prelude.String, [EnvEntry])]
+updateIfCanOverride_ ((str,entry:entries):xs) = case entry of
+                    Variable ty pos varMode canOverride ->  [(str,(Variable ty pos varMode True):entries)] ++ updateIfCanOverride_ xs
+                    _ -> updateIfCanOverride_ xs
+updateIfCanOverride_ [] = []
+
+
+--case entry of
+--       Variable ty pos varMode canOverride -> Data.Map.delete entry (entry:entries)           --(Variable ty pos varMode True)           --let f (Variable ty pos varMode canOverride) = (Variable ty pos varMode True)  -in Data.Map.update f 6 entry
+--        _ -> (updateIfCanOverride_ entries) -- function, it's not a var to update
+--updateIfCanOverride_ env = env -- finished, return the updated env
 
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []   
@@ -265,10 +280,10 @@ executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = Abs.WhileDo
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
 executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
 executeStatement node@(Abs.ForAllStatement pos forAllStatement) env = Abs.ForAllStatement (checkTypeStatement node env) (executeForAllState forAllStatement env)
-executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env [] in 
-                                                                        Abs.ProcedureStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executeStatements states (first newEnv))
-executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env [] in  
-                                                                        Abs.FunctionStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states (first newEnv))
+executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env [])) in 
+                                                                        Abs.ProcedureStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executeStatements states newEnv)
+executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env [])) in  
+                                                                        Abs.FunctionStatement (checkTypeStatement node env) (executeIdent id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states newEnv)
 
 executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
 executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeExecuteParameter node env) (executeParameter param env) (executeParam params env)
