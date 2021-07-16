@@ -4,3 +4,5 @@ chiamate ricorsive - done
 ---
 
 if then con control decl --> il tipo esplicito? l'env da aggiornare?
+
+Distinguere var e func nel typecheck ident!
