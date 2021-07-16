@@ -51,8 +51,8 @@ run v p s =
       Main.showTree v tree
 
       -- Naive code for brutal Abs print with Tcheck results (too heavy syntax)
-      -- let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
-      --  putStrLn (show typecheckRes)
+      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
+        putStrLn (show typecheckRes)
       
       putStrLn "\n\n[Statements TypeChecker Result]\n"
       let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in  

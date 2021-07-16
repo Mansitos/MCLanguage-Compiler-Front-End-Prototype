@@ -8,6 +8,7 @@ import LexProgettoPar (Posn(..))
 import AbsProgettoPar as Abs
 import Data.Map
 import Prelude
+import Data.List
 
 -------------------------------------------------------------------------------------
 --- ENVIRONMENT DATA TYPES ----------------------------------------------------------
@@ -151,7 +152,7 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                                                                                 if (checkIfCanOverride ids env) -- check if vars can be overrided (yes if inside a new block)
                                                                                                                                 then (updateEnvFromListOfVarIds ids env pos varMode ty,err ++ checkErr env stat) -- updating env for each declared var.
                                                                                                                                 else (env, err ++ ["Cannot redefine var ... mettere info"])))
-                                                                -- Functions and Procedures
+                                                                -- Functions and Procedures TODO:check parametri non nome uguale!!!!!!!!!!!!!!!!!!!!!
                                                                 Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
                                                                                                                     ((insertWith (++) fid [Function (B_type Type_Void) pos parameters] env, err ++ checkErr env stat))
@@ -304,14 +305,6 @@ executeParam node@(Abs.ParameterListEmpty pos) env = Abs.ParameterListEmpty (che
 
 executeParameter :: Abs.PARAMETER Posn -> Env -> Abs.PARAMETER TCheckResult
 executeParameter node@(Abs.Parameter pos id ty) env = Abs.Parameter (checkTypeParameter node env) (executeIdent id env) (executePrimitiveType ty env)
-
-checkTypeExecuteParameter :: Abs.PARAMETERS Posn -> Env -> TCheckResult
-checkTypeExecuteParameter node@(Abs.ParameterList pos param params) env = TError ["todo"]
-checkTypeExecuteParameter node@(Abs.ParameterListSingle pos param) env = TError ["todo"]
-checkTypeExecuteParameter node@(Abs.ParameterListEmpty pos) env = TError ["todo"]
-
-checkTypeParameter:: Abs.PARAMETER Posn -> Env -> TCheckResult
-checkTypeParameter node@(Abs.Parameter pos id ty) env = TError ["todo"]
 
 executeConditionalState :: Abs.CONDITIONALSTATE Posn -> Env -> Abs.CONDITIONALSTATE TCheckResult
 executeConditionalState node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = Abs.ConditionalStatementSimpleThen (checkTypeCondition node env) (executeExpression exp env) (executeStatement state env) (executeElseStatement elseState env)
@@ -565,8 +558,8 @@ checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhi
 checkTypeStatement node@(Abs.DoWhileStatement pos doState) env = checkTypeDo doState env
 checkTypeStatement node@(Abs.ForStatement pos forState) env = checkTypeForState forState env
 checkTypeStatement node@(Abs.ForAllStatement pos forAllState) env = checkTypeForAllState forAllState env
-checkTypeStatement node@(Abs.ProcedureStatement pos id param states) env = TError ["todo proc"]
-checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = TError ["todo funz"]
+checkTypeStatement node@(Abs.ProcedureStatement pos id param states) env = checkTypeExecuteParameter param env -- non deve esserci return diverso da void
+checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = checkTypeExecuteParameter param env -- se c'è return (deve esserci) deve combaciare il tipo
 
 
 checkTypeCondition :: Abs.CONDITIONALSTATE Posn -> Env -> TCheckResult
@@ -801,12 +794,26 @@ checkTypeCallExpression node@(Abs.CallExpressionParentheses _ (Abs.Ident id pos)
                                                                                                    then if (let namedType = checkTypeNamedExpression namedexpr env -- Check if the type is compatibile with the one required in the definition
                                                                                                             in checkCompatibility namedType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) then TResult env (B_type Type_Void) pos 
                                                                                                         else TError ["tipo nella chiamata non coincide (ma il numero era ok)"]
-                                                                                                   else TError ["call with 1 param but missing others params"]-- 
+                                                                                                   else TError ["call with 1 param but missing others params"]
                                                         (Abs.NamedExpressionListEmpty res) -> if param == [] then TResult env (B_type Type_Void) pos else TError ["chiamata senza paramertri"] -- The call was with no params, check if the definition requires no param too
-                                                        (Abs.NamedExpressionLists res namedexpr namedexprlist) -> TError ["mhh?"] -- controll. che i parametri coincidano di tipo e che siano il n° giusto
+                                                        (Abs.NamedExpressionLists res _ namedexprlist) -> if Prelude.length (param) == 1 + (countNumberOfParam namedexprlist) -- The call has n params, does the definition requires n params?
+                                                                                                                  then if (checkCompatibilityOfParamsList namedexpr param env) then TResult env (B_type Type_Void) pos 
+                                                                                                                       else TError ["number of param ok but compatibility of types NOT OK"]
+                                                                                                                  else TError ["number of param not equal in the call"]
                                                         (Abs.NamedExpressionAssigned res id namedexpr) -> TError ["mhh?"] -- label per leggibilità codice ...
                                                     Nothing -> TError [" ?? function not def.at " ++ (show pos)]
 checkTypeCallExpression node@(Abs.CallExpressionQuadre pos id namedexpr) env = TError ["mhh?"]
+
+-- Given a List of named expression, counts them and return the result
+countNumberOfParam :: Abs.NAMEDEXPRESSIONLIST Posn -> Prelude.Int
+countNumberOfParam (Abs.NamedExpressionLists _ _ namedexprlist) = 1 + countNumberOfParam namedexprlist
+countNumberOfParam (Abs.NamedExpressionList _ _) = 1
+
+checkCompatibilityOfParamsList :: Abs.NAMEDEXPRESSIONLIST Posn -> [TypeChecker.Parameter] -> Env-> Prelude.Bool
+checkCompatibilityOfParamsList  (Abs.NamedExpressionLists pos x xs) ((TypeChecker.Parameter ty _ _ _):zs) env = let namedType = checkTypeNamedExpression x env in if checkCompatibility namedType (TResult env ty pos) 
+                                                                                                                                                         then True && (checkCompatibilityOfParamsList xs zs env) else False
+checkCompatibilityOfParamsList  (Abs.NamedExpressionList pos x) ((TypeChecker.Parameter ty _ _ _):zs) env = let namedType = checkTypeNamedExpression x env in if checkCompatibility namedType (TResult env ty pos) 
+                                                                                                                                                     then True else False
 
 checkTypeNamedExpressionList :: Abs.NAMEDEXPRESSIONLIST Posn -> Env -> TCheckResult
 checkTypeNamedExpressionList node@(Abs.NamedExpressionList pos namedexprlist) env = TError ["mhh?"]
@@ -817,3 +824,26 @@ checkTypeNamedExpressionList node@(Abs.NamedExpressionAssigned pos id expr) env 
 checkTypeNamedExpression :: Abs.NAMEDEXPRESSION Posn -> Env -> TCheckResult
 checkTypeNamedExpression node@(Abs.NamedExpression pos expr) env = checkTypeExpression expr env
                                     
+checkTypeExecuteParameter :: Abs.PARAMETERS Posn -> Env -> TCheckResult
+checkTypeExecuteParameter node@(Abs.ParameterList pos param params) env = let pamList = (getParamList node) in
+                                                                                (if  checkDuplicatedParametersInFunDecl (getListOfIdsFromParamList pamList) -- check if params ids are not dups
+                                                                                then TError ["duplicated ids params in func decl"] -- dups in params 
+                                                                                else TResult env (B_type Type_Integer) pos) -- no dups: decl ok
+checkTypeExecuteParameter node@(Abs.ParameterListSingle pos param) env = TResult env (B_type Type_Integer) pos -- single can't have dups in ids
+checkTypeExecuteParameter node@(Abs.ParameterListEmpty pos) env = TResult env (B_type Type_Void) pos -- empty can't have dups in ids
+
+checkTypeParameter:: Abs.PARAMETER Posn -> Env -> TCheckResult
+checkTypeParameter node@(Abs.Parameter pos id ty) env = TError ["todo"]
+
+getListOfIdsFromParamList :: [TypeChecker.Parameter] -> [Prelude.String]
+getListOfIdsFromParamList ((TypeChecker.Parameter ty pos mode id):xs) = [id] ++ getListOfIdsFromParamList xs
+getListOfIdsFromParamList [] = []
+
+-- Return true if there is a dups in the list (of parameters ids)
+checkDuplicatedParametersInFunDecl :: [Prelude.String] -> Prelude.Bool
+checkDuplicatedParametersInFunDecl (x:xs) = isInList x xs || checkDuplicatedParametersInFunDecl xs
+checkDuplicatedParametersInFunDecl [] = False
+
+isInList :: Prelude.String -> [Prelude.String] -> Prelude.Bool
+isInList id (x:xs) = id == x || isInList id xs
+isInList id [] = False
