@@ -207,6 +207,11 @@ getParamList (Abs.ParameterListEmpty pos)         = []
 buildParam :: Abs.PARAMETER Posn -> Parameter
 buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromPrimitive ty) pos "_mode_" (getIdFromIdent id)) 
 
+-- Given a list of parameters (from a func env entry) returns the list of types of each parameter
+getTypeListFromFuncParams :: [Parameter] -> [Type]
+getTypeListFromFuncParams ((TypeChecker.Parameter ty _ _ _):xs) = [ty] ++ getTypeListFromFuncParams xs
+getTypeListFromFuncParams [] = []
+
 -------------------------------------------------------------------------------------------------------
 --- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY -----------------------------------
 -------------------------------------------------------------------------------------------------------
@@ -707,7 +712,7 @@ checkTypeDefault node@(Abs.ExpressionIdentD pos value index) env = checkTypeIden
 
 checkTypeIdent :: Abs.Ident Posn -> Env -> TCheckResult
 checkTypeIdent node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
-    Just ident -> TResult env (getTypeEnvEntry ident) pos
+    Just ident -> TResult env (getTypeEnvEntry ident) pos -- check if var TODO
     Nothing -> TError ["Unexpected ident at " ++ (show pos)]
     
 checkTypeInteger :: Abs.Integer Posn -> Env -> TCheckResult
@@ -791,7 +796,17 @@ checkTypeTypeIndex node@(Abs.TypeOfIndexVarSingle _ (Abs.Ident id pos)) env = ca
 
 
 checkTypeCallExpression :: Abs.CALLEXPRESSION Posn -> Env -> TCheckResult
-checkTypeCallExpression node@(Abs.CallExpressionParentheses pos id namedexpr) env = TError ["mhh?"]
+checkTypeCallExpression node@(Abs.CallExpressionParentheses _ (Abs.Ident id pos) namedexpr) env = case Data.Map.lookup id env of
+                                                    Just [Function t posf param] -> case namedexpr of
+                                                        (Abs.NamedExpressionList res namedexpr) -> if Prelude.length (param) == 1 -- The call was with 1 param, does the definition requires only 1 param?
+                                                                                                   then if (let namedType = checkTypeNamedExpression namedexpr env -- Check if the type is compatibile with the one required in the definition
+                                                                                                            in checkCompatibility namedType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) then TResult env (B_type Type_Void) pos 
+                                                                                                        else TError ["tipo nella chiamata non coincide (ma il numero era ok)"]
+                                                                                                   else TError ["call with 1 param but missing others params"]-- 
+                                                        (Abs.NamedExpressionListEmpty res) -> if param == [] then TResult env (B_type Type_Void) pos else TError ["chiamata senza paramertri"] -- The call was with no params, check if the definition requires no param too
+                                                        (Abs.NamedExpressionLists res namedexpr namedexprlist) -> TError ["mhh?"] -- controll. che i parametri coincidano di tipo e che siano il n° giusto
+                                                        (Abs.NamedExpressionAssigned res id namedexpr) -> TError ["mhh?"] -- label per leggibilità codice ...
+                                                    Nothing -> TError [" ?? function not def.at " ++ (show pos)]
 checkTypeCallExpression node@(Abs.CallExpressionQuadre pos id namedexpr) env = TError ["mhh?"]
 
 checkTypeNamedExpressionList :: Abs.NAMEDEXPRESSIONLIST Posn -> Env -> TCheckResult
@@ -801,5 +816,5 @@ checkTypeNamedExpressionList node@(Abs.NamedExpressionLists pos namedexpr namede
 checkTypeNamedExpressionList node@(Abs.NamedExpressionAssigned pos id expr) env = TError ["mhh?"]
 
 checkTypeNamedExpression :: Abs.NAMEDEXPRESSION Posn -> Env -> TCheckResult
-checkTypeNamedExpression node@(Abs.NamedExpression pos expr) env = TError ["mhh?"]
+checkTypeNamedExpression node@(Abs.NamedExpression pos expr) env = checkTypeExpression expr env
                                     
