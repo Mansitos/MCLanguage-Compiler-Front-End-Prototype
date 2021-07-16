@@ -141,17 +141,17 @@ data DOSTATEMENT a =  DoWhileState {dostatement_content::a, dostatement_statemen
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data FORSTATEMENT a
-    = ForStateIndexDo {forstatement_content::a, forstatement_indexvardec::(INDEXVARDEC a), forstatement_expression::(EXPRESSION a), forstatement_statement::(STATEMENT a)}
-    | ForStateIndexWDo {forstatement_content::a,forstatement_indexvardec::(INDEXVARDEC a), forstatement_expression::(EXPRESSION a), forstatement_b::(B a)}
-    | ForStateExprDo {forstatement_content::a, forstatement_expression::(EXPRESSION a), forstatement_statement::(STATEMENT a)}
-    | ForStateExprWDo {forstatement_content::a, forstatement_expression::(EXPRESSION a), forstatement_b::(B a)}
+    = ForStateIndexDo {forstatement_content::a, forstatement_indexvardec::(INDEXVARDEC a), forstatement_rangexp::(RANGEEXP a), forstatement_statement::(STATEMENT a)}
+    | ForStateIndexWDo {forstatement_content::a,forstatement_indexvardec::(INDEXVARDEC a), forstatement_rangexp::(RANGEEXP a), forstatement_b::(B a)}
+    | ForStateExprDo {forstatement_content::a, forstatement_rangexp::(RANGEEXP a), forstatement_statement::(STATEMENT a)}
+    | ForStateExprWDo {forstatement_content::a, forstatement_rangexp::(RANGEEXP a), forstatement_b::(B a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data FORALLSTATEMENT a
-    = ForAllStateIndexDo {forallstatement_content::a, forallstatement_indexvardec::(INDEXVARDEC a), forallstatement_expression::(EXPRESSION a), forallstatement_statement::(STATEMENT a)}
-    | ForAllStateIndexWDo {forallstatement_content::a, forallstatement_indexvardec::(INDEXVARDEC a), forallstatement_expression::(EXPRESSION a), forallstatement_b::(B a)}
-    | ForAllStateExprDo {forallstatement_content::a, forallstatement_expression::(EXPRESSION a), forallstatement_statement::(STATEMENT a)}
-    | ForAllStateExprWDo {forallstatement_content::a, forallstatement_expression::(EXPRESSION a), forallstatement_b::(B a)}
+    = ForAllStateIndexDo {forallstatement_content::a, forallstatement_indexvardec::(INDEXVARDEC a), forallstatement_rangexp::(RANGEEXP a), forallstatement_statement::(STATEMENT a)}
+    | ForAllStateIndexWDo {forallstatement_content::a, forallstatement_indexvardec::(INDEXVARDEC a), forallstatement_rangexp::(RANGEEXP a), forallstatement_b::(B a)}
+    | ForAllStateExprDo {forallstatement_content::a, forallstatement_rangexp::(RANGEEXP a), forallstatement_statement::(STATEMENT a)}
+    | ForAllStateExprWDo {forallstatement_content::a, forallstatement_rangexp::(RANGEEXP a), forallstatement_b::(B a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data INDEXVARDEC a = IndexVarDeclaration {indexvardec_content::a, indexvardec_ident::(Ident a)}
@@ -167,8 +167,8 @@ data RETURNSTATEMENT a
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data CTRLDECSTATEMENT a
-    = CtrlDecStateVar {ctrldecstatement_content::a, ctrldecstatement_ident::(Ident a), ctrldecstatement_expression::(EXPRESSION a)}
-    | CtrlDecStateConst {ctrldecstatement_content::a, ctrldecstatement_ident::(Ident a), ctrldecstatement_expression::(EXPRESSION a)}
+    = CtrlDecStateVar {ctrldecstatement_content::a, ctrldecstatement_ident::(Ident a), ctrldecstatement_typepart::(TYPEPART a), ctrldecstatement_expression::(EXPRESSION a)}
+    | CtrlDecStateConst {ctrldecstatement_content::a, ctrldecstatement_ident::(Ident a),ctrldecstatement_typepart::(TYPEPART a), ctrldecstatement_expression::(EXPRESSION a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data EXPRESSIONSTATEMENT a

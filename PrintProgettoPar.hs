@@ -251,17 +251,17 @@ instance Print (AbsProgettoPar.DOSTATEMENT attr) where
 
 instance Print (AbsProgettoPar.FORSTATEMENT attr) where
   prt i = \case
-    AbsProgettoPar.ForStateIndexDo _ indexvardec expression statement -> prPrec i 0 (concatD [doc (showString "for"), prt 0 indexvardec, doc (showString "in"), prt 0 expression, doc (showString "do"), prt 0 statement])
-    AbsProgettoPar.ForStateIndexWDo _ indexvardec expression b -> prPrec i 0 (concatD [doc (showString "for"), prt 0 indexvardec, doc (showString "in"), prt 0 expression, prt 0 b])
-    AbsProgettoPar.ForStateExprDo _ expression statement -> prPrec i 0 (concatD [doc (showString "for"), prt 0 expression, doc (showString "do"), prt 0 statement])
-    AbsProgettoPar.ForStateExprWDo _ expression b -> prPrec i 0 (concatD [doc (showString "for"), prt 0 expression, prt 0 b])
+    AbsProgettoPar.ForStateIndexDo _ indexvardec rangexp statement -> prPrec i 0 (concatD [doc (showString "for"), prt 0 indexvardec, doc (showString "in"), prt 0 rangexp, doc (showString "do"), prt 0 statement])
+    AbsProgettoPar.ForStateIndexWDo _ indexvardec rangexp b -> prPrec i 0 (concatD [doc (showString "for"), prt 0 indexvardec, doc (showString "in"), prt 0 rangexp, prt 0 b])
+    AbsProgettoPar.ForStateExprDo _ rangexp statement -> prPrec i 0 (concatD [doc (showString "for"), prt 0 rangexp, doc (showString "do"), prt 0 statement])
+    AbsProgettoPar.ForStateExprWDo _ rangexp b -> prPrec i 0 (concatD [doc (showString "for"), prt 0 rangexp, prt 0 b])
 
 instance Print (AbsProgettoPar.FORALLSTATEMENT attr) where
   prt i = \case
-    AbsProgettoPar.ForAllStateIndexDo _ indexvardec expression statement -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 indexvardec, doc (showString "in"), prt 0 expression, doc (showString "do"), prt 0 statement])
-    AbsProgettoPar.ForAllStateIndexWDo _ indexvardec expression b -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 indexvardec, doc (showString "in"), prt 0 expression, prt 0 b])
-    AbsProgettoPar.ForAllStateExprDo _ expression statement -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 expression, doc (showString "do"), prt 0 statement])
-    AbsProgettoPar.ForAllStateExprWDo _ expression b -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 expression, prt 0 b])
+    AbsProgettoPar.ForAllStateIndexDo _ indexvardec rangexp statement -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 indexvardec, doc (showString "in"), prt 0 rangexp, doc (showString "do"), prt 0 statement])
+    AbsProgettoPar.ForAllStateIndexWDo _ indexvardec rangexp b -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 indexvardec, doc (showString "in"), prt 0 rangexp, prt 0 b])
+    AbsProgettoPar.ForAllStateExprDo _ rangexp statement -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 rangexp, doc (showString "do"), prt 0 statement])
+    AbsProgettoPar.ForAllStateExprWDo _ rangexp b -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 rangexp, prt 0 b])
 
 instance Print (AbsProgettoPar.INDEXVARDEC attr) where
   prt i = \case
@@ -279,8 +279,8 @@ instance Print (AbsProgettoPar.RETURNSTATEMENT attr) where
 
 instance Print (AbsProgettoPar.CTRLDECSTATEMENT attr) where
   prt i = \case
-    AbsProgettoPar.CtrlDecStateVar _ id_ expression -> prPrec i 0 (concatD [doc (showString "var"), prt 0 id_, doc (showString "="), prt 0 expression])
-    AbsProgettoPar.CtrlDecStateConst _ id_ expression -> prPrec i 0 (concatD [doc (showString "const"), prt 0 id_, doc (showString "="), prt 0 expression])
+    AbsProgettoPar.CtrlDecStateVar _ id_ typerpart expression -> prPrec i 0 (concatD [doc (showString "var"),prt 0 id_, prt 0 typerpart, doc (showString "="), prt 0 expression])
+    AbsProgettoPar.CtrlDecStateConst _ id_ typerpart expression -> prPrec i 0 (concatD [doc (showString "const"), prt 0 id_, prt 0 typerpart, doc (showString "="), prt 0 expression])
 
 instance Print (AbsProgettoPar.EXPRESSIONSTATEMENT attr) where
   prt i = \case

@@ -157,17 +157,17 @@ transDOSTATEMENT x = case x of
 
 transFORSTATEMENT :: Show attr => (AbsProgettoPar.FORSTATEMENT attr) -> Result
 transFORSTATEMENT x = case x of
-  AbsProgettoPar.ForStateIndexDo _ indexvardec expression statement -> failure x
-  AbsProgettoPar.ForStateIndexWDo _ indexvardec expression b -> failure x
-  AbsProgettoPar.ForStateExprDo _ expression statement -> failure x
-  AbsProgettoPar.ForStateExprWDo _ expression b -> failure x
+  AbsProgettoPar.ForStateIndexDo _ indexvardec rangexp statement -> failure x
+  AbsProgettoPar.ForStateIndexWDo _ indexvardec rangexp b -> failure x
+  AbsProgettoPar.ForStateExprDo _ rangexp statement -> failure x
+  AbsProgettoPar.ForStateExprWDo _ rangexp b -> failure x
 
 transFORALLSTATEMENT :: Show attr => (AbsProgettoPar.FORALLSTATEMENT attr) -> Result
 transFORALLSTATEMENT x = case x of
-  AbsProgettoPar.ForAllStateIndexDo _ indexvardec expression statement -> failure x
-  AbsProgettoPar.ForAllStateIndexWDo _ indexvardec expression b -> failure x
-  AbsProgettoPar.ForAllStateExprDo _ expression statement -> failure x
-  AbsProgettoPar.ForAllStateExprWDo _ expression b -> failure x
+  AbsProgettoPar.ForAllStateIndexDo _ indexvardec rangexp statement -> failure x
+  AbsProgettoPar.ForAllStateIndexWDo _ indexvardec rangexp b -> failure x
+  AbsProgettoPar.ForAllStateExprDo _ rangexp statement -> failure x
+  AbsProgettoPar.ForAllStateExprWDo _ rangexp b -> failure x
 
 transINDEXVARDEC :: Show attr => (AbsProgettoPar.INDEXVARDEC attr) -> Result
 transINDEXVARDEC x = case x of
@@ -185,8 +185,8 @@ transRETURNSTATEMENT x = case x of
 
 transCTRLDECSTATEMENT :: Show attr => (AbsProgettoPar.CTRLDECSTATEMENT attr) -> Result
 transCTRLDECSTATEMENT x = case x of
-  AbsProgettoPar.CtrlDecStateVar _ ident expression -> failure x
-  AbsProgettoPar.CtrlDecStateConst _ ident expression -> failure x
+  AbsProgettoPar.CtrlDecStateVar _ ident typepart expression -> failure x
+  AbsProgettoPar.CtrlDecStateConst _ ident typepart expression -> failure x
 
 transEXPRESSIONSTATEMENT :: Show attr => (AbsProgettoPar.EXPRESSIONSTATEMENT attr) -> Result
 transEXPRESSIONSTATEMENT x = case x of

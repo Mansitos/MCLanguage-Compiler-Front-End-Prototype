@@ -296,8 +296,8 @@ executeElseStatement node@(Abs.ElseStateEmpty pos) env= Abs.ElseStateEmpty (chec
 executeElseStatement node@(Abs.ElseState pos state) env= Abs.ElseState (checkTypeElseState node env) (executeStatement state env)
 
 executeCtrlStatement :: Abs.CTRLDECSTATEMENT Posn -> Env -> Abs.CTRLDECSTATEMENT TCheckResult
-executeCtrlStatement node@(Abs.CtrlDecStateVar pos id exp) env = Abs.CtrlDecStateVar (checkTypeCtrlState node env) (executeIdent id env) (executeExpression exp env)
-executeCtrlStatement node@(Abs.CtrlDecStateConst pos id exp) env = Abs.CtrlDecStateConst (checkTypeCtrlState node env) (executeIdent id env) (executeExpression exp env)
+executeCtrlStatement node@(Abs.CtrlDecStateVar pos id typepart exp) env = Abs.CtrlDecStateVar (checkTypeCtrlState node env) (executeIdent id env) (executeTypePart typepart env) (executeExpression exp env)
+executeCtrlStatement node@(Abs.CtrlDecStateConst pos id typepart exp) env = Abs.CtrlDecStateConst (checkTypeCtrlState node env) (executeIdent id env) (executeTypePart typepart env) (executeExpression exp env)
 
 executeWhileState :: Abs.WHILESTATEMENT Posn -> Env -> Abs.WHILESTATEMENT TCheckResult
 executeWhileState node@(Abs.WhileStateSimpleDo pos exp state) env = Abs.WhileStateSimpleDo (checkTypeWhile node env) (executeExpression exp env) (executeStatement state env)
@@ -309,19 +309,19 @@ executeDoState :: Abs.DOSTATEMENT Posn -> Env -> Abs.DOSTATEMENT TCheckResult
 executeDoState node@(Abs.DoWhileState pos state exp) env = Abs.DoWhileState (checkTypeDo node env) (executeStatement state env) (executeExpression exp env)
 
 executeForState :: Abs.FORSTATEMENT Posn -> Env -> Abs.FORSTATEMENT TCheckResult
-executeForState node@(Abs.ForStateIndexDo pos index exp state) env = Abs.ForStateIndexDo (checkTypeForState node env) (executeIndex index env) (executeExpression exp env) (executeStatement state env)
-executeForState node@(Abs.ForStateIndexWDo pos index exp b) env = Abs.ForStateIndexWDo (checkTypeForState node env) (executeIndex index env) (executeExpression exp env) (executeB b env)
-executeForState node@(Abs.ForStateExprDo pos exp state) env = Abs.ForStateExprDo (checkTypeForState node env) (executeExpression exp env) (executeStatement state env)
-executeForState node@(Abs.ForStateExprWDo pos exp b) env = Abs.ForStateExprWDo (checkTypeForState node env) (executeExpression exp env) (executeB b env)
+executeForState node@(Abs.ForStateIndexDo pos index rangexp state) env = Abs.ForStateIndexDo (checkTypeForState node env) (executeIndex index env) (executeRangeExp rangexp env) (executeStatement state env)
+executeForState node@(Abs.ForStateIndexWDo pos index rangexp b) env = Abs.ForStateIndexWDo (checkTypeForState node env) (executeIndex index env) (executeRangeExp rangexp env) (executeB b env)
+executeForState node@(Abs.ForStateExprDo pos rangexp state) env = Abs.ForStateExprDo (checkTypeForState node env) (executeRangeExp rangexp env) (executeStatement state env)
+executeForState node@(Abs.ForStateExprWDo pos rangexp b) env = Abs.ForStateExprWDo (checkTypeForState node env) (executeRangeExp rangexp env) (executeB b env)
 
 executeIndex :: Abs.INDEXVARDEC Posn -> Env -> Abs.INDEXVARDEC TCheckResult
 executeIndex node@(Abs.IndexVarDeclaration pos id) env = Abs.IndexVarDeclaration (checkTypeIndexVarDec node env) (executeIdent id env)
 
 executeForAllState :: Abs.FORALLSTATEMENT Posn -> Env -> Abs.FORALLSTATEMENT TCheckResult
-executeForAllState node@(Abs.ForAllStateIndexDo pos index exp state) env = Abs.ForAllStateIndexDo (checkTypeForAllState node env) (executeIndex index env) (executeExpression exp env) (executeStatement state env)
-executeForAllState node@(Abs.ForAllStateIndexWDo pos index exp b) env = Abs.ForAllStateIndexWDo (checkTypeForAllState node env) (executeIndex index env) (executeExpression exp env) (executeB b env)
-executeForAllState node@(Abs.ForAllStateExprDo pos exp state) env = Abs.ForAllStateExprDo (checkTypeForAllState node env) (executeExpression exp env) (executeStatement state env)
-executeForAllState node@(Abs.ForAllStateExprWDo pos exp b) env = Abs.ForAllStateExprWDo (checkTypeForAllState node env) (executeExpression exp env) (executeB b env)
+executeForAllState node@(Abs.ForAllStateIndexDo pos index rangexp state) env = Abs.ForAllStateIndexDo (checkTypeForAllState node env) (executeIndex index env) (executeRangeExp rangexp env) (executeStatement state env)
+executeForAllState node@(Abs.ForAllStateIndexWDo pos index rangexp b) env = Abs.ForAllStateIndexWDo (checkTypeForAllState node env) (executeIndex index env) (executeRangeExp rangexp env) (executeB b env)
+executeForAllState node@(Abs.ForAllStateExprDo pos rangexp state) env = Abs.ForAllStateExprDo (checkTypeForAllState node env) (executeRangeExp rangexp env) (executeStatement state env)
+executeForAllState node@(Abs.ForAllStateExprWDo pos rangexp b) env = Abs.ForAllStateExprWDo (checkTypeForAllState node env) (executeRangeExp rangexp env) (executeB b env)
 
 executeVarType :: Abs.VARIABLETYPE Posn -> Env -> Abs.VARIABLETYPE TCheckResult
 executeVarType node@(Abs.VariableTypeParam pos) env = Abs.VariableTypeParam (checkTypeType node env)
@@ -552,8 +552,8 @@ checkTypeElseState node@(Abs.ElseState pos state) env = checkTypeStatement state
 checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeCtrlState :: Abs.CTRLDECSTATEMENT Posn -> Env -> TCheckResult
-checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id exp) env = TError ["ctrl const"] --da controllare come else
-checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id exp) env = TError ["ctrl var"] --da controllare come else
+checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env = TError ["ctrl const"] --da controllare come else
+checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env = TError ["ctrl var"] --da controllare come else
 
 checkTypeWhile :: Abs.WHILESTATEMENT Posn -> Env -> TCheckResult
 checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for while guard not is bool at "++show pos]
@@ -565,20 +565,20 @@ checkTypeDo :: Abs.DOSTATEMENT Posn -> Env -> TCheckResult
 checkTypeDo node@(Abs.DoWhileState pos state exp) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for do while guard not is bool at "++show pos]
 
 checkTypeForState :: Abs.FORSTATEMENT Posn -> Env -> TCheckResult
-checkTypeForState node@(Abs.ForStateIndexDo pos index exp state) env = TError ["for idx do"] --da controllare come else 
-checkTypeForState node@(Abs.ForStateIndexWDo pos index exp b) env = TError ["for idx "] --da controllare come else
-checkTypeForState node@(Abs.ForStateExprDo pos exp state) env = TError ["for exp do"] --da controllare come else
-checkTypeForState node@(Abs.ForStateExprWDo pos exp b) env = TError ["for exp"] --da controllare come else
+checkTypeForState node@(Abs.ForStateIndexDo pos index rangexp state) env = TError ["for idx do"] --da controllare come else 
+checkTypeForState node@(Abs.ForStateIndexWDo pos index rangexp b) env = TError ["for idx "] --da controllare come else
+checkTypeForState node@(Abs.ForStateExprDo pos rangexp state) env = TError ["for exp do"] --da controllare come else
+checkTypeForState node@(Abs.ForStateExprWDo pos rangexp b) env = TError ["for exp"] --da controllare come else
 -- da modificare ???
 
 checkTypeIndexVarDec :: Abs.INDEXVARDEC Posn -> Env -> TCheckResult
 checkTypeIndexVarDec node@(Abs.IndexVarDeclaration pos id) env =  TError ["index var dec"] --da controllare come else
 
 checkTypeForAllState :: Abs.FORALLSTATEMENT Posn -> Env -> TCheckResult
-checkTypeForAllState node@(Abs.ForAllStateIndexDo pos index exp state) env = TError ["forall idx do"] --da controllare come else
-checkTypeForAllState node@(Abs.ForAllStateIndexWDo pos index exp b) env = TError ["forall idx "] --da controllare come else
-checkTypeForAllState node@(Abs.ForAllStateExprDo pos exp state) env = TError ["forall exp do"] --da controllare come else
-checkTypeForAllState node@(Abs.ForAllStateExprWDo pos exp b) env = TError ["forall exp"] --da controllare come else
+checkTypeForAllState node@(Abs.ForAllStateIndexDo pos index rangexp state) env = TError ["forall idx do"] --da controllare come else
+checkTypeForAllState node@(Abs.ForAllStateIndexWDo pos index rangexp b) env = TError ["forall idx "] --da controllare come else
+checkTypeForAllState node@(Abs.ForAllStateExprDo pos rangexp state) env = TError ["forall exp do"] --da controllare come else
+checkTypeForAllState node@(Abs.ForAllStateExprWDo pos rangexp b) env = TError ["forall exp"] --da controllare come else
 -- da modificare ???
 
 checkTypeType :: Abs.VARIABLETYPE Posn -> Env -> TCheckResult

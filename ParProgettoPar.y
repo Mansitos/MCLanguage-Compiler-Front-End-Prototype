@@ -219,16 +219,16 @@ DOSTATEMENT :: { Abs.DOSTATEMENT Posn }
 DOSTATEMENT : 'do' STATEMENT 'while' EXPRESSION ';' { Abs.DoWhileState (tokenPosn $1) $2 $4 }
 
 FORSTATEMENT :: { Abs.FORSTATEMENT Posn }
-FORSTATEMENT : 'for' INDEXVARDEC 'in' EXPRESSION 'do' STATEMENT { Abs.ForStateIndexDo (tokenPosn $1) $2 $4 $6 }
-             | 'for' INDEXVARDEC 'in' EXPRESSION B { Abs.ForStateIndexWDo (tokenPosn $1) $2 $4 $5 }
-             | 'for' EXPRESSION 'do' STATEMENT { Abs.ForStateExprDo (tokenPosn $1) $2 $4 }
-             | 'for' EXPRESSION B { Abs.ForStateExprWDo (tokenPosn $1) $2 $3 }
+FORSTATEMENT : 'for' INDEXVARDEC 'in' RANGEEXP 'do' STATEMENT { Abs.ForStateIndexDo (tokenPosn $1) $2 $4 $6 }
+             | 'for' INDEXVARDEC 'in' RANGEEXP B { Abs.ForStateIndexWDo (tokenPosn $1) $2 $4 $5 }
+             | 'for' RANGEEXP 'do' STATEMENT { Abs.ForStateExprDo (tokenPosn $1) $2 $4 }
+             | 'for' RANGEEXP B { Abs.ForStateExprWDo (tokenPosn $1) $2 $3 }
 
 FORALLSTATEMENT :: { Abs.FORALLSTATEMENT Posn }
-FORALLSTATEMENT : 'forall' INDEXVARDEC 'in' EXPRESSION 'do' STATEMENT { Abs.ForAllStateIndexDo (tokenPosn $1) $2 $4 $6 }
-                | 'forall' INDEXVARDEC 'in' EXPRESSION B { Abs.ForAllStateIndexWDo (tokenPosn $1) $2 $4 $5 }
-                | 'forall' EXPRESSION 'do' STATEMENT { Abs.ForAllStateExprDo (tokenPosn $1) $2 $4 }
-                | 'forall' EXPRESSION B { Abs.ForAllStateExprWDo (tokenPosn $1) $2 $3 }
+FORALLSTATEMENT : 'forall' INDEXVARDEC 'in' RANGEEXP 'do' STATEMENT { Abs.ForAllStateIndexDo (tokenPosn $1) $2 $4 $6 }
+                | 'forall' INDEXVARDEC 'in' RANGEEXP B { Abs.ForAllStateIndexWDo (tokenPosn $1) $2 $4 $5 }
+                | 'forall' RANGEEXP 'do' STATEMENT { Abs.ForAllStateExprDo (tokenPosn $1) $2 $4 }
+                | 'forall' RANGEEXP B { Abs.ForAllStateExprWDo (tokenPosn $1) $2 $3 }
 
 INDEXVARDEC :: { Abs.INDEXVARDEC Posn }
 INDEXVARDEC : Ident { Abs.IndexVarDeclaration (Abs.contentId $1) $1 }
@@ -242,8 +242,8 @@ RETURNSTATEMENT : 'return' EXPRESSION { Abs.ReturnState (tokenPosn $1) $2 }
                 | 'return' { Abs.ReturnStateEmpty (tokenPosn $1)}
 
 CTRLDECSTATEMENT :: { Abs.CTRLDECSTATEMENT Posn }
-CTRLDECSTATEMENT : 'var' Ident '=' EXPRESSION { Abs.CtrlDecStateVar (tokenPosn $1) $2 $4 }
-                 | 'const' Ident '=' EXPRESSION { Abs.CtrlDecStateConst (tokenPosn $1) $2 $4 }
+CTRLDECSTATEMENT : 'var' Ident TYPEPART '=' EXPRESSION { Abs.CtrlDecStateVar (tokenPosn $1) $2 $3 $5 }
+                 | 'const' Ident TYPEPART'=' EXPRESSION { Abs.CtrlDecStateConst (tokenPosn $1) $2 $3 $5 }
 
 EXPRESSIONSTATEMENT :: { Abs.EXPRESSIONSTATEMENT Posn }
 EXPRESSIONSTATEMENT : Ident { Abs.VariableExpression (Abs.contentId $1) $1 }
