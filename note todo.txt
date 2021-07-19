@@ -1,8 +1,9 @@
 parametri nelle func env entry - done
 chiamate ricorsive - done
+distinguere var e func nel typecheck ident! - done
 
 ---
 
 if then con control decl --> il tipo esplicito? l'env da aggiornare?
 
-Distinguere var e func nel typecheck ident!
+creare env entry per ogni variabile parametro delle func.

@@ -152,18 +152,23 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                                                                                 if (checkIfCanOverride ids env) -- check if vars can be overrided (yes if inside a new block)
                                                                                                                                 then (updateEnvFromListOfVarIds ids env pos varMode ty,err ++ checkErr env stat) -- updating env for each declared var.
                                                                                                                                 else (env, err ++ ["Cannot redefine var ... mettere info"])))
-                                                                -- Functions and Procedures TODO:check parametri non nome uguale!!!!!!!!!!!!!!!!!!!!!
+                                                                -- Functions and Procedures
                                                                 Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
                                                                                                                     ((insertWith (++) fid [Function (B_type Type_Void) pos parameters] env, err ++ checkErr env stat))
                                                                 
                                                                 Abs.FunctionStatement pos id params ty stats -> let parameters = getParamList params in
                                                                                                                     let fty = getTypeFromPrimitive ty in
-                                                                                                                        (let fid = getIdFromIdent id in 
-                                                                                                                            (insertWith (++) fid [Function fty pos parameters] env, err ++ checkErr env stat))
+                                                                                                                        let fid = getIdFromIdent id in 
+                                                                                                                            (insertWith (++) fid [Function fty pos parameters] env, err ++ checkErr env stat)
                                                                 -- generic case
                                                                 _ -> (env,err) 
-updateEnv node@(Abs.EmptyStatement  pos) env err = (env,err)
+updateEnv node@(Abs.EmptyStatement pos) env err = (env,err)
+
+--
+createEnvEntryForParams :: [TypeChecker.Parameter] -> Env -> Env
+createEnvEntryForParams ((TypeChecker.Parameter ty pos mode id):xs) env = createEnvEntryForParams xs (insertWith (++) id [Variable ty pos mode False] env)
+createEnvEntryForParams [] env = env
 
 -- Given a list of var IDS and an Env, it update that env adding the variable enventries for each var id.
 updateEnvFromListOfVarIds :: [Prelude.String] -> Env -> Posn -> Prelude.String -> Type -> Env
@@ -187,8 +192,6 @@ updateIfCanOverrideEntries_ (x:xs) = case x of
                                         Variable ty pos varMode canOverride -> (Variable ty pos varMode True):xs
                                         _ -> [x] ++ updateIfCanOverrideEntries_ xs
 updateIfCanOverrideEntries_ []     = [] 
-
-
 
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []   
@@ -303,9 +306,8 @@ executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement
 executeStatement node@(Abs.ForAllStatement pos forAllStatement) env = Abs.ForAllStatement (checkTypeStatement node env) (executeForAllState forAllStatement env)
 executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env [])) in 
                                                                         Abs.ProcedureStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeStatements states newEnv)
-executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env [])) in  
+executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env []))) in  
                                                                         Abs.FunctionStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states newEnv)
-
 executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
 executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeExecuteParameter node env) (executeParameter param env) (executeParam params env)
 executeParam node@(Abs.ParameterListSingle pos param) env = Abs.ParameterListSingle (checkTypeExecuteParameter node env) (executeParameter param env)
