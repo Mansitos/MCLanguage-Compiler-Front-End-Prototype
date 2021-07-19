@@ -580,7 +580,7 @@ checkTypeCondition node@(Abs.ConditionalStatementCtrlThen pos ctrlState state el
 checkTypeCondition node@(Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env = checkTypeCtrlState ctrlState env
 
 checkTypeElseState :: Abs.ELSESTATEMENT Posn -> Env -> TCheckResult
-checkTypeElseState node@(Abs.ElseState pos state) env = checkTypeStatement state env -- ???? da chiamare o usare void
+checkTypeElseState node@(Abs.ElseState pos state) env = TResult env (B_type Type_Void) pos
 checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeCtrlState :: Abs.CTRLDECSTATEMENT Posn -> Env -> TCheckResult
@@ -649,9 +649,9 @@ checkTypeExpressionStatement node@(Abs.VariableExpression pos id) env = checkTyp
 checkTypeExpressionStatement node@(Abs.CallExpression pos callexpr) env = checkTypeCallExpression callexpr env
 
 checkTypeExpressions :: Abs.EXPRESSIONS Posn -> Env -> TCheckResult
-checkTypeExpressions node@(Abs.Expressions pos exp exps) env = TError ["exps"]
-checkTypeExpressions node@(Abs.Expression pos exp) env = TError ["exp"]
-checkTypeExpressions node@(Abs.ExpressionEmpty pos) env = TError ["empty"]
+checkTypeExpressions node@(Abs.Expressions pos exp exps) env = TResult env (B_type Type_Void) pos
+checkTypeExpressions node@(Abs.Expression pos exp) env = TResult env (B_type Type_Void) pos
+checkTypeExpressions node@(Abs.ExpressionEmpty pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeExpression :: Abs.EXPRESSION Posn -> Env -> TCheckResult
 checkTypeExpression node@(Abs.ExpressionInteger pos value) env = checkTypeInteger value env
@@ -679,8 +679,38 @@ checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = let exp
                                                                                     ))
 checkTypeExpression node@(Abs.ExpressionIdent pos value index) env = checkTypeIdentVar value env --gestire index
 checkTypeExpression node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
-                                                                Just [Function t posf param] -> TResult env t pos
+                                                                Just [Function t posf param] -> checkTypeExpressionCall_ node env [Function t posf param]
+                                                                Just [Variable _ _ _ _] -> TError [" ?? function not def.at " ++ (show pos)]
+                                                                Just (x:xs) -> case findEntryOfType (x:xs) "func" of -- controllare se c'è una entry di tipo func
+                                                                        [] -> TError [" ?? function not def.at " ++ (show pos)]
+                                                                        [Function t posf param] -> checkTypeExpressionCall_ node env [Function t posf param]
                                                                 Nothing -> TError [" ?? function not def. Unexpected ident at " ++ (show pos)]
+
+-- sub-function of the previous one
+checkTypeExpressionCall_ :: Abs.EXPRESSION Posn -> Env -> [EnvEntry] -> TCheckResult
+checkTypeExpressionCall_ (Abs.ExpressionCall pos (Abs.Ident id posid) exps) env [Function t posf param] = case exps of
+    (Abs.Expression pos exp) -> if Prelude.length (param) == 1 -- The call was with 1 param, does the definition requires only 1 param?
+                                               then if (let expType = checkTypeExpression exp env -- Check if the type is compatibile with the one required in the definition
+                                                        in checkCompatibility expType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) then TResult env t pos 
+                                                    else TError ["tipo nella chiamata non coincide (ma il numero era ok)"]
+                                               else TError ["call with 1 param but missing others params"]
+    (Abs.ExpressionEmpty pos) -> if param == [] then TResult env t pos else TError ["chiamata senza paramertri"] -- The call was with no params, check if the definition requires no param too
+    (Abs.Expressions pos exp expss) -> if Prelude.length (param) == 1 + (countNumberOfExps expss) -- The call has n params, does the definition requires n params?
+                                                              then if (checkCompatibilityOfExpsList exps param env) then TResult env t pos 
+                                                                   else TError ["number of param ok but compatibility of types NOT OK"]
+                                                              else TError ["number of param not equal in the call"]
+
+countNumberOfExps :: Abs.EXPRESSIONS Posn -> Prelude.Int
+countNumberOfExps (Abs.Expressions _ _ exps) = 1 + countNumberOfExps exps
+countNumberOfExps (Abs.Expression _ _) = 1
+countNumberOfExps (Abs.ExpressionEmpty _) = 1
+
+checkCompatibilityOfExpsList :: Abs.EXPRESSIONS Posn -> [TypeChecker.Parameter] -> Env-> Prelude.Bool
+checkCompatibilityOfExpsList  (Abs.Expressions pos exp exps) ((TypeChecker.Parameter ty _ _ _):zs) env = let expType = checkTypeExpression exp env in if checkCompatibility expType (TResult env ty pos) 
+                                                                                                                                                         then True && (checkCompatibilityOfExpsList exps zs env) else False
+checkCompatibilityOfExpsList  (Abs.Expression pos exp) ((TypeChecker.Parameter ty _ _ _):zs) env = let expType = checkTypeExpression exp env in if checkCompatibility expType (TResult env ty pos) 
+                                                                                                                                                     then True else False
+checkCompatibilityOfExpsList  (Abs.ExpressionEmpty pos) [] env = True                                                                                                                                                 
 
 checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
 checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type Type_Real) pos
@@ -834,12 +864,12 @@ checkTypeCallExpression_ :: Abs.CALLEXPRESSION Posn -> Env -> [EnvEntry] -> TChe
 checkTypeCallExpression_ (Abs.CallExpressionParentheses _ (Abs.Ident id pos) namedexpr) env [Function t posf param] = case namedexpr of
     (Abs.NamedExpressionList res namedexpr) -> if Prelude.length (param) == 1 -- The call was with 1 param, does the definition requires only 1 param?
                                                then if (let namedType = checkTypeNamedExpression namedexpr env -- Check if the type is compatibile with the one required in the definition
-                                                        in checkCompatibility namedType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) then TResult env (B_type Type_Void) pos 
+                                                        in checkCompatibility namedType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) then TResult env t pos 
                                                     else TError ["tipo nella chiamata non coincide (ma il numero era ok)"]
                                                else TError ["call with 1 param but missing others params"]
-    (Abs.NamedExpressionListEmpty res) -> if param == [] then TResult env (B_type Type_Void) pos else TError ["chiamata senza paramertri"] -- The call was with no params, check if the definition requires no param too
+    (Abs.NamedExpressionListEmpty res) -> if param == [] then TResult env t pos else TError ["chiamata senza paramertri"] -- The call was with no params, check if the definition requires no param too
     (Abs.NamedExpressionLists res _ namedexprlist) -> if Prelude.length (param) == 1 + (countNumberOfParam namedexprlist) -- The call has n params, does the definition requires n params?
-                                                              then if (checkCompatibilityOfParamsList namedexpr param env) then TResult env (B_type Type_Void) pos 
+                                                              then if (checkCompatibilityOfParamsList namedexpr param env) then TResult env t pos 
                                                                    else TError ["number of param ok but compatibility of types NOT OK"]
                                                               else TError ["number of param not equal in the call"]
     (Abs.NamedExpressionAssigned res id namedexpr) -> TError ["mhh?"] -- label per leggibilità codice ...
