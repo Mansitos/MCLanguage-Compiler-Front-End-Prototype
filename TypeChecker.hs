@@ -179,8 +179,16 @@ updateIfCanOverride env = Data.Map.fromList (updateIfCanOverride_ (Data.Map.toLi
 updateIfCanOverride_ :: [(Prelude.String, [EnvEntry])] -> [(Prelude.String, [EnvEntry])]
 updateIfCanOverride_ ((str,entry:entries):xs) = case entry of
                     Variable ty pos varMode canOverride ->  [(str,(Variable ty pos varMode True):entries)] ++ updateIfCanOverride_ xs
-                    _ -> [(str,entry:entries)] ++ updateIfCanOverride_ xs
+                    _ -> [(str,entry:(updateIfCanOverrideEntries_ entries))] ++ updateIfCanOverride_ xs
 updateIfCanOverride_ [] = []
+
+updateIfCanOverrideEntries_ :: [EnvEntry] -> [EnvEntry]
+updateIfCanOverrideEntries_ (x:xs) = case x of
+                                        Variable ty pos varMode canOverride -> (Variable ty pos varMode True):xs
+                                        _ -> [x] ++ updateIfCanOverrideEntries_ xs
+updateIfCanOverrideEntries_ []     = [] 
+
+
 
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []   
