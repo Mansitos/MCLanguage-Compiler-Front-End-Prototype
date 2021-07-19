@@ -29,12 +29,6 @@ data TCheckResult
     = TResult {environment::Env, t_type::Type, t_position::LexProgettoPar.Posn}
     | TError {errors::[Prelude.String]}
 
---searchFunction [] (Pn abs row col) [Function t (Pn absf rowf colf) mode] =
---searchFunction [] (Pn abs row col) [] = 
---searchFunction ((x1,x2):xs) (Pn abs row col) zs= case x2 of
---                                                    Variable t pos mode -> searchFunction xs (Pn abs row col) zs
---                                                    Function t pos mode -> searchFunction xs (Pn abs row col) [Function t pos mode]
-
 -------------------------------------------------------------------------------------------------
 --- SHOW ISTANCES FOR ENV DATA TYPES ------------------------------------------------------------
 -------------------------------------------------------------------------------------------------
@@ -86,14 +80,6 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                           B_type Type_String  -> True
                                                                                           _ -> False
                                                                     _ -> False 
-
-checkSuperTypeRangeExp :: TCheckResult -> TCheckResult
-checkSuperTypeRangeExp (TResult env tipo pos) = case tipo of
-                                                B_type Type_Integer -> (TResult env tipo pos)
-                                                B_type Type_Real -> (TResult env tipo pos)                                          
-                                                B_type Type_Char -> (TResult env tipo pos)                                            
-                                                B_type Type_String -> (TResult env tipo pos)
-                                                _ -> TError ["incompatible type for range expression at "++show pos]
 
 -- Given Type A and B (from TCheckResults) it returns the one which is more generic.
 -- Semantic: Which type is more generic; a or b?
@@ -160,11 +146,12 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                 Abs.FunctionStatement pos id params ty stats -> let parameters = getParamList params in
                                                                                                                     let fty = getTypeFromPrimitive ty in
                                                                                                                         let fid = getIdFromIdent id in 
-                                                                                                                            (insertWith (++) fid [Function fty pos parameters] env, err ++ checkErr env stat)
+                                                                                                                            (insertWith (++) fid [Function fty pos parameters] env, err ++ checkErr env stat) 
                                                                 -- generic case
                                                                 _ -> (env,err) 
 updateEnv node@(Abs.EmptyStatement pos) env err = (env,err)
 
+-- Update the env for Conditional if-then-else statement
 updateEnvCondStat :: (Abs.CONDITIONALSTATE Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
 updateEnvCondStat (Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env err = case ctrlState of
                     Abs.CtrlDecStateVar pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err ++ checkErr env state)
@@ -172,7 +159,20 @@ updateEnvCondStat (Abs.ConditionalStatementCtrlThen pos ctrlState state elseStat
 updateEnvCondStat (Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env err = case ctrlState of
                     Abs.CtrlDecStateVar pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err)
                     Abs.CtrlDecStateConst pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env, err)
---
+updateEnvCondStat _ env err = (env,err)
+
+-- Update the env for while statement
+updateEnvWhileStat :: (Abs.WHILESTATEMENT Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
+updateEnvWhileStat (Abs.WhileStateCtrlDo pos ctrl state) env err = case ctrl of
+                    Abs.CtrlDecStateVar pos id typepart exp -> let newEnv = (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err ++ checkErr env state) in (insertWith (++) "while" [] (first newEnv), err ++ checkErr (first newEnv) state)
+                    Abs.CtrlDecStateConst pos id typepart exp -> let newEnv = (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env, err ++ checkErr env state) in (insertWith (++) "while" [] (first newEnv), err ++ checkErr (first newEnv) state)
+updateEnvWhileStat (Abs.WhileStateCtrlWDo pos ctrl b) env err = case ctrl of
+                    Abs.CtrlDecStateVar pos id typepart exp -> let newEnv = (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err) in (insertWith (++) "while" [] (first newEnv), err)
+                    Abs.CtrlDecStateConst pos id typepart exp -> let newEnv = (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env, err) in (insertWith (++) "while" [] (first newEnv), err)
+updateEnvWhileStat (Abs.WhileStateSimpleDo pos expr state) env err = (insertWith (++) "while" [] env, err ++ checkErr env state)
+updateEnvWhileStat (Abs.WhileStateSimpleWDo pos expr b) env err = (insertWith (++) "while" [] env, err)
+
+-- Given a list of Params, it creates an envEntry of type param for each of them
 createEnvEntryForParams :: [TypeChecker.Parameter] -> Env -> Env
 createEnvEntryForParams ((TypeChecker.Parameter ty pos mode id):xs) env = createEnvEntryForParams xs (insertWith (++) id [Variable ty pos mode False] env)
 createEnvEntryForParams [] env = env
@@ -192,14 +192,19 @@ updateIfCanOverride_ :: [(Prelude.String, [EnvEntry])] -> [(Prelude.String, [Env
 updateIfCanOverride_ ((str,entry:entries):xs) = case entry of
                     Variable ty pos varMode canOverride ->  [(str,(Variable ty pos varMode True):entries)] ++ updateIfCanOverride_ xs
                     _ -> [(str,entry:(updateIfCanOverrideEntries_ entries))] ++ updateIfCanOverride_ xs
+updateIfCanOverride_ ((str,[]):xs) = ((str,[]):xs)
 updateIfCanOverride_ [] = []
 
+-- "while" []
+
+-- Sub-Function of updateIfCanOverride_
 updateIfCanOverrideEntries_ :: [EnvEntry] -> [EnvEntry]
 updateIfCanOverrideEntries_ (x:xs) = case x of
                                         Variable ty pos varMode canOverride -> (Variable ty pos varMode True):xs
                                         _ -> [x] ++ updateIfCanOverrideEntries_ xs
 updateIfCanOverrideEntries_ []     = [] 
 
+-- TODO
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []   
 
@@ -234,6 +239,21 @@ checkIfCanOverride (x:xs) env = case Data.Map.lookup x env of
         _ -> True && (checkIfCanOverride xs env)
     Nothing -> True && (checkIfCanOverride xs env)
 checkIfCanOverride [] env = True
+
+-- Given a parameter list, return the list of ids
+getListOfIdsFromParamList :: [TypeChecker.Parameter] -> [Prelude.String]
+getListOfIdsFromParamList ((TypeChecker.Parameter ty pos mode id):xs) = [id] ++ getListOfIdsFromParamList xs
+getListOfIdsFromParamList [] = []
+
+-- Return true if there is a dups in the list (of parameters ids)
+checkDuplicatedParametersInFunDecl :: [Prelude.String] -> Prelude.Bool
+checkDuplicatedParametersInFunDecl (x:xs) = isInList x xs || checkDuplicatedParametersInFunDecl xs
+checkDuplicatedParametersInFunDecl [] = False
+
+-- Return true if the given string is in the given string list
+isInList :: Prelude.String -> [Prelude.String] -> Prelude.Bool
+isInList id (x:xs) = id == x || isInList id xs
+isInList id [] = False
 
 -------------------------------------------------------------------------------------------------------
 --- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY -----------------------------------
@@ -280,6 +300,7 @@ getTypeFromPrimitive (Abs.TypeArray _ prim) =  (Type.Array (getTypeFromPrimitive
 getVariableDeclStatNames :: Abs.VARDECLIST Posn -> [Prelude.String]
 getVariableDeclStatNames (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ id _ _)) = getIdList id
 
+-- Given an IdentList node, return a list of string containing all the ids
 getIdList :: Abs.IDENTLIST Posn -> [Prelude.String]
 getIdList (Abs.IdentifierList _ (Abs.Ident s _) identlist) = [s] ++ getIdList identlist
 getIdList (Abs.IdentifierSingle _ (Abs.Ident s _)) = [s] 
@@ -307,14 +328,17 @@ executeStatement node@(Abs.ExpressionStatement _ exp) env = Abs.ExpressionStatem
 executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = Abs.AssignmentStatement (checkTypeStatement node env) (executeLValue lval env) (executeAssignOp assignOp env) (executeExpression exp env)
 executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeVarType tipo env) (executeVarDecList vardec env)
 executeStatement node@(Abs.ConditionalStatement pos condition) env = let newEnv = updateEnvCondStat condition (updateIfCanOverride env) [] in Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition (first newEnv))
-executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = let newEnv = updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) (updateIfCanOverride env) [] in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStaement (first newEnv))
+executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = let newEnv = updateEnvWhileStat whileStaement (updateIfCanOverride env) [] in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStaement (first newEnv))
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
 executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
 executeStatement node@(Abs.ForAllStatement pos forAllStatement) env = Abs.ForAllStatement (checkTypeStatement node env) (executeForAllState forAllStatement env)
-executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env []))) in 
-                                                                        Abs.ProcedureStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeStatements states newEnv)
-executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env []))) in  
-                                                                        Abs.FunctionStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states newEnv)
+executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env []))) in
+                                                                            let newEnv2 = Data.Map.delete "while" (first (insertWith (++) "return" [] newEnv, [])) in  
+                                                                                Abs.ProcedureStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeStatements states (first newEnv2))
+executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env []))) in
+                                                                                let newEnv2 = Data.Map.delete "while" (first (insertWith (++) "return" [] newEnv, [])) in  
+                                                                                    Abs.FunctionStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states newEnv2)
+
 executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
 executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeExecuteParameter node env) (executeParameter param env) (executeParam params env)
 executeParam node@(Abs.ParameterListSingle pos param) env = Abs.ParameterListSingle (checkTypeExecuteParameter node env) (executeParameter param env)
@@ -560,12 +584,7 @@ checkEmptyStatement (Abs.EmptyStatement pos) env = TResult env (B_type Type_Void
 
 checkTypeLvalueExpression :: Abs.LVALUEEXPRESSION Posn -> Env -> TCheckResult
 checkTypeLvalueExpression node@(Abs.LvalueExpression pos id index) env = checkTypeIdentVar id env 
-checkTypeLvalueExpression node@(Abs.LvalueExpressions pos id index next) env = if (checkCompatibility (getRealType (checkTypeIdentVar id env)) (checkTypeLvalueExpression next env)) then checkTypeIdentVar id env else TError ["not all ident have same type at "++show pos]
-
-getRealType :: TCheckResult -> TCheckResult
-getRealType tcheck = case tcheck of
-                    TResult env (Pointer t depth) pos -> TResult env t pos
-                    _ -> tcheck
+checkTypeLvalueExpression node@(Abs.LvalueExpressions pos id index next) env = if (checkCompatibility (checkTypeIdentVar id env) (checkTypeLvalueExpression next env)) then checkTypeIdentVar id env else TError ["not all ident have same type at "++show pos]
 
 checkArrayIndexElementEmpty :: Abs.ARRAYINDEXELEMENT Posn -> Env -> TCheckResult
 checkArrayIndexElementEmpty node@(Abs.ArrayIndexElementEmpty pos) env = TResult env (B_type Type_Void) pos --da rivedere
@@ -576,16 +595,15 @@ checkTypeStatement node@(Abs.ContinueStatement pos) env = checkTypeContinueState
 checkTypeStatement node@(Abs.ReturnStatement pos ret) env = checkTypeReturnStatement node env
 checkTypeStatement node@(Abs.Statement pos b) env = checkTypeB b env
 checkTypeStatement node@(Abs.ExpressionStatement pos exp) env = checkTypeExpressionStatement exp env
-checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = let expTCheck = checkTypeExpression exp env in if(checkCompatibility expTCheck (getRealType (checkTypeLvalueExpression lval env))) then expTCheck else TError ["incompatible type at "++show pos]
+checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = let expTCheck = checkTypeExpression exp env in if(checkCompatibility expTCheck (checkTypeLvalueExpression lval env)) then expTCheck else TError ["incompatible type at "++show pos]
 checkTypeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = checkTypeVardec vardec env
 checkTypeStatement node@(Abs.ConditionalStatement pos condition) env = checkTypeCondition condition env
 checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhile whileState env
 checkTypeStatement node@(Abs.DoWhileStatement pos doState) env = checkTypeDo doState env
 checkTypeStatement node@(Abs.ForStatement pos forState) env = checkTypeForState forState env
 checkTypeStatement node@(Abs.ForAllStatement pos forAllState) env = checkTypeForAllState forAllState env
-checkTypeStatement node@(Abs.ProcedureStatement pos id param states) env = checkTypeExecuteParameter param env -- non deve esserci return diverso da void
+checkTypeStatement node@(Abs.ProcedureStatement pos id param states) env = checkTypeExecuteParameter param env     -- non deve esserci return diverso da void
 checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = checkTypeExecuteParameter param env -- se c'è return (deve esserci) deve combaciare il tipo
-
 
 checkTypeCondition :: Abs.CONDITIONALSTATE Posn -> Env -> TCheckResult
 checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for condition not is bool at "++show pos]
@@ -638,12 +656,12 @@ checkTypeB node@(Abs.BlockStatement pos statements) env = case statements of
                                                     (Abs.ListStatements pos stat stats) -> checkTypeStatement stat env
 
 checkTypeBreakStatement :: Abs.STATEMENT Posn -> Env -> TCheckResult
-checkTypeBreakStatement (Abs.BreakStatement pos) env = case Data.Map.lookup "while" env of
+checkTypeBreakStatement (Abs.BreakStatement pos) env = case Data.Map.lookup "while" env of -- check if inside a while block
     Just result -> TResult env (B_type Type_Void) pos
     Nothing -> TError ["Unexpected break statement at " ++ (show pos)]
 
 checkTypeContinueStatement :: Abs.STATEMENT Posn -> Env -> TCheckResult
-checkTypeContinueStatement (Abs.ContinueStatement pos) env = case Data.Map.lookup "while" env of
+checkTypeContinueStatement (Abs.ContinueStatement pos) env = case Data.Map.lookup "while" env of -- check if inside a while block
     Just result -> TResult env (B_type Type_Void) pos
     Nothing -> TError ["Unexpected continue statement at " ++ (show pos)]
 
@@ -810,9 +828,7 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                         Abs.InitializzationPartEmpty _ -> checkTypeTypePart typepart env
                                                                                         _ -> let typeCheck = checkTypeTypePart typepart env in
                                                                                                 let initCheck = checkTypeInitializzationPart initpart env in
-                                                                                                    case typeCheck of
-                                                                                                        TResult env (Pointer t depth) pos -> if (checkCompatibility initCheck (TResult env t pos)) then typeCheck else TError ["initializzation incompatible type at "++show pos]
-                                                                                                        _ -> if (checkCompatibility initCheck typeCheck) then typeCheck else TError ["initializzation incompatible type at "++show pos]
+                                                                                                    if (checkCompatibility initCheck typeCheck) then typeCheck else TError ["initializzation incompatible type at "++show pos]
 
 checkIdentifierList :: Abs.IDENTLIST Posn -> Env -> TCheckResult
 checkIdentifierList node@(Abs.IdentifierList pos ident identlist) env = TResult env (B_type Type_Void) pos
@@ -843,7 +859,7 @@ checkTypeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> TCheckResult
 checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = checkPrimitiveType primitiveType env
 checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp primitivetype) env = TError ["mhh?"]
 checkTypeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp primitivetype) env= TError ["mhh?"]
-checkTypeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = TResult env (getTypeExpr node) pos
+checkTypeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = TError ["controllo pointer-primitive che coincida con l'expr? type? ..."]
 
 checkListElementsOfArray :: Abs.LISTELEMENTARRAY Posn -> Env -> TCheckResult
 checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env = TError ["CONTROLLA LA LISTA"]
@@ -856,6 +872,15 @@ checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = if (c
                                                                                                                                                                 else TError ["type of expressions of the range is incompatible"]
                                                                                                                                                              else TError ["type of expressions of the range is incompatible"]
 checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if (checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) || checkCompatibility (checkTypeExpression expr2 env) (checkTypeExpression expr1 env)) then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) else TError ["type of expressions of the range is incompatible"]
+
+-- Check the superType in a given RangeExp
+checkSuperTypeRangeExp :: TCheckResult -> TCheckResult
+checkSuperTypeRangeExp (TResult env tipo pos) = case tipo of
+                                                B_type Type_Integer -> (TResult env tipo pos)
+                                                B_type Type_Real -> (TResult env tipo pos)                                          
+                                                B_type Type_Char -> (TResult env tipo pos)                                            
+                                                B_type Type_String -> (TResult env tipo pos)
+                                                _ -> TError ["incompatible type for range expression at "++show pos]
 
 checkTypeTypeIndex :: Abs.TYPEINDEX Posn -> Env -> TCheckResult
 checkTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = TError ["todo"]
@@ -920,16 +945,3 @@ checkTypeExecuteParameter node@(Abs.ParameterListEmpty pos) env = TResult env (B
 
 checkTypeParameter:: Abs.PARAMETER Posn -> Env -> TCheckResult
 checkTypeParameter node@(Abs.Parameter pos id ty) env = TError ["todo"]
-
-getListOfIdsFromParamList :: [TypeChecker.Parameter] -> [Prelude.String]
-getListOfIdsFromParamList ((TypeChecker.Parameter ty pos mode id):xs) = [id] ++ getListOfIdsFromParamList xs
-getListOfIdsFromParamList [] = []
-
--- Return true if there is a dups in the list (of parameters ids)
-checkDuplicatedParametersInFunDecl :: [Prelude.String] -> Prelude.Bool
-checkDuplicatedParametersInFunDecl (x:xs) = isInList x xs || checkDuplicatedParametersInFunDecl xs
-checkDuplicatedParametersInFunDecl [] = False
-
-isInList :: Prelude.String -> [Prelude.String] -> Prelude.Bool
-isInList id (x:xs) = id == x || isInList id xs
-isInList id [] = False
