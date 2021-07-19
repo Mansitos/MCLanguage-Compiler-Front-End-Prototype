@@ -165,6 +165,13 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                 _ -> (env,err) 
 updateEnv node@(Abs.EmptyStatement pos) env err = (env,err)
 
+updateEnvCondStat :: (Abs.CONDITIONALSTATE Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
+updateEnvCondStat (Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env err = case ctrlState of
+                    Abs.CtrlDecStateVar pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err ++ checkErr env state)
+                    Abs.CtrlDecStateConst pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env, err ++ checkErr env state)
+updateEnvCondStat (Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env err = case ctrlState of
+                    Abs.CtrlDecStateVar pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err)
+                    Abs.CtrlDecStateConst pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env, err)
 --
 createEnvEntryForParams :: [TypeChecker.Parameter] -> Env -> Env
 createEnvEntryForParams ((TypeChecker.Parameter ty pos mode id):xs) env = createEnvEntryForParams xs (insertWith (++) id [Variable ty pos mode False] env)
@@ -299,8 +306,8 @@ executeStatement node@(Abs.Statement _ b) env = let newEnv = updateIfCanOverride
 executeStatement node@(Abs.ExpressionStatement _ exp) env = Abs.ExpressionStatement (checkTypeStatement node env) (executeExpressionStatement exp env)
 executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = Abs.AssignmentStatement (checkTypeStatement node env) (executeLValue lval env) (executeAssignOp assignOp env) (executeExpression exp env)
 executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeVarType tipo env) (executeVarDecList vardec env)
-executeStatement node@(Abs.ConditionalStatement pos condition) env = Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition env)
-executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStaement env)
+executeStatement node@(Abs.ConditionalStatement pos condition) env = let newEnv = updateEnvCondStat condition (updateIfCanOverride env) [] in Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition (first newEnv))
+executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = let newEnv = updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) (updateIfCanOverride env) [] in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStaement (first newEnv))
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
 executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
 executeStatement node@(Abs.ForAllStatement pos forAllStatement) env = Abs.ForAllStatement (checkTypeStatement node env) (executeForAllState forAllStatement env)
