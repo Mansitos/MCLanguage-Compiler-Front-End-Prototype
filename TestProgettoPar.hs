@@ -5,7 +5,7 @@ module Main where
 import Prelude
   (($)
   , Either(..)
-  , Int, (>)
+  , Int, (>), (+)
   , String, (++), unlines
   , Char
   , Show, show
@@ -45,22 +45,31 @@ run v p s =
       putStrV v "Tokens:"
       putStrV v $ show ts
       putStrLn err
-      exitFailure
     Right tree -> do
       putStrLn "\nParse Successful!"
       Main.showTree v tree
 
       -- Naive code for brutal Abs print with Tcheck results (too heavy syntax)
-      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
-        putStrLn (show typecheckRes)
+      --let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
+      --  putStrLn (show typecheckRes)
       
       putStrLn "\n\n[Statements TypeChecker Result]\n"
       let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in  
         putStrLn (showTypeCheckResult typecheckRes)
-      exitSuccess  
 
   where
   ts = myLexer (pointersSyntaxPreprocessing s [] [])
+
+runTests :: Prelude.Int -> Verbosity -> [String] -> IO()
+runTests index v (x:xs) = do
+                      putStrLn "\n\n---------------------------------------------------------------------------------------"
+                      putStrLn ("--------- TEST n° " ++ show index ++ "--------------------------------------------------------------------")
+                      putStrLn "---------------------------------------------------------------------------------------"
+                      run v pS x
+
+                      runTests (index + 1) v xs -- next test
+runTests index v [] =  putStrLn ">> End of testing <<"
+
 
 ----------------------------------------------------------------------------------------------------
 --- TYPE CHECKING RESULTS PRINTING (Prints TCheckResults + env for each statement (recursively)) ---
@@ -193,7 +202,15 @@ main = do
   args <- getArgs
   case args of
     ["--help"] -> usage
+    ["--test"]  -> runTests 1 2 testsList
     []         -> getContents >>= run 2 pS
     "-s":fs    -> mapM_ (runFile 0 pS) fs
     fs         -> mapM_ (runFile 2 pS) fs
+
+-- list of tests to be executed in --test mode
+testsList  = ["var x:int = 50;{var y:char = 100;x;if(x > 10) then {x=100;}if(z == \"ciaone\") then print(\"miao\");function print(input:string):string { input; }while(true) do print(\"deadlock\");}{{x=100;}}for x in x<100 do {x+=1;}",
+              "var x : int;function foooooooooo():int{    var i:int;    var o:char;    o;    function foo2():char{        var u:string;        o;        o;  proc foo3():void{x;}  }    }var z : int;var u : int;",
+              "var x : int;{  var y : int;  y;  x;  {    y;    var z:char;  }  x;  z;  }x;",
+              "if true then {var x : int;x;}x;"]
+    
 
