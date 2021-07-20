@@ -799,11 +799,7 @@ checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
 checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type Type_Real) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationNegative pos) env = TResult env (B_type Type_Real) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationNot pos) env = TResult env (B_type Type_Boolean) pos
-<<<<<<< Updated upstream
 checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TResult env (B_type Type_Void) pos
-=======
-checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TError ["pointer"] -- da rivedere
->>>>>>> Stashed changes
 
 checkTypeBinaryOp :: Abs.BINARYOP Posn -> Env -> TCheckResult
 checkTypeBinaryOp node@(Abs.BinaryOperationPlus pos) env = TResult env (B_type Type_Real) pos
