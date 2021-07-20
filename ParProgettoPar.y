@@ -293,7 +293,7 @@ UNARYOP :: { Abs.UNARYOP Posn }
 UNARYOP : '+' { Abs.UnaryOperationPositive (tokenPosn $1)}
         | '-' { Abs.UnaryOperationNegative (tokenPosn $1)}
         | '!' { Abs.UnaryOperationNot (tokenPosn $1)}
-        | '&' { Abs.UnaryOperationPointer (tokenPosn $1)}
+        | '*' { Abs.UnaryOperationPointer (tokenPosn $1)}
 
 BINARYOP :: { Abs.BINARYOP Posn}
 BINARYOP : '+' { Abs.BinaryOperationPlus (tokenPosn $1)}

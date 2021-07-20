@@ -338,7 +338,7 @@ instance Print (AbsProgettoPar.UNARYOP attr) where
     AbsProgettoPar.UnaryOperationPositive _ -> prPrec i 0 (concatD [doc (showString "+")])
     AbsProgettoPar.UnaryOperationNegative _ -> prPrec i 0 (concatD [doc (showString "-")])
     AbsProgettoPar.UnaryOperationNot _ -> prPrec i 0 (concatD [doc (showString "!")])
-    AbsProgettoPar.UnaryOperationPointer _ -> prPrec i 0 (concatD [doc (showString "&")])
+    AbsProgettoPar.UnaryOperationPointer _ -> prPrec i 0 (concatD [doc (showString "*")])
 
 instance Print (AbsProgettoPar.BINARYOP attr) where
   prt i = \case
