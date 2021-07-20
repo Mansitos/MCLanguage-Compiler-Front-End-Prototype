@@ -2,15 +2,14 @@ parametri nelle func env entry - done
 chiamate ricorsive - done
 distinguere var e func nel typecheck ident! - done
 creare env entry per ogni variabile parametro delle func. - done
-
+break;continue;return multipli non vanno bene? - vanno bene
+if then con control decl --> il tipo esplicito? l'env da aggiornare? - done
 ---
 
-if then con control decl --> il tipo esplicito? l'env da aggiornare?
-
 updateEnv refactor (lavora solo su statement?)
-
-break;continue;return multipli non vanno bene?
 
 distinguere due errori con altro if per order
 
 preprocessing puntatori dopo =
+
+controllo correttezza indici array
