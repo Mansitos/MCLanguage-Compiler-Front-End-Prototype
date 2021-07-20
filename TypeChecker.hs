@@ -510,7 +510,7 @@ executeExpression node@(Abs.ExpressionUnary pos unary exp) env = case unary of
 executeExpression node@(Abs.ExpressionBinary pos def binary exp) env = Abs.ExpressionBinary (checkTypeExpression node env) (executeDefault def env) (executeBinaryOp binary env) (executeExpression exp env)
 executeExpression node@(Abs.ExpressionIdent pos id index) env = case index of
                                                                 Abs.ArrayIndexElementEmpty posIdx -> Abs.ExpressionIdent (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env)
-                                                                Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdent (checkTypeIdentVar id env) (executeIdentVar id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))
+                                                                Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdent (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement (Abs.ArrayIndexElement posIdx tipo) env)
 executeExpression node@(Abs.ExpressionCall pos id exps) env = Abs.ExpressionCall (checkTypeExpression node env) (executeIdentFunc id env) (executeExpressions exps env) 
 
 checkDepthIsCorrect :: Abs.EXPRESSION Posn -> Env -> Prelude.Integer -> Prelude.Bool
@@ -582,7 +582,7 @@ executeArrayIndexElement node@(Abs.ArrayIndexElement pos index) env = Abs.ArrayI
 executeArrayIndexElement node@(Abs.ArrayIndexElementEmpty pos) env = Abs.ArrayIndexElementEmpty (checkArrayIndexElement node env)
 
 checkArrayIndexElement :: Abs.ARRAYINDEXELEMENT Posn -> Env -> TCheckResult
-checkArrayIndexElement node@(Abs.ArrayIndexElement pos index) env = checkTypeTypeIndex index env
+checkArrayIndexElement node@(Abs.ArrayIndexElement pos index) env = (TResult env (B_type Type_Void ) pos)
 checkArrayIndexElement node@(Abs.ArrayIndexElementEmpty pos) env = (TResult env (B_type Type_Void ) pos)
 
 executeTypeTypeIndex :: Abs.TYPEINDEX Posn -> Env -> Abs.TYPEINDEX TCheckResult
