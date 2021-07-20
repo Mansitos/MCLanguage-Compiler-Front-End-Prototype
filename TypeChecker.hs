@@ -299,7 +299,22 @@ getTypeFromPrimitive (Abs.PrimitiveTypeInt _) = (B_type Type_Integer)
 getTypeFromPrimitive (Abs.PrimitiveTypeReal _) = (B_type Type_Real)
 getTypeFromPrimitive (Abs.PrimitiveTypeString _) = (B_type Type_String)
 getTypeFromPrimitive (Abs.PrimitiveTypeChar _) = (B_type Type_Char)
-getTypeFromPrimitive (Abs.TypeArray _ prim) =  (Type.Array (getTypeFromPrimitive prim))
+getTypeFromPrimitive (Abs.TypeArray _ prim) =  (Type.Array (getTypeFromPrimitive prim) (getArrayDim prim))
+
+getArrayDim :: Abs.PRIMITIVETYPE Posn -> Prelude.Integer
+getArrayDim (Abs.TypeArray _ ty) = 1 + getArrayDim ty
+getArrayDim _ = 1
+
+-- Get a PrimitiveType node of an array abs node, it returns the primitive type
+-- Example: var x:[][][]int -> int
+getArrayPrimitiveType :: Abs.PRIMITIVETYPE Posn -> Type
+getArrayPrimitiveType (Abs.PrimitiveTypeVoid _) = (B_type Type_Void)
+getArrayPrimitiveType (Abs.PrimitiveTypeBool _) = (B_type Type_Boolean)
+getArrayPrimitiveType (Abs.PrimitiveTypeInt _) = (B_type Type_Integer)
+getArrayPrimitiveType (Abs.PrimitiveTypeReal _) = (B_type Type_Real)
+getArrayPrimitiveType (Abs.PrimitiveTypeString _) = (B_type Type_String)
+getArrayPrimitiveType (Abs.PrimitiveTypeChar _) = (B_type Type_Char)
+getArrayPrimitiveType (Abs.TypeArray _ prim) =  getArrayPrimitiveType prim
 
 -- Get a VarDecList (list of vars declarations) of the ABS, returns a list of strings, where each element is the id of the vars
 getVariableDeclStatNames :: Abs.VARDECLIST Posn -> [Prelude.String]
@@ -456,6 +471,7 @@ executeExpressionStatement node@(Abs.CallExpression pos callexpr) env = Abs.Call
 executeCallExpression :: Abs.CALLEXPRESSION Posn -> Env -> Abs.CALLEXPRESSION TCheckResult
 executeCallExpression node@(Abs.CallExpressionParentheses pos id namedexpr) env = Abs.CallExpressionParentheses (checkTypeCallExpression node env) (executeIdentFunc id env) (executeNamedExpressionList namedexpr env)
 executeCallExpression node@(Abs.CallExpressionQuadre pos id namedexpr) env = Abs.CallExpressionQuadre (checkTypeCallExpression node env) (executeIdentFunc id env) (executeNamedExpressionList namedexpr env)
+-- quadre -> array?
 
 executeNamedExpressionList :: Abs.NAMEDEXPRESSIONLIST Posn -> Env -> Abs.NAMEDEXPRESSIONLIST TCheckResult
 executeNamedExpressionList node@(Abs.NamedExpressionList pos namedexpr) env = Abs.NamedExpressionList (checkTypeNamedExpressionList node env) (executeNamedExpression namedexpr env)
@@ -532,7 +548,7 @@ executeDefault node@(Abs.ExpressionRealD pos value) env = Abs.ExpressionRealD (c
 executeDefault node@(Abs.ExpressionBracketD pos exp) env = Abs.ExpressionBracketD (checkTypeDefault node env) (executeExpression exp env)
 executeDefault node@(Abs.ExpressionIdentD pos id index) env = case index of
                                                                 Abs.ArrayIndexElementEmpty posIdx -> Abs.ExpressionIdentD (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env)
-                                                                Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdentD (checkTypeIdentVar id env) (executeIdentVar id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))
+                                                                Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdentD (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement index env)
 
 
 executeLValue :: Abs.LVALUEEXPRESSION Posn -> Env -> Abs.LVALUEEXPRESSION TCheckResult
@@ -741,7 +757,8 @@ checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = let exp
                                                                                                 else TError ["Incompatibility type for binary operator at "++show pos]
                                                                                     else TError ["a and b incomp types? "++show pos]
                                                                                     ))
-checkTypeExpression node@(Abs.ExpressionIdent pos value index) env = checkTypeIdentVar value env --gestire index
+checkTypeExpression node@(Abs.ExpressionIdent pos value index) env = let idCheck = (checkTypeIdentVar value env) in -- check if the var exists
+                                                                            idCheck -- TODO gestire index
 checkTypeExpression node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
                                                                 Just [Function t posf param] -> checkTypeExpressionCall_ node env [Function t posf param]
                                                                 Just [Variable _ _ _ _] -> TError [" ?? function not def.at " ++ (show pos)]
@@ -780,7 +797,11 @@ checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
 checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type Type_Real) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationNegative pos) env = TResult env (B_type Type_Real) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationNot pos) env = TResult env (B_type Type_Boolean) pos
+<<<<<<< Updated upstream
 checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TResult env (B_type Type_Void) pos
+=======
+checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TError ["pointer"] -- da rivedere
+>>>>>>> Stashed changes
 
 checkTypeBinaryOp :: Abs.BINARYOP Posn -> Env -> TCheckResult
 checkTypeBinaryOp node@(Abs.BinaryOperationPlus pos) env = TResult env (B_type Type_Real) pos
@@ -887,7 +908,7 @@ checkTypeTypePart node@(Abs.TypePart pos typexpr) env = checkTypeTypeExpression 
 
 checkTypeInitializzationPart ::  Abs.INITPART Posn -> Env -> TCheckResult
 checkTypeInitializzationPart node@(Abs.InitializzationPart pos expr) env = checkTypeExpression expr env
-checkTypeInitializzationPart node@(Abs.InitializzationPartArray pos listelementarray) env = TError ["todo :)"]
+checkTypeInitializzationPart node@(Abs.InitializzationPartArray pos listelementarray) env = TError ["todo"] -- controllare che gli elementi siano tutti dello stesso tipo?
 checkTypeInitializzationPart node@(Abs.InitializzationPartEmpty pos ) env = TResult env (B_type Type_Void) pos
 
 checkTypeExpressionpointer :: Abs.POINTER Posn -> Env -> TCheckResult
@@ -901,13 +922,15 @@ checkPrimitiveType node@(Abs.PrimitiveTypeInt pos) env = TResult env (B_type Typ
 checkPrimitiveType node@(Abs.PrimitiveTypeReal pos) env = TResult env (B_type Type_Real) pos
 checkPrimitiveType node@(Abs.PrimitiveTypeString pos) env = TResult env (B_type Type_String) pos
 checkPrimitiveType node@(Abs.PrimitiveTypeChar pos) env = TResult env (B_type Type_Char) pos
-checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env = TError["Todo......?bo"]
+checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env =  TResult env (Array (getArrayPrimitiveType primitivetype) (getArrayDim primitivetype)) pos -- check if ok?
 
 checkTypeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> TCheckResult
 checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = checkPrimitiveType primitiveType env
-checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp primitivetype) env = TError ["mhh?"]
-checkTypeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp primitivetype) env= TError ["mhh?"]
+checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp primitivetype) env =  TResult env (getTypeFromPrimitive primitivetype) pos
+checkTypeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp primitivetype) env =  TResult env (getTypeFromPrimitive primitivetype) pos -- check compatibilità rangeexp e array?
+                                                                                                                                          -- tra ty e la range?
 checkTypeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = TResult env (getTypeExpr node) pos
+
 
 checkListElementsOfArray :: Abs.LISTELEMENTARRAY Posn -> Env -> TCheckResult
 checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env = TError ["CONTROLLA LA LISTA"]
@@ -931,9 +954,13 @@ checkSuperTypeRangeExp (TResult env tipo pos) = case tipo of
                                                 _ -> TError ["incompatible type for range expression at "++show pos]
 
 checkTypeTypeIndex :: Abs.TYPEINDEX Posn -> Env -> TCheckResult
-checkTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = TError ["todo"]
+checkTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkTypeTypeIndex typeindex env)
+                                                                         then TResult env (B_type Type_Integer) pos
+                                                                         else TError ["Index types of array not all the same - int"]
 checkTypeTypeIndex node@(Abs.TypeOfIndexIntSingle pos integer) env = TResult env (B_type Type_Integer) pos
-checkTypeTypeIndex node@(Abs.TypeOfIndexVar pos typeindex id) env = TError ["todo"]
+checkTypeTypeIndex node@(Abs.TypeOfIndexVar pos typeindex id) env = if checkCompatibility (checkTypeIdentVar id env) (checkTypeTypeIndex typeindex env)
+                                                                    then TResult env (B_type Type_Integer) pos
+                                                                    else TError ["Index types of array not all the same"]
 checkTypeTypeIndex node@(Abs.TypeOfIndexVarSingle _ (Abs.Ident id pos)) env = case Data.Map.lookup id env of
                                     Just ident -> TResult env (getTypeEnvEntry ident) pos
                                     Nothing -> TError [" ?? var not def. Unexpected ident at " ++ (show pos)]
@@ -946,7 +973,7 @@ checkTypeCallExpression node@(Abs.CallExpressionParentheses _ (Abs.Ident id pos)
                                                         [] -> TError [" ?? function not def.at " ++ (show pos)]
                                                         [Function t posf param] -> checkTypeCallExpression_ node env [Function t posf param]
                                                     Nothing -> TError [" ?? function not def.at " ++ (show pos)]
-checkTypeCallExpression node@(Abs.CallExpressionQuadre pos id namedexpr) env = TError ["mhh?"]
+checkTypeCallExpression node@(Abs.CallExpressionQuadre pos id namedexpr) env = TError ["mhh?"] -- array?
 
 -- sub-function of the previous one
 checkTypeCallExpression_ :: Abs.CALLEXPRESSION Posn -> Env -> [EnvEntry] -> TCheckResult
