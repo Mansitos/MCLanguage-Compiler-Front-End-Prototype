@@ -14,7 +14,7 @@ while(true) do print("deadlock");
 
 {{x=100;}}
 
-for x in x<100 do {x+=1;}
+for x in 1..2 do {x+=1;}
 
 
 
