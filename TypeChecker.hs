@@ -84,6 +84,11 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                                             B_type Type_Integer -> if (ts==(B_type Type_Real) || ts==(B_type Type_Integer)) && depth==depths then True else False
                                                                                                             _ -> if t==ts && depth==depths then True else False
                                                                                         _ -> False
+                                                                    Array t dim -> case tC of
+                                                                                        Array ts dims -> case t of
+                                                                                                            B_type Type_Integer -> if (ts==(B_type Type_Real) || ts==(B_type Type_Integer)) then True else False
+                                                                                                            _ -> if t==ts then True else False
+                                                                                        _ -> False
                                                                     _ -> False 
 
 -- Given Type A and B (from TCheckResults) it returns the one which is more generic.
@@ -281,8 +286,8 @@ getTypePart (Abs.TypePart _ typeExpr) = getTypeExpr typeExpr
 -- Given a TypeExpression node of the abs, execute the right getType function for obtaining the Type
 getTypeExpr :: Abs.TYPEEXPRESSION Posn -> Type
 getTypeExpr (Abs.TypeExpression _ primitive) = getTypeFromPrimitive primitive
-getTypeExpr (Abs.TypeExpressionArraySimple _ _ primitive) = getTypeFromPrimitive primitive
-getTypeExpr (Abs.TypeExpressionArray _ _ primitive) = getTypeFromPrimitive primitive
+getTypeExpr (Abs.TypeExpressionArraySimple _ rangeexp primitive) = Array (getTypeFromPrimitive primitive) (getArrayDim rangeexp)
+getTypeExpr (Abs.TypeExpressionArray _ rangeexp primitive) = Array (getTypeFromPrimitive primitive) (getArrayDim rangeexp)
 getTypeExpr (Abs.TypeExpressionPointer _ primitive pointer) = Pointer (getTypeFromPrimitive primitive) (checkPointerDepth pointer)
 
 -- Given a Pointer node of the ABS, it counts the depth (how much pointers '*' there are) of that pointer
@@ -299,10 +304,14 @@ getTypeFromPrimitive (Abs.PrimitiveTypeInt _) = (B_type Type_Integer)
 getTypeFromPrimitive (Abs.PrimitiveTypeReal _) = (B_type Type_Real)
 getTypeFromPrimitive (Abs.PrimitiveTypeString _) = (B_type Type_String)
 getTypeFromPrimitive (Abs.PrimitiveTypeChar _) = (B_type Type_Char)
-getTypeFromPrimitive (Abs.TypeArray _ prim) =  (Type.Array (getTypeFromPrimitive prim) (getArrayDim prim))
+getTypeFromPrimitive (Abs.TypeArray _ prim) =  (Type.Array (getTypeFromPrimitive prim) (getArrayDimFunc prim))
 
-getArrayDim :: Abs.PRIMITIVETYPE Posn -> Prelude.Integer
-getArrayDim (Abs.TypeArray _ ty) = 1 + getArrayDim ty
+getArrayDimFunc :: Abs.PRIMITIVETYPE Posn -> Prelude.Integer
+getArrayDimFunc (Abs.TypeArray _ ty) = 1 + getArrayDimFunc ty
+getArrayDimFunc _ = 1
+
+getArrayDim :: Abs.RANGEEXP Posn -> Prelude.Integer
+getArrayDim (Abs.RangeExpression pos exp1 exp2 rangeexp) = 1 + getArrayDim rangeexp
 getArrayDim _ = 1
 
 -- Get a PrimitiveType node of an array abs node, it returns the primitive type
@@ -619,12 +628,31 @@ checkEmptyStatement :: Abs.STATEMENTS Posn -> Env -> TCheckResult
 checkEmptyStatement (Abs.EmptyStatement pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeLvalueExpression :: Abs.LVALUEEXPRESSION Posn -> Env -> TCheckResult
-checkTypeLvalueExpression node@(Abs.LvalueExpression pos id index) env = checkTypeIdentVar id env 
-checkTypeLvalueExpression node@(Abs.LvalueExpressions pos id index next) env = if (checkCompatibility (getRealType (checkTypeIdentVar id env)) (checkTypeLvalueExpression next env)) then checkTypeIdentVar id env else TError ["not all ident have same type at "++show pos]
+checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id posI) index) env = case Data.Map.lookup id env of
+                                                                        Just [Variable (Array t dim) pos mode override] -> if dim == (countIndex index) then checkTypeIdentVar ident env else TError ["number of index different at "++show pos] 
+                                                                        Just _ -> checkTypeIdentVar ident env
+                                                                        Nothing -> TError ["ident not find at "++show pos]
+checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id posI) index next) env = case Data.Map.lookup id env of
+                                                                        Just [Variable (Array t dim) pos mode override] -> if dim == (countIndex index) 
+                                                                            then if (checkCompatibility (getRealType (checkTypeIdentVar ident env)) (checkTypeLvalueExpression next env)) then checkTypeIdentVar ident env else TError ["not all ident have same type at "++show pos]
+                                                                            else TError ["number of index different at "++show pos] 
+                                                                        Just _ -> if (checkCompatibility (getRealType (checkTypeIdentVar ident env)) (checkTypeLvalueExpression next env)) then checkTypeIdentVar ident env else TError ["not all ident have same type at "++show pos]
+                                                                        Nothing -> TError ["ident not find at "++show pos]
+
+countIndex :: Abs.ARRAYINDEXELEMENT Posn -> Prelude.Integer 
+countIndex (Abs.ArrayIndexElement pos ti) = countIndex_ ti
+countIndex (Abs.ArrayIndexElementEmpty pos) = 0
+
+countIndex_ :: Abs.TYPEINDEX Posn -> Prelude.Integer 
+countIndex_ (Abs.TypeOfIndexInt pos ti val) = 1 + countIndex_ ti
+countIndex_ (Abs.TypeOfIndexIntSingle pos val) = 1 
+countIndex_ (Abs.TypeOfIndexVar pos ti val) = 1 + countIndex_ ti
+countIndex_ (Abs.TypeOfIndexVarSingle pos val) = 1 
 
 getRealType :: TCheckResult -> TCheckResult
 getRealType tcheck = case tcheck of
                     TResult env (Pointer t depth) pos -> TResult env t pos
+                    TResult env (Array t dim) pos -> TResult env t pos
                     _ -> tcheck
 
 checkArrayIndexElementEmpty :: Abs.ARRAYINDEXELEMENT Posn -> Env -> TCheckResult
@@ -759,8 +787,10 @@ checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = let exp
                                                                                                 else TError ["Incompatibility type for binary operator at "++show pos]
                                                                                     else TError ["a and b incomp types? "++show pos]
                                                                                     ))
-checkTypeExpression node@(Abs.ExpressionIdent pos value index) env = let idCheck = (checkTypeIdentVar value env) in -- check if the var exists
-                                                                            idCheck -- TODO gestire index
+checkTypeExpression node@(Abs.ExpressionIdent pos value@(Abs.Ident id posI) index) env =  case Data.Map.lookup id env of
+                                                                        Just [Variable (Array t dim) pos mode override] -> if dim == (countIndex index) then checkTypeIdentVar value env else TError ["number of index different at "++show pos] 
+                                                                        Just _ -> checkTypeIdentVar value env
+                                                                        Nothing -> TError ["ident not find at "++show pos]
 checkTypeExpression node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
                                                                 Just [Function t posf param] -> checkTypeExpressionCall_ node env [Function t posf param]
                                                                 Just [Variable _ _ _ _] -> TError [" ?? function not def.at " ++ (show pos)]
@@ -883,8 +913,12 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                         TResult env (Pointer t depth) pos -> case initCheck of
                                                                                                             TResult env (Pointer tI depthI) pos -> if (checkCompatibility (TResult env (Pointer tI ((depthI+1)-(checkDef initpart))) pos) (TResult env (Pointer t depth) pos)) then typeCheck else TError ["Pointer initializzation incompatible type at "++show pos]
                                                                                                             _ -> if (checkCompatibility initCheck (TResult env t pos)) then typeCheck else TError ["initializzation incompatible type at "++show pos]
+                                                                                                        TResult env (Array t dim) pos -> case initCheck of
+                                                                                                            TResult env (Array ts dims) pos -> if checkCompatibility (TResult env ts pos) (TResult env t pos) then typeCheck else TError ["Array|| initializzation incompatible type at "++show pos]
+                                                                                                            _ -> TError ["Array initializzation incompatible type at "++show pos]
                                                                                                         _ -> case initCheck of
                                                                                                             TResult env (Pointer tI depthI) pos -> if (checkCompatibility (TResult env tI pos) typeCheck && (depthI-(checkDef initpart))==0) then typeCheck else TError ["initializzation incompatible type at "++show pos]
+                                                                                                            TResult env (Array t dim) pos -> if (checkCompatibility (getRealType initCheck) typeCheck) then typeCheck else TError ["initializzation incompatible type at "++show pos]
                                                                                                             _ -> if (checkCompatibility initCheck typeCheck) then typeCheck else TError ["initializzation incompatible type at "++show pos]
 
 checkDef :: Abs.INITPART Posn -> Prelude.Integer
@@ -906,7 +940,7 @@ checkTypeTypePart node@(Abs.TypePart pos typexpr) env = checkTypeTypeExpression 
 
 checkTypeInitializzationPart ::  Abs.INITPART Posn -> Env -> TCheckResult
 checkTypeInitializzationPart node@(Abs.InitializzationPart pos expr) env = checkTypeExpression expr env
-checkTypeInitializzationPart node@(Abs.InitializzationPartArray pos listelementarray) env = TError ["todo"] -- controllare che gli elementi siano tutti dello stesso tipo?
+checkTypeInitializzationPart node@(Abs.InitializzationPartArray pos listelementarray) env = checkListElementsOfArray listelementarray env
 checkTypeInitializzationPart node@(Abs.InitializzationPartEmpty pos ) env = TResult env (B_type Type_Void) pos
 
 checkTypeExpressionpointer :: Abs.POINTER Posn -> Env -> TCheckResult
@@ -920,27 +954,41 @@ checkPrimitiveType node@(Abs.PrimitiveTypeInt pos) env = TResult env (B_type Typ
 checkPrimitiveType node@(Abs.PrimitiveTypeReal pos) env = TResult env (B_type Type_Real) pos
 checkPrimitiveType node@(Abs.PrimitiveTypeString pos) env = TResult env (B_type Type_String) pos
 checkPrimitiveType node@(Abs.PrimitiveTypeChar pos) env = TResult env (B_type Type_Char) pos
-checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env =  TResult env (Array (getArrayPrimitiveType primitivetype) (getArrayDim primitivetype)) pos -- check if ok?
+checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env =  TResult env (Array (getArrayPrimitiveType primitivetype) (getArrayDimFunc primitivetype)) pos -- check if ok?
 
 checkTypeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> TCheckResult
-checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = checkPrimitiveType primitiveType env
-checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp primitivetype) env =  TResult env (getTypeFromPrimitive primitivetype) pos
+checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = let checkArray = checkPrimitiveType primitiveType env in case checkArray of
+                                                                                                                                    TResult env (Array _ _) pos -> TError ["array inizializzato senza aver specificato la dimensione at "++show pos]
+                                                                                                                                    _ -> checkArray
+checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp primitivetype) env =  TResult env (Array (getTypeFromPrimitive primitivetype) (getArrayDim rangeexp)) pos
 checkTypeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp primitivetype) env =  TResult env (getTypeFromPrimitive primitivetype) pos -- check compatibilità rangeexp e array?
                                                                                                                                           -- tra ty e la range?
 checkTypeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = TResult env (getTypeExpr node) pos
 
 
 checkListElementsOfArray :: Abs.LISTELEMENTARRAY Posn -> Env -> TCheckResult
-checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env = TError ["CONTROLLA LA LISTA"]
-checkListElementsOfArray node@(Abs.ListElementOfArray pos expr) env = TError ["Ok? 1 elemento? ritorno il tipo?"]
+checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env = let exprTCheck = checkTypeExpression expr env in if (checkCompatibility exprTCheck (getRealType (checkListElementsOfArray elementlist env))) then TResult env (Array (getType exprTCheck) 0) pos else TError ["lista di elementi di tipi incompatibili at "++show pos]
+checkListElementsOfArray node@(Abs.ListElementOfArray pos expr) env = let exprTCheck = checkTypeExpression expr env in TResult env (Array (getType exprTCheck) 0) pos
+
+getType :: TCheckResult -> Type
+getType (TResult env t pos) = t
 
 checkRangeExpType :: Abs.RANGEEXP Posn -> Env -> TCheckResult
-checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = if (checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) || checkCompatibility (checkTypeExpression expr2 env) (checkTypeExpression expr1 env)) then 
+checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = if ((checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) || checkCompatibility (checkTypeExpression expr2 env) (checkTypeExpression expr1 env)) && (checkOrder expr1 expr2) ) then --TODO distinguere due errori con altro if per order
                                                                                                                                                             if (checkCompatibility (returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) (checkRangeExpType rangexp env))
                                                                                                                                                                 then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env))
                                                                                                                                                                 else TError ["type of expressions of the range is incompatible"]
                                                                                                                                                              else TError ["type of expressions of the range is incompatible"]
-checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if (checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) || checkCompatibility (checkTypeExpression expr2 env) (checkTypeExpression expr1 env)) then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) else TError ["type of expressions of the range is incompatible"]
+checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if ((checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) || checkCompatibility (checkTypeExpression expr2 env) (checkTypeExpression expr1 env)) && (checkOrder expr1 expr2) ) then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) else TError ["type of expressions of the range is incompatible"]
+
+checkOrder :: Abs.EXPRESSION Posn -> Abs.EXPRESSION Posn -> Bool
+checkOrder (Abs.ExpressionInteger pos (Abs.Integer val posI)) (Abs.ExpressionInteger poss (Abs.Integer vals posIs)) = val<=vals
+checkOrder (Abs.ExpressionReal pos (Abs.Real val posR)) (Abs.ExpressionReal poss (Abs.Real vals posRs)) = val<=vals
+checkOrder (Abs.ExpressionInteger pos (Abs.Integer val posI)) (Abs.ExpressionReal poss (Abs.Real vals posRs)) = (Prelude.fromInteger val)<=vals
+checkOrder (Abs.ExpressionReal pos (Abs.Real val posR)) (Abs.ExpressionInteger poss (Abs.Integer vals posIs)) = val<=(Prelude.fromInteger vals)
+checkOrder (Abs.ExpressionChar pos (Abs.Char val posC)) (Abs.ExpressionChar poss (Abs.Char vals posCs)) = val<=vals
+checkOrder (Abs.ExpressionString pos (Abs.String val posS)) (Abs.ExpressionString poss (Abs.String vals posSs)) = val<=vals
+checkOrder _ _ = False
 
 -- Check the superType in a given RangeExp
 checkSuperTypeRangeExp :: TCheckResult -> TCheckResult
@@ -1000,10 +1048,10 @@ checkCompatibilityOfParamsList  (Abs.NamedExpressionList pos x) ((TypeChecker.Pa
                                                                                                                                                      then True else False
 
 checkTypeNamedExpressionList :: Abs.NAMEDEXPRESSIONLIST Posn -> Env -> TCheckResult
-checkTypeNamedExpressionList node@(Abs.NamedExpressionList pos namedexprlist) env = TError ["mhh?"]
-checkTypeNamedExpressionList node@(Abs.NamedExpressionListEmpty pos) env = TError ["mhh?"]
-checkTypeNamedExpressionList node@(Abs.NamedExpressionLists pos namedexpr namedexprlist) env = TError ["mhh?"]
-checkTypeNamedExpressionList node@(Abs.NamedExpressionAssigned pos id expr) env = TError ["mhh?"]
+checkTypeNamedExpressionList node@(Abs.NamedExpressionList pos namedexprlist) env = TResult env (B_type Type_Void) pos
+checkTypeNamedExpressionList node@(Abs.NamedExpressionListEmpty pos) env = TResult env (B_type Type_Void) pos
+checkTypeNamedExpressionList node@(Abs.NamedExpressionLists pos namedexpr namedexprlist) env = TResult env (B_type Type_Void) pos
+checkTypeNamedExpressionList node@(Abs.NamedExpressionAssigned pos id expr) env = TResult env (B_type Type_Void) pos
 
 checkTypeNamedExpression :: Abs.NAMEDEXPRESSION Posn -> Env -> TCheckResult
 checkTypeNamedExpression node@(Abs.NamedExpression pos expr) env = checkTypeExpression expr env
@@ -1017,4 +1065,4 @@ checkTypeExecuteParameter node@(Abs.ParameterListSingle pos param) env = TResult
 checkTypeExecuteParameter node@(Abs.ParameterListEmpty pos) env = TResult env (B_type Type_Void) pos -- empty can't have dups in ids
 
 checkTypeParameter:: Abs.PARAMETER Posn -> Env -> TCheckResult
-checkTypeParameter node@(Abs.Parameter pos id ty) env = TError ["todo"]
+checkTypeParameter node@(Abs.Parameter pos id ty) env = TResult env (B_type Type_Void) pos
