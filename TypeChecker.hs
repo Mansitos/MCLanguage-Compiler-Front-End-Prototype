@@ -738,7 +738,9 @@ checkTypeExpression node@(Abs.ExpressionUnary pos unary exp) env = case unary of
                                                                     Abs.UnaryOperationPointer pos -> case exp of
                                                                                                     Abs.ExpressionUnary _ _ _ -> checkTypeExpression exp env
                                                                                                     Abs.ExpressionIdent pos id index -> case index of 
-                                                                                                                                        Abs.ArrayIndexElementEmpty pos -> checkTypeIdentVar id env
+                                                                                                                                        Abs.ArrayIndexElementEmpty pos -> let pointer = checkTypeIdentVar id env in case pointer of
+                                                                                                                                                                                                                    res@(TResult env (Pointer t depth) pos) -> res
+                                                                                                                                                                                                                    _ -> TError ["not a pointer at "++show pos]
                                                                                                                                         Abs.ArrayIndexElement pos t -> TError ["not is a pointer at "++show pos]
                                                                                                     _ -> TError ["not is a pointer at "++show pos]
                                                                     _ -> let unaryTCheck = checkTypeUnaryOp unary env in if(checkCompatibility (checkTypeExpression exp env) unaryTCheck) then (checkTypeExpression exp env) else TError ["Incompatibility type for unary operator at "++show pos]
