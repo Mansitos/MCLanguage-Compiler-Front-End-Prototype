@@ -29,19 +29,19 @@ data TCheckResult
     = TResult {environment::Env, t_type::Type, t_position::LexProgettoPar.Posn}
     | TError {errors::[Prelude.String]}
 
--------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------------------
 --- SHOW ISTANCES FOR ENV DATA TYPES ------------------------------------------------------------
 -------------------------------------------------------------------------------------------------
+
+startEnv = fromList [("readChar",[Function {funType = (B_type Type_Char), funPosition = (Pn 0 0 0), funParameters = []}]),("readInt",[Function {funType = (B_type Type_Integer), funPosition = (Pn 0 0 0), funParameters = []}]),("readReal",[Function {funType = (B_type Type_Real), funPosition = (Pn 0 0 0), funParameters = []}]),("readString",[Function {funType = (B_type Type_String), funPosition = (Pn 0 0 0), funParameters = []}]),("writeChar",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}]}]),("writeInt",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}]}]),("writeReal",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}]}]),("writeString",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}]}])]
 
 instance Show EnvEntry where
     show entry = case entry of
         TypeChecker.Variable ty pos varMode canOverride -> "EnvEntry: [" ++ "var:" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show varMode ++ "|canOverride:" ++ show canOverride ++ "]"
         TypeChecker.Function ty pos params              -> "EnvEntry: [" ++ "fun:" ++ show ty ++ "|" ++ show pos ++ "|params:" ++ show params ++ "]"
-
 instance Show Parameter where
     show param = case param of    
         TypeChecker.Parameter ty pos mode id   -> "(" ++ show id ++ ":" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show mode ++ ")"
-
 instance Show TCheckResult where
     show tres = case tres of
         TypeChecker.TResult env ty pos  -> show env ++ "|" ++ show ty ++ "|" ++ show pos
@@ -204,8 +204,6 @@ updateIfCanOverride_ ((str,entry:entries):xs) = case entry of
                     _ -> [(str,entry:(updateIfCanOverrideEntries_ entries))] ++ updateIfCanOverride_ xs
 updateIfCanOverride_ ((str,[]):xs) = ((str,[]):xs)
 updateIfCanOverride_ [] = []
-
--- "while" []
 
 -- Sub-Function of updateIfCanOverride_
 updateIfCanOverrideEntries_ :: [EnvEntry] -> [EnvEntry]
