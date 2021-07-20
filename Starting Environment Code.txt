@@ -1,35 +1,25 @@
-
-proc writeInt (input:int):void{
-	# write input
+proc writeInt(input:int):void{
 }
 
-proc writeReal (input:int):void{
-	# write input
+proc writeReal(input:int):void{
 }
 
-proc writeChar (input:int):void{
-	# write input
+proc writeChar(input:int):void{
 }
 
-proc writeString (input:int):void{
-	# write input
+proc writeString(input:int):void{
 }
 
-function readInt ():int{
-	# read input
+function readInt():int{
 }
 
-function readReal ():real{
-	# read input
-return
+function readReal():real{
 }
 
-function readChar ():char{
-	# read input
-return
+function readChar():char{
 }
 
-function readString ():string{
-	# read input
-return
+function readString():string{
 }
+
+var x:int;
