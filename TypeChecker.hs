@@ -80,7 +80,9 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                           B_type Type_String  -> True
                                                                                           _ -> False
                                                                     Pointer t depth -> case tC of
-                                                                                        Pointer ts depths -> if t==ts && depth==depths then True else False
+                                                                                        Pointer ts depths -> case t of
+                                                                                                            B_type Type_Integer -> if (ts==(B_type Type_Real) || ts==(B_type Type_Integer)) && depth==depths then True else False
+                                                                                                            _ -> if t==ts && depth==depths then True else False
                                                                                         _ -> False
                                                                     _ -> False 
 
@@ -477,12 +479,27 @@ executeExpression node@(Abs.ExpressionString pos value) env = Abs.ExpressionStri
 executeExpression node@(Abs.ExpressionReal pos value) env = Abs.ExpressionReal (checkTypeExpression node env) (executeReal value env)
 executeExpression node@(Abs.ExpressionBracket pos exp) env = Abs.ExpressionBracket (checkTypeExpression node env) (executeExpression exp env)
 executeExpression node@(Abs.ExpressionCast pos def tipo) env = Abs.ExpressionCast (checkTypeExpression node env) (executeDefault def env) (executePrimitiveType tipo env)
-executeExpression node@(Abs.ExpressionUnary pos unary exp) env = Abs.ExpressionUnary (checkTypeExpression node env) (executeUnaryOp unary env) (executeExpression exp env)
+executeExpression node@(Abs.ExpressionUnary pos unary exp) env = case unary of
+                                                                Abs.UnaryOperationPointer pos -> if (checkDepthIsCorrect node env 0) then Abs.ExpressionUnary (checkTypeExpression node env) (executeUnaryOp unary env) (executeExpression exp env) else Abs.ExpressionUnary (TError ["number of pointer symbol is different at "++show pos]) (executeUnaryOp unary env) (executeExpression exp env)
+                                                                _ -> Abs.ExpressionUnary (checkTypeExpression node env) (executeUnaryOp unary env) (executeExpression exp env)
 executeExpression node@(Abs.ExpressionBinary pos def binary exp) env = Abs.ExpressionBinary (checkTypeExpression node env) (executeDefault def env) (executeBinaryOp binary env) (executeExpression exp env)
 executeExpression node@(Abs.ExpressionIdent pos id index) env = case index of
                                                                 Abs.ArrayIndexElementEmpty posIdx -> Abs.ExpressionIdent (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement (Abs.ArrayIndexElementEmpty posIdx) env)
                                                                 Abs.ArrayIndexElement posIdx tipo -> Abs.ExpressionIdent (checkTypeIdentVar id env) (executeIdentVar id env) (Abs.ArrayIndexElementEmpty (TError ["index si"]))
 executeExpression node@(Abs.ExpressionCall pos id exps) env = Abs.ExpressionCall (checkTypeExpression node env) (executeIdentFunc id env) (executeExpressions exps env) 
+
+checkDepthIsCorrect :: Abs.EXPRESSION Posn -> Env -> Prelude.Integer -> Prelude.Bool
+checkDepthIsCorrect node@(Abs.ExpressionUnary pos unary exp) env d = case unary of
+                                                                    Abs.UnaryOperationPointer pos -> checkDepthIsCorrect exp env (d+1)
+                                                                    _ -> False
+checkDepthIsCorrect node@(Abs.ExpressionIdent pos id index) env d = case index of
+                                                                    Abs.ArrayIndexElementEmpty posIdx -> if (depthIsEqual (checkTypeIdentVar id env) d) then True else False
+                                                                    Abs.ArrayIndexElement posIdx tipo -> False
+checkDepthIsCorrect _ env d = False                                                                    
+
+depthIsEqual :: TCheckResult -> Prelude.Integer -> Bool
+depthIsEqual (TResult env (Pointer t d) pos) depth = if d==depth then True else False
+depthIsEqual _ depth = False
 
 executeUnaryOp :: Abs.UNARYOP Posn -> Env -> Abs.UNARYOP TCheckResult
 executeUnaryOp node@(Abs.UnaryOperationPositive pos) env = Abs.UnaryOperationPositive (checkTypeUnaryOp node env)
@@ -603,7 +620,7 @@ checkTypeStatement node@(Abs.ContinueStatement pos) env = checkTypeContinueState
 checkTypeStatement node@(Abs.ReturnStatement pos ret) env = checkTypeReturnStatement node env
 checkTypeStatement node@(Abs.Statement pos b) env = checkTypeB b env
 checkTypeStatement node@(Abs.ExpressionStatement pos exp) env = checkTypeExpressionStatement exp env
-checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = let expTCheck = checkTypeExpression exp env in if(checkCompatibility expTCheck (getRealType (checkTypeLvalueExpression lval env))) then expTCheck else TError ["incompatible type at "++show pos]
+checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = let expTCheck = (getRealType (checkTypeExpression exp env)) in if(checkCompatibility expTCheck (getRealType (checkTypeLvalueExpression lval env))) then expTCheck else TError ["incompatible type at "++show pos]
 checkTypeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = checkTypeVardec vardec env
 checkTypeStatement node@(Abs.ConditionalStatement pos condition) env = checkTypeCondition condition env
 checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhile whileState env
@@ -701,7 +718,14 @@ checkTypeExpression node@(Abs.ExpressionString pos value) env = checkTypeString 
 checkTypeExpression node@(Abs.ExpressionReal pos value) env = checkTypeReal value env
 checkTypeExpression node@(Abs.ExpressionBracket pos exp) env = checkTypeExpression exp env
 checkTypeExpression node@(Abs.ExpressionCast pos def tipo) env = let tipoTCheck = checkPrimitiveType tipo env in if(checkCompatibility (checkTypeDefault def env) tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++show pos]
-checkTypeExpression node@(Abs.ExpressionUnary pos unary exp) env = let unaryTCheck = checkTypeUnaryOp unary env in if(checkCompatibility (checkTypeExpression exp env) unaryTCheck) then (checkTypeExpression exp env) else TError ["Incompatibility type for unary operator at "++show pos]
+checkTypeExpression node@(Abs.ExpressionUnary pos unary exp) env = case unary of
+                                                                    Abs.UnaryOperationPointer pos -> case exp of
+                                                                                                    Abs.ExpressionUnary _ _ _ -> checkTypeExpression exp env
+                                                                                                    Abs.ExpressionIdent pos id index -> case index of 
+                                                                                                                                        Abs.ArrayIndexElementEmpty pos -> checkTypeIdentVar id env
+                                                                                                                                        Abs.ArrayIndexElement pos t -> TError ["not is a pointer at "++show pos]
+                                                                                                    _ -> TError ["not is a pointer at "++show pos]
+                                                                    _ -> let unaryTCheck = checkTypeUnaryOp unary env in if(checkCompatibility (checkTypeExpression exp env) unaryTCheck) then (checkTypeExpression exp env) else TError ["Incompatibility type for unary operator at "++show pos]
 checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = let expCheck = checkTypeExpression exp env in
                                                                             (let defCheck = checkTypeDefault def env in 
                                                                                 (let binaryTCheck = checkTypeBinaryOp binary env in if (checkCompatibility defCheck expCheck || checkCompatibility expCheck defCheck)
@@ -756,7 +780,7 @@ checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
 checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type Type_Real) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationNegative pos) env = TResult env (B_type Type_Real) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationNot pos) env = TResult env (B_type Type_Boolean) pos
-checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TError ["pointer"] --da rivedere
+checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeBinaryOp :: Abs.BINARYOP Posn -> Env -> TCheckResult
 checkTypeBinaryOp node@(Abs.BinaryOperationPlus pos) env = TResult env (B_type Type_Real) pos
@@ -838,9 +862,21 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                 let initCheck = checkTypeInitializzationPart initpart env in
                                                                                                     case typeCheck of
                                                                                                         TResult env (Pointer t depth) pos -> case initCheck of
-                                                                                                            TResult env (Pointer tI depthI) pos -> if (checkCompatibility (TResult env (Pointer tI (depthI+1)) pos) (TResult env (Pointer t depth) pos)) then typeCheck else TError ["initializzation incompatible type at "++show pos]
+                                                                                                            TResult env (Pointer tI depthI) pos -> if (checkCompatibility (TResult env (Pointer tI ((depthI+1)-(checkDef initpart))) pos) (TResult env (Pointer t depth) pos)) then typeCheck else TError ["Pointer initializzation incompatible type at "++show pos]
                                                                                                             _ -> if (checkCompatibility initCheck (TResult env t pos)) then typeCheck else TError ["initializzation incompatible type at "++show pos]
-                                                                                                        _ -> if (checkCompatibility initCheck typeCheck) then typeCheck else TError ["initializzation incompatible type at "++show pos]
+                                                                                                        _ -> case initCheck of
+                                                                                                            TResult env (Pointer tI depthI) pos -> if (checkCompatibility (TResult env tI pos) typeCheck && (depthI-(checkDef initpart))==0) then typeCheck else TError ["initializzation incompatible type at "++show pos]
+                                                                                                            _ -> if (checkCompatibility initCheck typeCheck) then typeCheck else TError ["initializzation incompatible type at "++show pos]
+
+checkDef :: Abs.INITPART Posn -> Prelude.Integer
+checkDef (Abs.InitializzationPart pos exp) = checkDef_ exp
+checkDef _ = 0
+
+checkDef_ :: Abs.EXPRESSION Posn -> Prelude.Integer
+checkDef_ (Abs.ExpressionUnary pos unary exp) = case unary of
+                                                Abs.UnaryOperationPointer pos -> 1 + checkDef_ exp
+                                                _ -> 0
+checkDef_ _ = 0
 
 checkIdentifierList :: Abs.IDENTLIST Posn -> Env -> TCheckResult
 checkIdentifierList node@(Abs.IdentifierList pos ident identlist) env = TResult env (B_type Type_Void) pos
