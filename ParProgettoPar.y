@@ -60,7 +60,6 @@ import LexProgettoPar
   'else' { PT _ (TS _ 39) }
   'false' { PT _ (TS _ 40) }
   'for' { PT _ (TS _ 41) }
-  'forall' { PT _ (TS _ 42) }
   'function' { PT _ (TS _ 43) }
   'if' { PT _ (TS _ 44) }
   'in' { PT _ (TS _ 45) }
@@ -130,7 +129,6 @@ STATEMENT : B { Abs.Statement (Abs.b_content $1) $1 }
           | 'continue' ';' { Abs.ContinueStatement (tokenPosn $1)}
           | RETURNSTATEMENT ';' { Abs.ReturnStatement  (Abs.returnstatement_content $1) $1 }
           | VARIABLETYPE VARDECLIST ';' { Abs.VariableDeclarationStatement (Abs.variabletype_content $1) $1 $2 }
-          | FORALLSTATEMENT { Abs.ForAllStatement (Abs.forallstatement_content $1) $1 }
           | 'proc' Ident '(' PARAMETERS ')' ':' 'void' '{' STATEMENTS '}' { Abs.ProcedureStatement (tokenPosn $1) $2 $4 $9 }
           | 'function' Ident '(' PARAMETERS ')' ':' PRIMITIVETYPE '{' STATEMENTS '}' { Abs.FunctionStatement (tokenPosn $1) $2 $4 $7 $9 }
 
@@ -224,12 +222,6 @@ FORSTATEMENT : 'for' INDEXVARDEC 'in' RANGEEXP 'do' STATEMENT { Abs.ForStateInde
              | 'for' RANGEEXP 'do' STATEMENT { Abs.ForStateExprDo (tokenPosn $1) $2 $4 }
              | 'for' RANGEEXP B { Abs.ForStateExprWDo (tokenPosn $1) $2 $3 }
 
-FORALLSTATEMENT :: { Abs.FORALLSTATEMENT Posn }
-FORALLSTATEMENT : 'forall' INDEXVARDEC 'in' RANGEEXP 'do' STATEMENT { Abs.ForAllStateIndexDo (tokenPosn $1) $2 $4 $6 }
-                | 'forall' INDEXVARDEC 'in' RANGEEXP B { Abs.ForAllStateIndexWDo (tokenPosn $1) $2 $4 $5 }
-                | 'forall' RANGEEXP 'do' STATEMENT { Abs.ForAllStateExprDo (tokenPosn $1) $2 $4 }
-                | 'forall' RANGEEXP B { Abs.ForAllStateExprWDo (tokenPosn $1) $2 $3 }
-
 INDEXVARDEC :: { Abs.INDEXVARDEC Posn }
 INDEXVARDEC : Ident { Abs.IndexVarDeclaration (Abs.contentId $1) $1 }
 
@@ -251,7 +243,6 @@ EXPRESSIONSTATEMENT : Ident { Abs.VariableExpression (Abs.contentId $1) $1 }
                     
 CALLEXPRESSION :: { Abs.CALLEXPRESSION Posn }
 CALLEXPRESSION : Ident '(' NAMEDEXPRESSIONLIST ')' { Abs.CallExpressionParentheses (Abs.contentId $1) $1 $3 }
-               | Ident '[' NAMEDEXPRESSIONLIST ']' { Abs.CallExpressionQuadre (Abs.contentId $1) $1 $3 }
 
 NAMEDEXPRESSIONLIST :: { Abs.NAMEDEXPRESSIONLIST Posn }
 NAMEDEXPRESSIONLIST : NAMEDEXPRESSION { Abs.NamedExpressionList (Abs.namedexpression_content $1) $1 }

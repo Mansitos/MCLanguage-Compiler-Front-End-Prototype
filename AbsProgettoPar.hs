@@ -39,7 +39,6 @@ data STATEMENT a
     | ContinueStatement {statement_content::a}
     | ReturnStatement {statement_content::a, statement_returnstatement::(RETURNSTATEMENT a)}
     | VariableDeclarationStatement {statement_content::a, statemenets_variabletype::(VARIABLETYPE a) , statemenets_vardeclist::(VARDECLIST a)}
-    | ForAllStatement {statement_content::a, statement_forallstatement::(FORALLSTATEMENT a)}
     | ProcedureStatement {statement_content::a, statement_ident::(Ident a ), statement_parameters::(PARAMETERS a), statement_statements::(STATEMENTS a)}
     | FunctionStatement {statement_content::a, statement_ident::(Ident a ), statement_parameters::(PARAMETERS a), statement_primitivetype::(PRIMITIVETYPE a), statement_statements::(STATEMENTS a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
@@ -147,13 +146,6 @@ data FORSTATEMENT a
     | ForStateExprWDo {forstatement_content::a, forstatement_rangexp::(RANGEEXP a), forstatement_b::(B a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data FORALLSTATEMENT a
-    = ForAllStateIndexDo {forallstatement_content::a, forallstatement_indexvardec::(INDEXVARDEC a), forallstatement_rangexp::(RANGEEXP a), forallstatement_statement::(STATEMENT a)}
-    | ForAllStateIndexWDo {forallstatement_content::a, forallstatement_indexvardec::(INDEXVARDEC a), forallstatement_rangexp::(RANGEEXP a), forallstatement_b::(B a)}
-    | ForAllStateExprDo {forallstatement_content::a, forallstatement_rangexp::(RANGEEXP a), forallstatement_statement::(STATEMENT a)}
-    | ForAllStateExprWDo {forallstatement_content::a, forallstatement_rangexp::(RANGEEXP a), forallstatement_b::(B a)}
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
 data INDEXVARDEC a = IndexVarDeclaration {indexvardec_content::a, indexvardec_ident::(Ident a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -178,7 +170,6 @@ data EXPRESSIONSTATEMENT a
 
 data CALLEXPRESSION a
     = CallExpressionParentheses {callexpression_content::a, callexpression_ident::(Ident a), callexpression_namedexpressionlist::(NAMEDEXPRESSIONLIST a)}
-    | CallExpressionQuadre {callexpression_content::a, callexpression_ident::(Ident a), callexpression_namedexpressionlist::(NAMEDEXPRESSIONLIST a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data NAMEDEXPRESSIONLIST a

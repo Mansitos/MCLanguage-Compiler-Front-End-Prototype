@@ -50,7 +50,6 @@ transSTATEMENT x = case x of
   AbsProgettoPar.ContinueStatement _ -> failure x
   AbsProgettoPar.ReturnStatement _ returnstatement -> failure x
   AbsProgettoPar.VariableDeclarationStatement _ variabletype vardeclist -> failure x
-  AbsProgettoPar.ForAllStatement _ forallstatement -> failure x
   AbsProgettoPar.ProcedureStatement _ ident parameters statements -> failure x
   AbsProgettoPar.FunctionStatement _ ident parameters primitivetype statements -> failure x
 
@@ -162,13 +161,6 @@ transFORSTATEMENT x = case x of
   AbsProgettoPar.ForStateExprDo _ rangexp statement -> failure x
   AbsProgettoPar.ForStateExprWDo _ rangexp b -> failure x
 
-transFORALLSTATEMENT :: Show attr => (AbsProgettoPar.FORALLSTATEMENT attr) -> Result
-transFORALLSTATEMENT x = case x of
-  AbsProgettoPar.ForAllStateIndexDo _ indexvardec rangexp statement -> failure x
-  AbsProgettoPar.ForAllStateIndexWDo _ indexvardec rangexp b -> failure x
-  AbsProgettoPar.ForAllStateExprDo _ rangexp statement -> failure x
-  AbsProgettoPar.ForAllStateExprWDo _ rangexp b -> failure x
-
 transINDEXVARDEC :: Show attr => (AbsProgettoPar.INDEXVARDEC attr) -> Result
 transINDEXVARDEC x = case x of
   AbsProgettoPar.IndexVarDeclaration _ ident -> failure x
@@ -196,7 +188,6 @@ transEXPRESSIONSTATEMENT x = case x of
 transCALLEXPRESSION :: Show attr => (AbsProgettoPar.CALLEXPRESSION attr) -> Result
 transCALLEXPRESSION x = case x of
   AbsProgettoPar.CallExpressionParentheses _ ident namedexpressionlist -> failure x
-  AbsProgettoPar.CallExpressionQuadre _ ident namedexpressionlist -> failure x
 
 transNAMEDEXPRESSIONLIST :: Show attr => (AbsProgettoPar.NAMEDEXPRESSIONLIST attr) -> Result
 transNAMEDEXPRESSIONLIST x = case x of

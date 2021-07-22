@@ -17,7 +17,7 @@ import System.Environment (getArgs)
 import System.Exit        (exitFailure, exitSuccess)
 import Control.Monad      (when)
 
-import AbsProgettoPar   as Abs (S (StartCode), STATEMENTS (ListStatements, EmptyStatement), DOSTATEMENT (..), FORALLSTATEMENT (..), STATEMENT (..),
+import AbsProgettoPar   as Abs (S (StartCode), STATEMENTS (ListStatements, EmptyStatement), DOSTATEMENT (..), STATEMENT (..),
                                 B (BlockStatement), FORSTATEMENT (..), ELSESTATEMENT (..), CONDITIONALSTATE(..), WHILESTATEMENT (..)) 
 import LexProgettoPar   (Token, Posn)
 import ParProgettoPar   (pS, myLexer)
@@ -97,7 +97,6 @@ showTypeCheckResultStatements (Abs.ListStatements result statement statements) s
                                                                                                (Abs.WhileDoStatement res whilestat) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
                                                                                                (Abs.DoWhileStatement res dostat) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
                                                                                                (Abs.ForStatement res forstats) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
-                                                                                               (Abs.ForAllStatement res forallstats) -> (showTypeCheckResultStatement statement spacer) ++ (showTypeCheckResultStatements statements spacer)
                                                                                                _ -> case statements of
                                                                                                       (Abs.EmptyStatement result) -> ""
                                                                                                       _ -> (showTypeCheckResultStatements statements spacer)
@@ -130,11 +129,6 @@ showTypeCheckResultStatement (Abs.ForStatement res forstats) spacer = case forst
                                                                                         (Abs.ForStateIndexWDo res _ _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---"))                                                              
                                                                                         (Abs.ForStateExprDo res _ stat) -> (showTypeCheckResultStatement stat (spacer ++ "---"))
                                                                                         (Abs.ForStateExprWDo res _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---"))                                                              
-showTypeCheckResultStatement (Abs.ForAllStatement res forallstats) spacer = case forallstats of -- forall statements
-                                                                                        (Abs.ForAllStateIndexDo res _ _ stat) -> (showTypeCheckResultStatement stat (spacer ++ "---"))
-                                                                                        (Abs.ForAllStateIndexWDo res _ _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---"))
-                                                                                        (Abs.ForAllStateExprDo res _ stat) -> (showTypeCheckResultStatement stat (spacer ++ "---"))
-                                                                                        (Abs.ForAllStateExprWDo res _ (Abs.BlockStatement _ bstats)) -> (showTypeCheckResultStatements bstats (spacer ++ "---"))
 -- Non-recursive cases of statements (no child statements)
 showTypeCheckResultStatement (Abs.VariableDeclarationStatement res _ _) spacer  = "\n" ++ spacer ++ show res -- var. decl. case
 showTypeCheckResultStatement (Abs.ExpressionStatement res _) spacer             = "\n" ++ spacer ++ show res -- expr. case

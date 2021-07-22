@@ -144,7 +144,6 @@ instance Print (AbsProgettoPar.STATEMENT attr) where
     AbsProgettoPar.ContinueStatement _ -> prPrec i 0 (concatD [doc (showString "continue"), doc (showString ";")])
     AbsProgettoPar.ReturnStatement _ returnstatement -> prPrec i 0 (concatD [prt 0 returnstatement, doc (showString ";")])
     AbsProgettoPar.VariableDeclarationStatement _ variabletype vardeclist -> prPrec i 0 (concatD [prt 0 variabletype, prt 0 vardeclist, doc (showString ";")])
-    AbsProgettoPar.ForAllStatement _ forallstatement -> prPrec i 0 (concatD [prt 0 forallstatement])
     AbsProgettoPar.ProcedureStatement _ id_ parameters statements -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 id_, doc (showString "("), prt 0 parameters, doc (showString ")"), doc (showString ":"), doc (showString "void"), doc (showString "{"), prt 0 statements, doc (showString "}")])
     AbsProgettoPar.FunctionStatement _ id_ parameters primitivetype statements -> prPrec i 0 (concatD [doc (showString "function"), prt 0 id_, doc (showString "("), prt 0 parameters, doc (showString ")"), doc (showString ":"), prt 0 primitivetype, doc (showString "{"), prt 0 statements, doc (showString "}")])
 
@@ -256,13 +255,6 @@ instance Print (AbsProgettoPar.FORSTATEMENT attr) where
     AbsProgettoPar.ForStateExprDo _ rangexp statement -> prPrec i 0 (concatD [doc (showString "for"), prt 0 rangexp, doc (showString "do"), prt 0 statement])
     AbsProgettoPar.ForStateExprWDo _ rangexp b -> prPrec i 0 (concatD [doc (showString "for"), prt 0 rangexp, prt 0 b])
 
-instance Print (AbsProgettoPar.FORALLSTATEMENT attr) where
-  prt i = \case
-    AbsProgettoPar.ForAllStateIndexDo _ indexvardec rangexp statement -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 indexvardec, doc (showString "in"), prt 0 rangexp, doc (showString "do"), prt 0 statement])
-    AbsProgettoPar.ForAllStateIndexWDo _ indexvardec rangexp b -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 indexvardec, doc (showString "in"), prt 0 rangexp, prt 0 b])
-    AbsProgettoPar.ForAllStateExprDo _ rangexp statement -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 rangexp, doc (showString "do"), prt 0 statement])
-    AbsProgettoPar.ForAllStateExprWDo _ rangexp b -> prPrec i 0 (concatD [doc (showString "forall"), prt 0 rangexp, prt 0 b])
-
 instance Print (AbsProgettoPar.INDEXVARDEC attr) where
   prt i = \case
     AbsProgettoPar.IndexVarDeclaration _ id_ -> prPrec i 0 (concatD [prt 0 id_])
@@ -290,7 +282,6 @@ instance Print (AbsProgettoPar.EXPRESSIONSTATEMENT attr) where
 instance Print (AbsProgettoPar.CALLEXPRESSION attr) where
   prt i = \case
     AbsProgettoPar.CallExpressionParentheses _ id_ namedexpressionlist -> prPrec i 0 (concatD [prt 0 id_, doc (showString "("), prt 0 namedexpressionlist, doc (showString ")")])
-    AbsProgettoPar.CallExpressionQuadre _ id_ namedexpressionlist -> prPrec i 0 (concatD [prt 0 id_, doc (showString "["), prt 0 namedexpressionlist, doc (showString "]")])
 
 instance Print (AbsProgettoPar.NAMEDEXPRESSIONLIST attr) where
   prt i = \case
@@ -394,7 +385,6 @@ instance Print (AbsProgettoPar.TYPEINDEX attr) where
 --printStringStatement (AbsProgettoPar.ContinueStatement pol) = "ContinueStatement {statement_content = ("++show pol++")"++"}"
 --printStringStatement (AbsProgettoPar.ReturnStatement pol returnstatement) = "ReturnStatement {statement_content = ("++show pol++"),\n\tstatement_returnstatement = "++"return"++"}"
 --printStringStatement (AbsProgettoPar.VariableDeclarationStatement pol variabletype vardeclist) = "VariableDeclarationStatement {statement_content = ("++show pol++"),\n\tstatemenets_variabletype= "++""++", statemenets_vardeclist = "++""++"}"
---printStringStatement (AbsProgettoPar.ForAllStatement pol forallstatement) = "ForAllStatement {statement_content = ("++show pol++"),\n\tstatement_forallstatement = "++"forall"++"}"
 --printStringStatement (AbsProgettoPar.ProcedureStatement pol id_ parameters statements) = "ProcedureStatement {statement_content = ("++show pol++"),\n\tstatement_ident = "++""++", statement_parameters = "++printStringParameters parameters++", statement_statements = "++""++"}"
 --printStringStatement (AbsProgettoPar.FunctionStatement pol id_ parameters primitivetype statement) = "FunctionStatement {statement_content = ("++show pol++"),\n\tstatement_ident = "++""++", statement_parameters = "++printStringParameters parameters++", statement_primitivetype = "++""++", statement_statements = "++""++"}"
 --

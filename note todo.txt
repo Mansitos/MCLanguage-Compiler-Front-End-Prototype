@@ -17,3 +17,5 @@ controllo correttezza indici array
 ciclo for: la variabile indice non viene inserita nell'env... distinguere caso int o char dal range
 
 NamedExpressionAssigned da gestire
+
+testare puntatori
