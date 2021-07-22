@@ -13,3 +13,5 @@ distinguere due errori con altro if per order
 preprocessing puntatori dopo =
 
 controllo correttezza indici array
+
+NamedExpressionAssigned da gestire
