@@ -5,6 +5,8 @@ HAPPY      = happy
 HAPPY_OPTS = --array --info --ghc --coerce
 ALEX       = alex
 ALEX_OPTS  = --ghc -i
+TEST 	   = TestProgettoPar
+TEST_OPTS  = --test
 
 # List of goals not corresponding to file names.
 
@@ -16,10 +18,6 @@ all : TestProgettoPar
 
 # Rules for building the parser.
 
-
-AbsProgettoPar.hs LexProgettoPar.x ParProgettoPar.y PrintProgettoPar.hs TestProgettoPar.hs : progetto3par.cf
-	bnfc --haskell progetto3par.cf
-
 %.hs : %.y
 	${HAPPY} ${HAPPY_OPTS} $<
 
@@ -30,6 +28,9 @@ TestProgettoPar : AbsProgettoPar.hs LexProgettoPar.hs ParProgettoPar.hs PrintPro
 	${GHC} ${GHC_OPTS} $@
 
 # Rules for cleaning generated files.
+
+demo:
+	@${TEST} ${TEST_OPTS}
 
 clean :
 	-rm -f *.hi *.o *.log *.aux *.dvi
