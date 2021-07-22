@@ -1,0 +1,13 @@
+var x : int;
+{
+  var y : int;
+  y;
+  x;
+  {
+    y;
+    var z:char;
+  }
+  x;
+  z;
+  }
+x;

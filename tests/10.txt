@@ -1,0 +1,9 @@
+var x : int;
+x = + - 1;
+x;
+
+function foo(x:int):int {}
+foo();
+foo(5);
+foo(true);
+x;

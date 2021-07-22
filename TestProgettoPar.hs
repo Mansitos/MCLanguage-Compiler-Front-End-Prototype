@@ -9,7 +9,7 @@ import Prelude
   , String, (++), unlines
   , Char
   , Show, show
-  , IO, (>>), (>>=), (==), (||), (&&) , mapM_, putStrLn
+  , IO, (>>), (>>=), (==), (||), (&&) , mapM_, putStrLn, putStr, read
   , FilePath
   , getContents, readFile, showString)
 
@@ -46,30 +46,36 @@ run v p s =
       putStrV v $ show ts
       putStrLn err
     Right tree -> do
-      putStrLn "\nParse Successful!"
+      putStrLn "\n > Parse Successful! :) "
       Main.showTree v tree
 
       -- Naive code for brutal Abs print with Tcheck results (too heavy syntax)
       --let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
       --  putStrLn (show typecheckRes)
       
-      putStrLn "\n\n[Statements TypeChecker Result]\n"
+      putStrLn "\n\n[Statements TypeChecker Result]\n   For each statements it shows the TCheckResult (env+infos) before the start of it's execution\n"
       let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in  
         putStrLn (showTypeCheckResult typecheckRes)
 
   where
   ts = myLexer (pointersSyntaxPreprocessing s [] [])
 
+-- Given a path of test files, execute all of them
 runTests :: Prelude.Int -> Verbosity -> [String] -> IO()
 runTests index v (x:xs) = do
-                      putStrLn "\n\n---------------------------------------------------------------------------------------"
-                      putStrLn ("--------- TEST n° " ++ show index ++ "--------------------------------------------------------------------")
-                      putStrLn "---------------------------------------------------------------------------------------"
+                      putStrLn "\n\n---------------------------------------------------------------------------------------------"
+                      putStrLn ("------------ TEST n° " ++ show index ++ "-----------------------------------------------------------------------")
+                      putStrLn "---------------------------------------------------------------------------------------------"
+                      x <- readFile x
                       run v pS x
 
                       runTests (index + 1) v xs -- next test
-runTests index v [] =  putStrLn ">> End of testing <<"
+runTests index v [] =  do
+                      putStrLn "\n\n >>>>>>> End of testing Phase <<<<<<<\n"
+                      putStrLn " For adding new test cases:\n   - create a new file n.txt with input code inside tests folder\n   - n must be the next number from the list\n   - modify variable \"numberOfTest\" with the new n-value in file TestProgettoPar.hs\n   - Rebuild and execute\n\n"
 
+numberOfTests = 11
+testFilesPaths = ["tests/" ++ (show x) ++ ".txt"| x <- [1..numberOfTests]]
 
 ----------------------------------------------------------------------------------------------------
 --- TYPE CHECKING RESULTS PRINTING (Prints TCheckResults + env for each statement (recursively)) ---
@@ -194,6 +200,7 @@ usage = do
     , "  (no arguments)  Parse stdin verbosely."
     , "  (files)         Parse content of files verbosely."
     , "  -s (files)      Silent mode. Parse content of files silently."
+    , "  --test          Execute a list of tests located in tests folder."
     ]
   exitFailure
 
@@ -202,7 +209,7 @@ main = do
   args <- getArgs
   case args of
     ["--help"] -> usage
-    ["--test"]  -> runTests 1 2 testsList
+    ["--test"]  -> runTests 1 2 testFilesPaths
     []         -> getContents >>= run 2 pS
     "-s":fs    -> mapM_ (runFile 0 pS) fs
     fs         -> mapM_ (runFile 2 pS) fs

@@ -1,0 +1,13 @@
+var x : int;
+function foo():int{
+    var i:int;
+    var o:char;
+    o;
+    function foo2():char{
+        var u:string;
+        o;
+	proc foo3():void{x;}
+	}
+    }
+var z : int;
+var u : int;

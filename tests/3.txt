@@ -1,0 +1,12 @@
+var a,b,c:int = 5;
+function sum(x:int,y:int,z:int):int{
+	return x+y+z;
+}
+
+sum(a,b,c);
+sum(a,a,a);
+sum(1,2,c);
+sum(1+2,a+b+c,sum(1,1,1));
+sum();
+sum(1);
+x=(a+b+c);

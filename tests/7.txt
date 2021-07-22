@@ -1,0 +1,9 @@
+if true then {
+	var x : int;
+	x;}
+x;
+
+if var x:int = 3 then {x;}
+
+if 5==5 then x;
+x;

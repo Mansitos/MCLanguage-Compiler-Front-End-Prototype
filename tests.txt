@@ -22,13 +22,12 @@ for x in 1..2 do {x+=1;}
 
 
 var x : int;
-function foooooooooo():int{
+function foo():int{
     var i:int;
     var o:char;
     o;
     function foo2():char{
         var u:string;
-        o;
         o;
 	proc foo3():void{x;}
 	}
