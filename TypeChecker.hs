@@ -680,33 +680,49 @@ mergeErrors (TError e1) _ = TError e1
 mergeErrors _ (TError e2) = TError e2
 
 checkTypeCondition :: Abs.CONDITIONALSTATE Posn -> Env -> TCheckResult
-checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for condition not is bool at "++show pos]
-checkTypeCondition node@(Abs.ConditionalStatementSimpleWThen pos exp b elseState) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for condition not is bool at "++show pos]
+checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = let expTCheck = checkTypeExpression exp env in 
+                                                                                            case expTCheck of 
+                                                                                               TResult _ _ _ -> if (checkCompatibility (TResult env (B_type Type_Boolean) pos) expTCheck) then TResult env (B_type Type_Void) pos else TError ["expression for condition not is bool at "++show pos]
+                                                                                               TError e -> expTCheck
+checkTypeCondition node@(Abs.ConditionalStatementSimpleWThen pos exp b elseState) env = let expTCheck = checkTypeExpression exp env in
+                                                                                        case expTCheck of 
+                                                                                            TResult _ _ _ -> if (checkCompatibility (TResult env (B_type Type_Boolean) pos) expTCheck) then TResult env (B_type Type_Void) pos else TError ["expression for condition not is bool at "++show pos]
+                                                                                            TError e -> expTCheck
 checkTypeCondition node@(Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env = checkTypeCtrlState ctrlState env
 checkTypeCondition node@(Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env = checkTypeCtrlState ctrlState env
 
 checkTypeElseState :: Abs.ELSESTATEMENT Posn -> Env -> TCheckResult
-checkTypeElseState node@(Abs.ElseState pos state) env = TResult env (B_type Type_Void) pos
+checkTypeElseState node@(Abs.ElseState pos state) env = checkErrors (checkTypeStatement state env) (TResult env (B_type Type_Void) pos)
 checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeCtrlState :: Abs.CTRLDECSTATEMENT Posn -> Env -> TCheckResult
-checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env = if (checkCompatibility (checkTypeExpression exp env) (checkTypeTypePart typepart env)) then TResult env (B_type Type_Void) pos else TError ["expression for ctrl declaration constant is null at "++show pos]
-checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env = if (checkCompatibility (checkTypeExpression exp env) (checkTypeTypePart typepart env)) then TResult env (B_type Type_Void) pos else TError ["expression for ctrl declaration variable is null at "++show pos]
+checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env =TResult env (B_type Type_Void) pos {- let expTCheck = checkTypeExpression exp env in 
+                                                                            let typeTCheck = checkTypeTypePart typepart env in
+                                                                                if (checkCompatibility expTCheck typeTCheck) then checkErrors expTCheck (checkErrors typeTCheck (TResult env (B_type Type_Void) pos)) else mergeErrors (mergeErrors (TError ["expression for ctrl declaration constant is null at "++show pos]) expTCheck) typeTCheck -}
+checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env =TResult env (B_type Type_Void) pos {- let expTCheck = checkTypeExpression exp env in 
+                                                                            let typeTCheck = checkTypeTypePart typepart env in
+                                                                                if (checkCompatibility expTCheck typeTCheck) then checkErrors expTCheck (checkErrors typeTCheck (TResult env (B_type Type_Void) pos)) else mergeErrors (mergeErrors (TError ["expression for ctrl declaration constant is null at "++show pos]) expTCheck) typeTCheck -}
+
+--aggiustare while,do,for e fare procedure,function
 
 checkTypeWhile :: Abs.WHILESTATEMENT Posn -> Env -> TCheckResult
-checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for while guard not is bool at "++show pos]
-checkTypeWhile node@(Abs.WhileStateSimpleWDo pos exp b) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for while guard not is bool at "++show pos]
+checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = let expTCheck = checkTypeExpression exp env in  if (checkCompatibility (TResult env (B_type Type_Boolean) pos) expTCheck) then checkErrors expTCheck (TResult env (B_type Type_Void) pos) else mergeErrors (TError ["expression for while guard not is bool at "++show pos]) expTCheck
+checkTypeWhile node@(Abs.WhileStateSimpleWDo pos exp b) env = let expTCheck = checkTypeExpression exp env in  if (checkCompatibility (TResult env (B_type Type_Boolean) pos) expTCheck) then checkErrors expTCheck (TResult env (B_type Type_Void) pos) else mergeErrors (TError ["expression for while guard not is bool at "++show pos]) expTCheck
 checkTypeWhile node@(Abs.WhileStateCtrlDo pos ctrl state) env = checkTypeCtrlState ctrl env
 checkTypeWhile node@(Abs.WhileStateCtrlWDo pos ctrl b) env = checkTypeCtrlState ctrl env
 
 checkTypeDo :: Abs.DOSTATEMENT Posn -> Env -> TCheckResult
-checkTypeDo node@(Abs.DoWhileState pos state exp) env = if (checkCompatibility (TResult env (B_type Type_Boolean) pos) (checkTypeExpression exp env)) then TResult env (B_type Type_Void) pos else TError ["expression for do while guard not is bool at "++show pos]
+checkTypeDo node@(Abs.DoWhileState pos state exp) env = let expTCheck = checkTypeExpression exp env in if (checkCompatibility (TResult env (B_type Type_Boolean) pos) expTCheck) then checkErrors expTCheck (TResult env (B_type Type_Void) pos) else mergeErrors (TError ["expression for do while guard not is bool at "++show pos]) expTCheck
 
 checkTypeForState :: Abs.FORSTATEMENT Posn -> Env -> TCheckResult
-checkTypeForState node@(Abs.ForStateIndexDo pos index rangexp state) env = if(checkCompatibility (checkRangeExpType rangexp env) (checkTypeIndexVarDec index env) ) then TResult env (B_type Type_Void) pos else TError ["ident in for guard incompatible with range at "++show pos]
-checkTypeForState node@(Abs.ForStateIndexWDo pos index rangexp b) env = if(checkCompatibility (checkRangeExpType rangexp env) (checkTypeIndexVarDec index env) ) then TResult env (B_type Type_Void) pos else TError ["ident in for guard incompatible with range at "++show pos]
-checkTypeForState node@(Abs.ForStateExprDo pos rangexp state) env = TResult env (B_type Type_Void) pos
-checkTypeForState node@(Abs.ForStateExprWDo pos rangexp b) env = TResult env (B_type Type_Void) pos
+checkTypeForState node@(Abs.ForStateIndexDo pos index rangexp state) env = let rangeTCheck = checkRangeExpType rangexp env in
+                                                                            let indexTCheck = checkTypeIndexVarDec index env in
+                                                                                 if(checkCompatibility rangeTCheck indexTCheck ) then checkErrors rangeTCheck (checkErrors indexTCheck (TResult env (B_type Type_Void) pos)) else mergeErrors (mergeErrors (TError ["ident in for guard incompatible with range at "++show pos]) indexTCheck) rangeTCheck
+checkTypeForState node@(Abs.ForStateIndexWDo pos index rangexp b) env = let rangeTCheck = checkRangeExpType rangexp env in
+                                                                            let indexTCheck = checkTypeIndexVarDec index env in
+                                                                                if(checkCompatibility (checkRangeExpType rangexp env) (checkTypeIndexVarDec index env) ) then checkErrors rangeTCheck (checkErrors indexTCheck (TResult env (B_type Type_Void) pos)) else mergeErrors (mergeErrors (TError ["ident in for guard incompatible with range at "++show pos]) indexTCheck) rangeTCheck
+checkTypeForState node@(Abs.ForStateExprDo pos rangexp state) env = let rangeTCheck = checkRangeExpType rangexp env in checkErrors rangeTCheck (TResult env (B_type Type_Void) pos)
+checkTypeForState node@(Abs.ForStateExprWDo pos rangexp b) env = let rangeTCheck = checkRangeExpType rangexp env in checkErrors rangeTCheck (TResult env (B_type Type_Void) pos)
 
 checkTypeIndexVarDec :: Abs.INDEXVARDEC Posn -> Env -> TCheckResult
 checkTypeIndexVarDec node@(Abs.IndexVarDeclaration pos id) env =  checkTypeIdentVar id env
