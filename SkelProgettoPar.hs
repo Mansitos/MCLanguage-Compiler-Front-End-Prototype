@@ -194,7 +194,6 @@ transNAMEDEXPRESSIONLIST x = case x of
   AbsProgettoPar.NamedExpressionList _ namedexpression -> failure x
   AbsProgettoPar.NamedExpressionListEmpty _-> failure x
   AbsProgettoPar.NamedExpressionLists _ namedexpression namedexpressionlist -> failure x
-  AbsProgettoPar.NamedExpressionAssigned _ ident expression -> failure x
 
 transNAMEDEXPRESSION :: Show attr => (AbsProgettoPar.NAMEDEXPRESSION attr) -> Result
 transNAMEDEXPRESSION x = case x of

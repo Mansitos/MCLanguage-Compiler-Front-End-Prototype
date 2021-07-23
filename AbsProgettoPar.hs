@@ -176,7 +176,6 @@ data NAMEDEXPRESSIONLIST a
     = NamedExpressionList {namedexpressionlist_content::a, namedexpressionlist_namedexpression::(NAMEDEXPRESSION a)}
     | NamedExpressionListEmpty {namedexpressionlist_content::a}
     | NamedExpressionLists {namedexpressionlist_content::a, namedexpressionlist_namedexpression::(NAMEDEXPRESSION a), namedexpressionlist_namedexpressionlist::(NAMEDEXPRESSIONLIST a)}
-    | NamedExpressionAssigned {namedexpressionlist_content::a, namedexpressionlist_ident::(Ident a), namedexpressionlist_expression::(EXPRESSION a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data NAMEDEXPRESSION a = NamedExpression {namedexpression_content::a, namedexpression_expression::(EXPRESSION a)}

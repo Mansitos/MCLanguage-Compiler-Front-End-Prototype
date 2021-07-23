@@ -89,7 +89,6 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                                             B_type Type_Integer -> if (ts==(B_type Type_Real) || ts==(B_type Type_Integer)) then True else False
                                                                                                             _ -> if t==ts then True else False
                                                                                         _ -> False
-                                                                    _ -> False 
 
 -- Given Type A and B (from TCheckResults) it returns the one which is more generic.
 -- Semantic: Which type is more generic; a or b?
@@ -127,7 +126,6 @@ getTypeEnvEntry [] = B_type Type_Void
 getTypeEnvEntry (x:xs) = case x of 
                             (Variable t pos mode canOverride) -> t
                             (Function t pos parameters canOverride) -> t
-                            _ -> B_type Type_Void
 
 -- Returns the Env from a Map (Env,Errors) entry
 first :: (Env,[Prelude.String]) -> Env
@@ -493,7 +491,6 @@ executeNamedExpressionList :: Abs.NAMEDEXPRESSIONLIST Posn -> Env -> Abs.NAMEDEX
 executeNamedExpressionList node@(Abs.NamedExpressionList pos namedexpr) env = Abs.NamedExpressionList (checkTypeNamedExpressionList node env) (executeNamedExpression namedexpr env)
 executeNamedExpressionList node@(Abs.NamedExpressionListEmpty pos) env = Abs.NamedExpressionListEmpty (TResult env (B_type Type_Void) pos)
 executeNamedExpressionList node@(Abs.NamedExpressionLists pos namedexpr namedexprlist) env = Abs.NamedExpressionLists (checkTypeNamedExpressionList node env) (executeNamedExpression namedexpr env) (executeNamedExpressionList namedexprlist env)
-executeNamedExpressionList node@(Abs.NamedExpressionAssigned pos id expr) env = Abs.NamedExpressionAssigned (checkTypeNamedExpressionList node env) (executeIdentVar id env) (executeExpression expr env)
 
 executeNamedExpression :: Abs.NAMEDEXPRESSION Posn -> Env -> Abs.NAMEDEXPRESSION TCheckResult
 executeNamedExpression node@(Abs.NamedExpression pos expr) env = Abs.NamedExpression (checkTypeNamedExpression node env) (executeExpression expr env)
@@ -1171,7 +1168,6 @@ checkTypeCallExpression_ (Abs.CallExpressionParentheses _ (Abs.Ident id pos) nam
                                                               then if (checkCompatibilityOfParamsList namedexpr param env) then TResult env t pos 
                                                                    else TError ["Function " ++ id ++ "( ) called with parameters of the wrong type! Position: " ++ show pos]
                                                               else TError ["Function " ++ id ++ "( ) called with a different number of parameters than it's definition! Position: " ++ show pos]
-    (Abs.NamedExpressionAssigned res id namedexpr) -> TError ["mhh?"] -- label per leggibilità codice ...
 
 -- Given a List of named expression, counts them and return the result
 countNumberOfParam :: Abs.NAMEDEXPRESSIONLIST Posn -> Prelude.Int
@@ -1199,7 +1195,6 @@ checkTypeNamedExpressionList node@(Abs.NamedExpressionLists pos namedexpr namede
                                                                                                         _ -> case namedListsTCheck of
                                                                                                             TResult _ _ _ -> namedListTCheck
                                                                                                             _ -> mergeErrors namedListTCheck namedListsTCheck
-checkTypeNamedExpressionList node@(Abs.NamedExpressionAssigned pos id expr) env = TResult env (B_type Type_Void) pos
 
 checkTypeNamedExpression :: Abs.NAMEDEXPRESSION Posn -> Env -> TCheckResult
 checkTypeNamedExpression node@(Abs.NamedExpression pos expr) env = checkTypeExpression expr env

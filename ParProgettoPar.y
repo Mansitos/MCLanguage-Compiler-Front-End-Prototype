@@ -23,7 +23,6 @@ import LexProgettoPar
   '!=' { PT _ (TS _ 2) }
   '%' { PT _ (TS _ 3) }
   '%=' { PT _ (TS _ 4) }
-  '&' { PT _ (TS _ 5) }
   '&&' { PT _ (TS _ 6) }
   '(' { PT _ (TS _ 7) }
   ')' { PT _ (TS _ 8) }
@@ -248,7 +247,6 @@ NAMEDEXPRESSIONLIST :: { Abs.NAMEDEXPRESSIONLIST Posn }
 NAMEDEXPRESSIONLIST : NAMEDEXPRESSION { Abs.NamedExpressionList (Abs.namedexpression_content $1) $1 }
                     | {- empty -} { Abs.NamedExpressionListEmpty (Pn 0 0 0) }
                     | NAMEDEXPRESSION ',' NAMEDEXPRESSIONLIST { Abs.NamedExpressionLists (Abs.namedexpression_content $1) $1 $3 }
-                    | Ident '=' EXPRESSION { Abs.NamedExpressionAssigned (Abs.contentId $1) $1 $3 }
 
 NAMEDEXPRESSION :: { Abs.NAMEDEXPRESSION Posn }
 NAMEDEXPRESSION : EXPRESSION { Abs.NamedExpression (Abs.expression_content $1) $1 }

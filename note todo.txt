@@ -9,10 +9,11 @@ aggiungere controllo correttezza indici array ?!?!? - C non lo fa... controllo a
 preprocessing puntatori dopo = - done
 e togliere dell'& - done
 controllare ridefinizione funzioni. non deve esserci overloading! - done
+[NamedExpressionAssigned da gestire
+	(label nelle chiamate di funz?)		  - removed
+	togliere le label nelle chiamate? !?!?!?]
 -----------
-NamedExpressionAssigned da gestire
-	(label nelle chiamate di funz?)
-	togliere le label nelle chiamate? !?!?!?
+
 
 ------------
 Altro:
