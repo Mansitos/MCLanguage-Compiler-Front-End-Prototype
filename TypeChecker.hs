@@ -670,7 +670,6 @@ checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = le
                                                                                     let lvalTCheck = (getRealType (checkTypeLvalueExpression lval env)) in
                                                                                         case lvalTCheck of
                                                                                             TResult _ _ _ -> case expTCheck of
-
                                                                                                                 TResult _ (Pointer t depth) _ -> if (checkCompatibility (getRealType expTCheck) lvalTCheck && (depth-(checkDef_ exp))==0 ) then (getRealType expTCheck) else TError ["Cannot assign value of type " ++ show (getType expTCheck) ++ " to variable of type " ++ show (getType lvalTCheck) ++ "! Position: "++show pos]
                                                                                                                 TResult _ _ _ -> if(checkCompatibility (getRealType expTCheck) lvalTCheck) then (getRealType expTCheck) else TError ["Cannot assign value of type " ++ show (getType expTCheck) ++ " to variable of type " ++ show (getType lvalTCheck) ++ "! Position: "++show pos]
                                                                                                                 TError e -> expTCheck
@@ -1015,7 +1014,7 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                         _ -> case initCheck of
                                                                                                             TResult env (Pointer tI depthI) pos -> if (checkCompatibility (TResult env tI pos) typeCheck && (depthI-(checkDef initpart))==0) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["BBBinitializzation incompatible type at "++show (getPos initCheck)]) identTCheck)
                                                                                                             TResult env (Array t dim) pos -> if (checkCompatibility (getRealType initCheck) typeCheck) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["CCCinitializzation incompatible type at "++show (getPos initCheck)]) identTCheck)
-                                                                                                            _ -> if (checkCompatibility initCheck typeCheck) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize variable of type " ++ show (getType typeCheck) ++ " with a value of type "++ show (getType initCheck) ++ "! Position:" ++ show (getPos initCheck)]) identTCheck))
+                                                                                                            _ -> if (checkCompatibility initCheck typeCheck) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck identTCheck)
 
 checkErrors :: TCheckResult -> TCheckResult -> TCheckResult
 checkErrors (TResult env ty pos) (TResult envs tys poss) = TResult envs tys poss
@@ -1152,13 +1151,13 @@ checkTypeCallExpression_ (Abs.CallExpressionParentheses _ (Abs.Ident id pos) nam
     (Abs.NamedExpressionList res namedexpr) -> if Prelude.length (param) == 1 -- The call was with 1 param, does the definition requires only 1 param?
                                                then if (let namedType = checkTypeNamedExpression namedexpr env -- Check if the type is compatibile with the one required in the definition
                                                         in checkCompatibility namedType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) then TResult env t pos 
-                                                    else TError ["tipo nella chiamata non coincide (ma il numero era ok)"]
-                                               else TError ["call with 1 param but missing others params"]
-    (Abs.NamedExpressionListEmpty res) -> if param == [] then TResult env t pos else TError ["chiamata senza paramertri"] -- The call was with no params, check if the definition requires no param too
+                                                    else TError ["Function " ++ id ++ "( ) requires a parameter of type " ++ show (Prelude.head (getTypeListFromFuncParams param)) ++ " but " ++  show (getType (checkTypeNamedExpression namedexpr env)) ++ " is given! Position:" ++ show pos]
+                                               else TError ["Function " ++ id ++ "( ) called with too few arguments! Position: " ++ show pos]
+    (Abs.NamedExpressionListEmpty res) -> if param == [] then TResult env t pos else TError ["Function " ++ id ++ " called without parameters! Position: " ++ show pos] -- The call was with no params, check if the definition requires no param too
     (Abs.NamedExpressionLists res _ namedexprlist) -> if Prelude.length (param) == 1 + (countNumberOfParam namedexprlist) -- The call has n params, does the definition requires n params?
                                                               then if (checkCompatibilityOfParamsList namedexpr param env) then TResult env t pos 
-                                                                   else TError ["number of param ok but compatibility of types NOT OK"]
-                                                              else TError ["number of param not equal in the call"]
+                                                                   else TError ["Function " ++ id ++ "( ) called with parameters of the wrong type! Position: " ++ show pos]
+                                                              else TError ["Function " ++ id ++ "( ) called with a different number of parameters than it's definition! Position: " ++ show pos]
     (Abs.NamedExpressionAssigned res id namedexpr) -> TError ["mhh?"] -- label per leggibilità codice ...
 
 -- Given a List of named expression, counts them and return the result
