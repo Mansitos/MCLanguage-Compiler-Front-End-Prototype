@@ -19,7 +19,7 @@ type Env = Map Prelude.String [EnvEntry]
 
 data EnvEntry
     = Variable {varType::Type, varPosition::LexProgettoPar.Posn, varMode::Prelude.String, canOverride::Prelude.Bool}
-    | Function {funType::Type, funPosition::LexProgettoPar.Posn, funParameters::[Parameter]}
+    | Function {funType::Type, funPosition::LexProgettoPar.Posn, funParameters::[Parameter], canOverride::Prelude.Bool}
 
 data Parameter
     = Parameter {paramType::Type, paramPosition::LexProgettoPar.Posn, paramMode::Prelude.String, identifier::Prelude.String}
@@ -33,12 +33,12 @@ data TCheckResult
 --- SHOW ISTANCES FOR ENV DATA TYPES ------------------------------------------------------------
 -------------------------------------------------------------------------------------------------
 
-startEnv = fromList [("readChar",[Function {funType = (B_type Type_Char), funPosition = (Pn 0 0 0), funParameters = []}]),("readInt",[Function {funType = (B_type Type_Integer), funPosition = (Pn 0 0 0), funParameters = []}]),("readReal",[Function {funType = (B_type Type_Real), funPosition = (Pn 0 0 0), funParameters = []}]),("readString",[Function {funType = (B_type Type_String), funPosition = (Pn 0 0 0), funParameters = []}]),("writeChar",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}]}]),("writeInt",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}]}]),("writeReal",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}]}]),("writeString",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}]}])]
+startEnv = fromList [("readChar",[Function {funType = (B_type Type_Char), funPosition = (Pn 0 0 0), funParameters = [], canOverride = False}]),("readInt",[Function {funType = (B_type Type_Integer), funPosition = (Pn 0 0 0), funParameters = [], canOverride = False}]),("readReal",[Function {funType = (B_type Type_Real), funPosition = (Pn 0 0 0), funParameters = [], canOverride = False}]),("readString",[Function {funType = (B_type Type_String), funPosition = (Pn 0 0 0), funParameters = [], canOverride = False}]),("writeChar",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}], canOverride = False}]),("writeInt",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}], canOverride = False}]),("writeReal",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}], canOverride = False}]),("writeString",[Function {funType = (B_type Type_Void), funPosition = (Pn 0 0 0), funParameters = [TypeChecker.Parameter {paramType = (B_type Type_Integer), paramPosition = (Pn 0 0 0), paramMode = "_mode_", identifier = "input"}], canOverride = False}])]
 
 instance Show EnvEntry where
     show entry = case entry of
         TypeChecker.Variable ty pos varMode canOverride -> "EnvEntry: [" ++ "var:" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show varMode ++ "|canOverride:" ++ show canOverride ++ "]"
-        TypeChecker.Function ty pos params              -> "EnvEntry: [" ++ "fun:" ++ show ty ++ "|" ++ show pos ++ "|params:" ++ show params ++ "]"
+        TypeChecker.Function ty pos params canOverride  -> "EnvEntry: [" ++ "fun:" ++ show ty ++ "|" ++ show pos ++ "|params:" ++ show params ++ "|canOverride:" ++ show canOverride ++ "]"
 instance Show Parameter where
     show param = case param of    
         TypeChecker.Parameter ty pos mode id   -> "(" ++ show id ++ ":" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show mode ++ ")"
@@ -126,7 +126,7 @@ getTypeEnvEntry :: [EnvEntry] -> Type
 getTypeEnvEntry [] = B_type Type_Void
 getTypeEnvEntry (x:xs) = case x of 
                             (Variable t pos mode canOverride) -> t
-                            (Function t pos parameters) -> t
+                            (Function t pos parameters canOverride) -> t
                             _ -> B_type Type_Void
 
 -- Returns the Env from a Map (Env,Errors) entry
@@ -147,18 +147,21 @@ updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
                                                                 Abs.VariableDeclarationStatement pos varType vardec -> let ty = getVarType vardec in -- getting variable type (int etc.)
                                                                                                                          (let varMode = getVarMode varType in -- getting variable mode (const etc.)
                                                                                                                             (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
-                                                                                                                                if (checkIfCanOverride ids env) -- check if vars can be overrided (yes if inside a new block)
+                                                                                                                                if (checkIfCanOverride ids env "var") -- check if vars can be overrided (yes if inside a new block)
                                                                                                                                 then (updateEnvFromListOfVarIds ids env pos varMode ty,err ++ checkErr env stat) -- updating env for each declared var.
                                                                                                                                 else (updateEnvFromListOfVarIds ids env pos varMode ty, err ++ ["Cannot redefine var ... mettere info"])))
                                                                 -- Functions and Procedures
                                                                 Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
-                                                                                                                    ((insertWith (++) fid [Function (B_type Type_Void) pos parameters] env, err ++ checkErr env stat))
-                                                                
+                                                                                                                    if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
+                                                                                                                    then (insertWith (++) fid [Function (B_type Type_Void) pos parameters False] env, err ++ checkErr env stat)
+                                                                                                                    else (env, err ++ checkErr env stat) -- it was already defined
                                                                 Abs.FunctionStatement pos id params ty stats -> let parameters = getParamList params in
                                                                                                                     let fty = getTypeFromPrimitive ty in
                                                                                                                         let fid = getIdFromIdent id in 
-                                                                                                                            (insertWith (++) fid [Function fty pos parameters] env, err ++ checkErr env stat) 
+                                                                                                                            if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
+                                                                                                                            then (insertWith (++) fid [Function fty pos parameters False] env, err ++ checkErr env stat) 
+                                                                                                                            else (env, err ++ checkErr env stat) -- it was already defined
                                                                 -- generic case
                                                                 _ -> (env,err) 
 updateEnv node@(Abs.EmptyStatement pos) env err = (env,err)
@@ -202,7 +205,7 @@ updateEnvFromListOfVarIds (x:xs) env pos varMode ty = case Data.Map.lookup x env
                                                        Just _ -> updateEnvFromListOfVarIds xs env pos varMode ty                                                                              
                                                        Nothing -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty pos varMode False] env) pos varMode ty
 
--- Given an Env set to TRUE in CanOverride for each variable!
+-- Given an Env set to TRUE in CanOverride for each variable and func!
 -- Used at the beginning of a new bloc (for example, after declaring a function, inside it is possible to override previous variable declaration (those outside))
 updateIfCanOverride :: Env -> Env
 updateIfCanOverride env = Data.Map.fromList (updateIfCanOverride_ (Data.Map.toList env))
@@ -211,16 +214,16 @@ updateIfCanOverride env = Data.Map.fromList (updateIfCanOverride_ (Data.Map.toLi
 updateIfCanOverride_ :: [(Prelude.String, [EnvEntry])] -> [(Prelude.String, [EnvEntry])]
 updateIfCanOverride_ ((str,entry:entries):xs) = case entry of
                     Variable ty pos varMode canOverride ->  [(str,(Variable ty pos varMode True):entries)] ++ updateIfCanOverride_ xs
-                    _ -> [(str,entry:(updateIfCanOverrideEntries_ entries))] ++ updateIfCanOverride_ xs
+                    Function ty pos param canOverride -> [(str,(Function ty pos param True):entries)] ++ updateIfCanOverride_ xs
 updateIfCanOverride_ ((str,[]):xs) = ((str,[]):xs)
 updateIfCanOverride_ [] = []
 
 -- Sub-Function of updateIfCanOverride_
-updateIfCanOverrideEntries_ :: [EnvEntry] -> [EnvEntry]
-updateIfCanOverrideEntries_ (x:xs) = case x of
-                                        Variable ty pos varMode canOverride -> (Variable ty pos varMode True):xs
-                                        _ -> [x] ++ updateIfCanOverrideEntries_ xs
-updateIfCanOverrideEntries_ []     = [] 
+-- updateIfCanOverrideEntries_ :: [EnvEntry] -> [EnvEntry]
+-- updateIfCanOverrideEntries_ (x:xs) = case x of
+--                                         Variable ty pos varMode canOverride -> (Variable ty pos varMode True):xs
+--                                         _ -> [x] ++ updateIfCanOverrideEntries_ xs
+-- updateIfCanOverrideEntries_ []     = [] 
 
 -- TODO
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
@@ -250,13 +253,18 @@ getTypeListFromFuncParams ((TypeChecker.Parameter ty _ _ _):xs) = [ty] ++ getTyp
 getTypeListFromFuncParams [] = []
 
 -- Given a list of variable ids, returns true if they can be overrided (false if at least one of them CANNOT be overrided)
-checkIfCanOverride :: [Prelude.String] -> Env -> Bool
-checkIfCanOverride (x:xs) env = case Data.Map.lookup x env of
+checkIfCanOverride :: [Prelude.String] -> Env -> Prelude.String -> Bool
+checkIfCanOverride (x:xs) env "var" = case Data.Map.lookup x env of
     Just (entry:entries) -> case entry of
-        Variable ty pos varMode canOverride -> canOverride && (checkIfCanOverride xs env)
-        _ -> True && (checkIfCanOverride xs env)
-    Nothing -> True && (checkIfCanOverride xs env)
-checkIfCanOverride [] env = True
+        Variable ty pos varMode canOverride -> canOverride && (checkIfCanOverride xs env "var")
+        _ -> True && (checkIfCanOverride xs env "var")
+    Nothing -> True && (checkIfCanOverride xs env "var")
+checkIfCanOverride (x:xs) env "func" = case Data.Map.lookup x env of
+    Just (entry:entries) -> case entry of
+        Function ty pos param canOverride -> canOverride
+        _ -> True
+    Nothing -> True
+checkIfCanOverride [] env _ = True
 
 -- Given a parameter list, return the list of ids
 getListOfIdsFromParamList :: [TypeChecker.Parameter] -> [Prelude.String]
@@ -681,8 +689,13 @@ checkTypeStatement node@(Abs.ConditionalStatement pos condition) env = checkType
 checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhile whileState env
 checkTypeStatement node@(Abs.DoWhileStatement pos doState) env = checkTypeDo doState env
 checkTypeStatement node@(Abs.ForStatement pos forState) env = checkTypeForState forState env
-checkTypeStatement node@(Abs.ProcedureStatement pos id param states) env = checkTypeExecuteParameter param env     -- non deve esserci return diverso da void
-checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = checkTypeExecuteParameter param env -- se c'è return (deve esserci) deve combaciare il tipo
+checkTypeStatement node@(Abs.ProcedureStatement pos id param states) env = checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env)     -- non deve esserci return diverso da void
+checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env) -- se c'è return (deve esserci) deve combaciare il tipo
+
+checkFuncOverride :: Abs.Ident Posn -> Env -> TCheckResult
+checkFuncOverride (Abs.Ident id pos) env = if (checkIfCanOverride [id] env "func")
+                                           then TResult env (B_type Type_Void) pos 
+                                           else TError ["Cannot redefine function " ++ id ++ "! Position: " ++ show pos]
 
 mergeErrors :: TCheckResult -> TCheckResult -> TCheckResult
 mergeErrors (TError e1) (TError e2) = TError (e1++e2)
@@ -706,8 +719,8 @@ checkTypeElseState node@(Abs.ElseState pos state) env = TResult env (B_type Type
 checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeCtrlState :: Abs.CTRLDECSTATEMENT Posn -> Env -> TCheckResult
-checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env =TResult env (B_type Type_Void) pos 
-checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env =TResult env (B_type Type_Void) pos
+checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env = TResult env (B_type Type_Void) pos 
+checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env = TResult env (B_type Type_Void) pos
 
 checkTypeWhile :: Abs.WHILESTATEMENT Posn -> Env -> TCheckResult
 checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = let expTCheck = checkTypeExpression exp env in 
@@ -860,11 +873,11 @@ checkTypeExpression node@(Abs.ExpressionIdent pos value@(Abs.Ident id posI) inde
                                                                         Just _ -> checkTypeIdentVar value env
                                                                         Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
 checkTypeExpression node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
-                                                                Just [Function t posf param] -> checkTypeExpressionCall_ node env [Function t posf param]
+                                                                Just [Function t posf param canOverride] -> checkTypeExpressionCall_ node env [Function t posf param canOverride]
                                                                 Just [Variable _ _ _ _] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
                                                                 Just (x:xs) -> case findEntryOfType (x:xs) "func" of -- controllare se c'è una entry di tipo func
                                                                         [] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
-                                                                        [Function t posf param] -> checkTypeExpressionCall_ node env [Function t posf param]
+                                                                        [Function t posf param canOverride] -> checkTypeExpressionCall_ node env [Function t posf param canOverride]
                                                                 Nothing -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
 
 getRealTypeExp :: TCheckResult -> Abs.EXPRESSION Posn -> TCheckResult
@@ -896,7 +909,7 @@ checkDefCompatibility _ _ _ = True
 
 -- sub-function of the previous one
 checkTypeExpressionCall_ :: Abs.EXPRESSION Posn -> Env -> [EnvEntry] -> TCheckResult
-checkTypeExpressionCall_ (Abs.ExpressionCall pos (Abs.Ident id posid) exps) env [Function t posf param] = case exps of
+checkTypeExpressionCall_ (Abs.ExpressionCall pos (Abs.Ident id posid) exps) env [Function t posf param canOverride] = case exps of
     (Abs.Expression pos exp) -> if Prelude.length (param) == 1 -- The call was with 1 param, does the definition requires only 1 param?
                                                then if (let expType = checkTypeExpression exp env -- Check if the type is compatibile with the one required in the definition
                                                         in checkCompatibility expType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) then TResult env t pos 
@@ -960,7 +973,7 @@ checkTypeIdentVar node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
     Nothing -> TError ["Variable " ++ id ++ " undeclared at position: " ++ (show pos)]
 checkTypeIdentFunc :: Abs.Ident Posn -> Env -> TCheckResult
 checkTypeIdentFunc node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
-    Just [Function t pos param] -> TResult env t pos -- check if var TODO
+    Just [Function t pos param canOverride] -> TResult env t pos -- check if var TODO
     Just (x:xs) -> case findEntryOfType (x:xs) "func" of
                     [] -> TError ["Function " ++ id ++ "( ) undeclared at position: " ++ (show pos)]
                     [y] -> TResult env (getTypeEnvEntry [y]) pos
@@ -973,7 +986,7 @@ findEntryOfType (x:xs) str = case str of
                                         Variable t pos mode override -> [x]
                                         _ -> findEntryOfType xs str
                                 "func"-> case x of -- searching for func entry 
-                                        Function t pos param -> [x]
+                                        Function t pos param canOverride -> [x]
                                         _ -> findEntryOfType xs str
 findEntryOfType [] str = []
     
@@ -1051,8 +1064,8 @@ checkIdentifierList node@(Abs.IdentifierList pos ident@(Abs.Ident id posI) ident
 checkIdentifierList node@(Abs.IdentifierSingle pos ident@(Abs.Ident id posI)) env = case Data.Map.lookup id env of
                                                                                     Just [Variable ty posv mode override] -> if override then TResult env (B_type Type_Void) pos else TError ["variable is already defined at "++show posv]
                                                                                     Just (Variable ty posv mode override:xs) -> if override then TResult env (B_type Type_Void) pos else TError ["variable is already defined at "++show posv]
-                                                                                    Just [Function ty posv param] -> TResult env (B_type Type_Void) pos
-                                                                                    Just (Function ty posv param:xs) -> searchVar xs env pos
+                                                                                    Just [Function ty posv param canOverride] -> TResult env (B_type Type_Void) pos
+                                                                                    Just (Function ty posv param canOverride:xs) -> searchVar xs env pos
                                                                                     Nothing -> TResult env (B_type Type_Void) pos
 
 searchVar :: [EnvEntry] -> Env -> Posn -> TCheckResult
@@ -1139,15 +1152,15 @@ checkTypeTypeIndex node@(Abs.TypeOfIndexVarSingle _ (Abs.Ident id pos)) env = ca
 
 checkTypeCallExpression :: Abs.CALLEXPRESSION Posn -> Env -> TCheckResult
 checkTypeCallExpression node@(Abs.CallExpressionParentheses _ (Abs.Ident id pos) namedexpr) env = case Data.Map.lookup id env of
-                                                    Just [Function t posf param] -> checkTypeCallExpression_ node env [Function t posf param]
+                                                    Just [Function t posf param canOverride] -> checkTypeCallExpression_ node env [Function t posf param canOverride]
                                                     Just [Variable _ _ _ _] -> mergeErrors (TError [" ?? function not def.at " ++ (show pos)]) (checkTypeNamedExpressionList namedexpr env)
                                                     Just (x:xs) -> case findEntryOfType (x:xs) "func" of -- controllare se c'è una entry di tipo func
                                                         [] -> mergeErrors (TError [" ?? function not def.at " ++ (show pos)]) (checkTypeNamedExpressionList namedexpr env)
-                                                        [Function t posf param] -> checkTypeCallExpression_ node env [Function t posf param]
+                                                        [Function t posf param canOverride] -> checkTypeCallExpression_ node env [Function t posf param canOverride]
                                                     Nothing -> mergeErrors (TError [" ?? function not def.at " ++ (show pos)]) (checkTypeNamedExpressionList namedexpr env)
 -- sub-function of the previous one
 checkTypeCallExpression_ :: Abs.CALLEXPRESSION Posn -> Env -> [EnvEntry] -> TCheckResult
-checkTypeCallExpression_ (Abs.CallExpressionParentheses _ (Abs.Ident id pos) namedexpr) env [Function t posf param] = case namedexpr of
+checkTypeCallExpression_ (Abs.CallExpressionParentheses _ (Abs.Ident id pos) namedexpr) env [Function t posf param canOverride] = case namedexpr of
     (Abs.NamedExpressionList res namedexpr) -> if Prelude.length (param) == 1 -- The call was with 1 param, does the definition requires only 1 param?
                                                then if (let namedType = checkTypeNamedExpression namedexpr env -- Check if the type is compatibile with the one required in the definition
                                                         in checkCompatibility namedType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) then TResult env t pos 

@@ -8,13 +8,11 @@ testare puntatori - done
 aggiungere controllo correttezza indici array ?!?!? - C non lo fa... controllo a run-time
 preprocessing puntatori dopo = - done
 e togliere dell'& - done
+controllare ridefinizione funzioni. non deve esserci overloading! - done
 -----------
-
 NamedExpressionAssigned da gestire
 	(label nelle chiamate di funz?)
-	togliere le label nelle chiamate?
-
-controllare ridefinizione funzioni. non deve esserci overloading!
+	togliere le label nelle chiamate? !?!?!?
 
 ------------
 Altro:
