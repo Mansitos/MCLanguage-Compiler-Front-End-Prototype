@@ -6,9 +6,9 @@ break;continue;return multipli non vanno bene? - vanno bene
 if then con control decl --> il tipo esplicito? l'env da aggiornare? - done
 testare puntatori - done
 aggiungere controllo correttezza indici array ?!?!? - C non lo fa... controllo a run-time
+preprocessing puntatori dopo = - done
+e togliere dell'& - done
 -----------
-preprocessing puntatori dopo =
-e togliere dell'&
 
 NamedExpressionAssigned da gestire
 	(label nelle chiamate di funz?)
