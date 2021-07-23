@@ -5,17 +5,17 @@ creare env entry per ogni variabile parametro delle func. - done
 break;continue;return multipli non vanno bene? - vanno bene
 if then con control decl --> il tipo esplicito? l'env da aggiornare? - done
 testare puntatori - done
----
-
-updateEnv refactor (lavora solo su statement?)
-
-distinguere due errori con altro if per order
-
+aggiungere controllo correttezza indici array ?!?!? - C non lo fa... controllo a run-time
+-----------
 preprocessing puntatori dopo =
 e togliere dell'&
 
-controllo correttezza indici array
-
 NamedExpressionAssigned da gestire
+	(label nelle chiamate di funz?)
+	togliere le label nelle chiamate?
 
-testare array
+controllare ridefinizione funzioni. non deve esserci overloading!
+
+------------
+Altro:
+updateEnv refactor (lavora solo su statement?)
