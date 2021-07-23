@@ -125,3 +125,19 @@ x[1,2] = z;
 x[1,2] = x[3,4];
 z;
 
+------------
+
+var x : int;
+x = true;
+{
+  var x : char;
+  x = 'a';
+  function ciao (a : char) : void {
+    x;
+    a;
+    return;
+    break;
+    }
+  ciao (x);
+  }
+x;

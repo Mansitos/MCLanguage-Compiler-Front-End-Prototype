@@ -4,6 +4,7 @@ distinguere var e func nel typecheck ident! - done
 creare env entry per ogni variabile parametro delle func. - done
 break;continue;return multipli non vanno bene? - vanno bene
 if then con control decl --> il tipo esplicito? l'env da aggiornare? - done
+testare puntatori - done
 ---
 
 updateEnv refactor (lavora solo su statement?)
@@ -18,4 +19,4 @@ ciclo for: la variabile indice non viene inserita nell'env... distinguere caso i
 
 NamedExpressionAssigned da gestire
 
-testare puntatori
+testare array
