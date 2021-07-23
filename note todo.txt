@@ -12,10 +12,9 @@ updateEnv refactor (lavora solo su statement?)
 distinguere due errori con altro if per order
 
 preprocessing puntatori dopo =
+e togliere dell'&
 
 controllo correttezza indici array
-
-ciclo for: la variabile indice non viene inserita nell'env... distinguere caso int o char dal range
 
 NamedExpressionAssigned da gestire
 
