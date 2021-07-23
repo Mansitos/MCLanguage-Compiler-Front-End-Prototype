@@ -149,11 +149,15 @@ pointersSyntaxPreprocessing (x:xs) zs output= if x==' ' || x=='*' || x==':'
                           then
                             if x==' '
                               then
-                                if last zs ' '=='='
+                                if zs=="int" || zs=="bool" || zs=="real" || zs=="string" || zs=="char"
                                   then
-                                    pointersSyntaxPreprocessing xs zs (output++[x])
+                                     pointersSyntaxPreprocessing xs zs (output++[x])
                                   else
-                                    pointersSyntaxPreprocessing xs [] (output++[x])
+                                    if zs=="="
+                                      then
+                                        pointersSyntaxPreprocessing xs zs (output++[x])
+                                      else
+                                        pointersSyntaxPreprocessing xs [] (output++[x])
                               else
                                 if x==':'
                                   then
@@ -165,15 +169,27 @@ pointersSyntaxPreprocessing (x:xs) zs output= if x==' ' || x=='*' || x==':'
                                           then
                                             pointersSyntaxPreprocessing xs zs ((output++[x] ) ++ [' '] )
                                           else
-                                            pointersSyntaxPreprocessing xs [] (output++[x])
+                                            if zs=="="
+                                              then
+                                                pointersSyntaxPreprocessing xs zs (output++[x] ++ [' '])
+                                              else
+                                                pointersSyntaxPreprocessing xs [] (output++[x])
                                       else
                                         pointersSyntaxPreprocessing xs [] (output++[x])
                           else
-                            if x=='&' && last zs ' '=='='
+                            if x=='='
                               then
-                                pointersSyntaxPreprocessing xs zs (output++[x]++[' '])
+                                pointersSyntaxPreprocessing xs [x] (output++[x])  
                               else
-                                pointersSyntaxPreprocessing xs (zs++[x]) (output++[x])
+                                if zs=="="
+                                  then
+                                    if x==';'
+                                      then
+                                        pointersSyntaxPreprocessing xs [] (output++[x])
+                                      else
+                                        pointersSyntaxPreprocessing xs zs (output++[x])
+                                  else
+                                    pointersSyntaxPreprocessing xs (zs++[x]) (output++[x])
 
 last :: String -> Char -> Char
 last [] e = e
