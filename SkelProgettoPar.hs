@@ -214,7 +214,7 @@ transEXPRESSION x = case x of
   AbsProgettoPar.ExpressionChar _ char -> failure x
   AbsProgettoPar.ExpressionBoolean _ boolean -> failure x
   AbsProgettoPar.ExpressionBinary _ default_ binaryop expression -> failure x
-  AbsProgettoPar.ExpressionUnary _ unaryop expression -> failure x
+  AbsProgettoPar.ExpressionUnary _ unaryop default_ -> failure x
   AbsProgettoPar.ExpressionCast _ default_ primitivetype -> failure x
   AbsProgettoPar.ExpressionBracket _ expression -> failure x
   AbsProgettoPar.ExpressionCall _ ident expressions -> failure x
@@ -228,6 +228,9 @@ transDEFAULT x = case x of
   AbsProgettoPar.ExpressionCharD _ char -> failure x
   AbsProgettoPar.ExpressionBooleanD _ boolean -> failure x
   AbsProgettoPar.ExpressionBracketD _ expression -> failure x
+  AbsProgettoPar.ExpressionCallD _ ident expressions -> failure x
+  AbsProgettoPar.ExpressionCastD _ default_ primitivetype -> failure x
+  AbsProgettoPar.ExpressionUnaryD _ unaryop default_ -> failure x
 
 transUNARYOP :: Show attr => (AbsProgettoPar.UNARYOP attr) -> Result
 transUNARYOP x = case x of

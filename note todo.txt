@@ -12,11 +12,10 @@ controllare ridefinizione funzioni. non deve esserci overloading! - done
 [NamedExpressionAssigned da gestire
 	(label nelle chiamate di funz?)		  - removed
 	togliere le label nelle chiamate? !?!?!?]
+Problema parser default (*p) - done
 -----------
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
-
-Problema parser default (*p)
 
 ------------
 Altro:

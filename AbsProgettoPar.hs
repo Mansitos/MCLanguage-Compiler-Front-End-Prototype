@@ -195,7 +195,7 @@ data EXPRESSION a
     | ExpressionChar {expression_content::a, expression_char::(AbsProgettoPar.Char a)}
     | ExpressionBoolean {expression_content::a, expression_bool::(Boolean a)}
     | ExpressionBinary {expression_content::a, expression_default::(DEFAULT a), expression_binaryop::(BINARYOP a), expression_expression::(EXPRESSION a)}
-    | ExpressionUnary {expression_content::a, expression_unaryop::(UNARYOP a), expression_expression::(EXPRESSION a)}
+    | ExpressionUnary {expression_content::a, expression_unaryop::(UNARYOP a), expression_default::(DEFAULT a)}
     | ExpressionCast {expression_content::a, expression_default::(DEFAULT a), expression_primitivetype::(PRIMITIVETYPE a)}
     | ExpressionBracket {expression_content::a, expression_expression::(EXPRESSION a)}
     | ExpressionCall {expression_content::a, expression_ident::(Ident a), expression_expressions::(EXPRESSIONS a)}
@@ -209,6 +209,9 @@ data DEFAULT a
     | ExpressionCharD {default_content::a, default_char::(AbsProgettoPar.Char a)}
     | ExpressionBooleanD {default_content::a, default_bool::(Boolean a)}
     | ExpressionBracketD {default_content::a, default_expression::(EXPRESSION a)}
+    | ExpressionCallD {default_content::a, default_ident::(Ident a), default_expressions::(EXPRESSIONS a)}
+    | ExpressionCastD {default_content::a, default_default::(DEFAULT a), default_primitivetype::(PRIMITIVETYPE a)}
+    | ExpressionUnaryD {default_content::a, default_unaryop::(UNARYOP a), default_default::(DEFAULT a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data UNARYOP a

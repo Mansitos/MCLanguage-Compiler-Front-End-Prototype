@@ -308,7 +308,7 @@ instance Print (AbsProgettoPar.EXPRESSION attr) where
     AbsProgettoPar.ExpressionChar _ c -> prPrec i 0 (concatD [prt 0 (AbsProgettoPar.valueChar  c)])
     AbsProgettoPar.ExpressionBoolean _ boolean -> prPrec i 0 (concatD [prt 0 boolean])
     AbsProgettoPar.ExpressionBinary _ default_ binaryop expression -> prPrec i 0 (concatD [prt 0 default_, prt 0 binaryop, prt 0 expression])
-    AbsProgettoPar.ExpressionUnary _ unaryop expression -> prPrec i 0 (concatD [prt 0 unaryop, prt 0 expression])
+    AbsProgettoPar.ExpressionUnary _ unaryop default_ -> prPrec i 0 (concatD [prt 0 unaryop, prt 0 default_])
     AbsProgettoPar.ExpressionCast _ default_ primitivetype -> prPrec i 0 (concatD [prt 0 default_, doc (showString ":"), prt 0 primitivetype])
     AbsProgettoPar.ExpressionBracket _ expression -> prPrec i 0 (concatD [doc (showString "("), prt 0 expression, doc (showString ")")])
     AbsProgettoPar.ExpressionCall _ id_ expressions -> prPrec i 0 (concatD [prt 0 id_,doc (showString "("), prt 0 expressions,doc (showString ")")])
@@ -322,6 +322,9 @@ instance Print (AbsProgettoPar.DEFAULT attr) where
     AbsProgettoPar.ExpressionCharD _ c -> prPrec i 0 (concatD [prt 0 (AbsProgettoPar.valueChar  c)])
     AbsProgettoPar.ExpressionBooleanD _ boolean -> prPrec i 0 (concatD [prt 0 boolean])
     AbsProgettoPar.ExpressionBracketD _ expression -> prPrec i 0 (concatD [doc (showString "("), prt 0 expression, doc (showString ")")])
+    AbsProgettoPar.ExpressionCastD _ default_ primitivetype -> prPrec i 0 (concatD [prt 0 default_, doc (showString ":"), prt 0 primitivetype])
+    AbsProgettoPar.ExpressionCallD _ id_ expressions -> prPrec i 0 (concatD [prt 0 id_,doc (showString "("), prt 0 expressions,doc (showString ")")])
+    AbsProgettoPar.ExpressionUnaryD _ unaryop default_ -> prPrec i 0 (concatD [prt 0 unaryop, prt 0 default_])
 
 instance Print (AbsProgettoPar.UNARYOP attr) where
   prt i = \case
