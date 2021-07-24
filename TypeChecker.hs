@@ -1209,14 +1209,14 @@ checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = if ((
                                                                                                                                                             if (checkOrder expr1 expr2 env) 
                                                                                                                                                                 then if (checkCompatibility (returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) (checkRangeExpType rangexp env))
                                                                                                                                                                         then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env))
-                                                                                                                                                                        else TError ["type of expressions of the range is incompatible"]
-                                                                                                                                                                     else TError ["type of expressions of the range is incompatible"]
-                                                                                                                                                                else TError ["Order of the expressions in range is wrong at "++show pos]
-checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if ((checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) || checkCompatibility (checkTypeExpression expr2 env) (checkTypeExpression expr1 env))) 
+                                                                                                                                                                        else mergeErrors (mergeErrors (mergeErrors (TError ["type of expressions of the range is incompatible"]) (checkTypeExpression expr1 env)) (checkTypeExpression expr2 env)) (checkRangeExpType rangexp env)
+                                                                                                                                                                     else TError ["Order of the expressions in range is wrong at "++show pos]
+                                                                                                                                                                else mergeErrors (mergeErrors (TError ["type of expressions of the range is incompatible"]) (checkTypeExpression expr1 env)) (checkTypeExpression expr2 env)
+checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if ((checkCompatibility (getRealType (checkTypeExpression expr1 env)) (getRealType (checkTypeExpression expr2 env)) || checkCompatibility (getRealType (checkTypeExpression expr2 env)) (getRealType (checkTypeExpression expr1 env)))) 
                                                                                                                                 then if (checkOrder expr1 expr2 env) 
-                                                                                                                                    then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) 
-                                                                                                                                    else TError ["type of expressions of the range is incompatible"]
-                                                                                                                                else TError ["Order of the expressions in range is wrong at "++show pos]
+                                                                                                                                    then checkSuperTypeRangeExp(returnSuperType (getRealType (checkTypeExpression expr1 env)) (getRealType (checkTypeExpression expr2 env))) 
+                                                                                                                                    else TError ["Order of the expressions in range is wrong at "++show pos]
+                                                                                                                                else mergeErrors (mergeErrors (TError ["type of expressions of the range is incompatible"]) (checkTypeExpression expr1 env)) (checkTypeExpression expr2 env)
 
 checkOrder :: Abs.EXPRESSION Posn -> Abs.EXPRESSION Posn -> Env -> Bool
 checkOrder (Abs.ExpressionInteger pos (Abs.Integer val posI)) (Abs.ExpressionInteger poss (Abs.Integer vals posIs)) _ = val<=vals
@@ -1225,9 +1225,56 @@ checkOrder (Abs.ExpressionInteger pos (Abs.Integer val posI)) (Abs.ExpressionRea
 checkOrder (Abs.ExpressionReal pos (Abs.Real val posR)) (Abs.ExpressionInteger poss (Abs.Integer vals posIs)) _ = val<=(Prelude.fromInteger vals)
 checkOrder (Abs.ExpressionChar pos (Abs.Char val posC)) (Abs.ExpressionChar poss (Abs.Char vals posCs)) _ = val<=vals
 checkOrder (Abs.ExpressionString pos (Abs.String val posS)) (Abs.ExpressionString poss (Abs.String vals posSs)) _ = val<=vals
-checkOrder (Abs.ExpressionIdent pos id index) exp env = if (checkCompatibility (checkTypeIdentVar id env) (checkTypeExpression exp env)) then True else False
+checkOrder (Abs.ExpressionIdent pos id index) exp env = let idTCheck = (checkTypeIdentVar id env) in
+                                                            let expTCheck = (checkTypeExpression exp env) in
+                                                                case idTCheck of
+                                                                    TResult env (Pointer t depth) pos -> case expTCheck of
+                                                                                                          TResult env (Pointer ts depths) pos -> False
+                                                                                                          _ -> if (checkCompatibility (checkTypeIdentVar id env) (checkTypeExpression exp env)) then True else False
+                                                                    _ -> if (checkCompatibility (checkTypeIdentVar id env) (checkTypeExpression exp env)) then True else False
 checkOrder exp (Abs.ExpressionIdent pos id index) env = if (checkCompatibility (checkTypeIdentVar id env) (checkTypeExpression exp env)) then True else False
-checkOrder _ _ _= False
+checkOrder (Abs.ExpressionUnary pos unary def) (Abs.ExpressionUnary poss unarys defs) env = let exp1 = checkTypeExpression (Abs.ExpressionUnary pos unary def) env in
+                                                                                                let exp2 = checkTypeExpression (Abs.ExpressionUnary pos unary def) env in
+                                                                                                    case exp1 of
+                                                                                                        TResult env (Pointer t depth) pos -> case exp2 of
+                                                                                                                                                TResult env (Pointer ts depths) pos -> if t==ts
+                                                                                                                                                    && checkDef_ (Abs.ExpressionUnary pos unary def)==depth &&
+                                                                                                                                                    checkDef_ (Abs.ExpressionUnary poss unarys defs)==depths
+                                                                                                                                                    then True
+                                                                                                                                                    else False
+                                                                                                                                                _ -> False
+                                                                                                        _ -> False
+checkOrder (Abs.ExpressionUnary pos unary def) exp env = let exp1 = checkTypeExpression (Abs.ExpressionUnary pos unary def) env in
+                                                                                                let exp2 = checkTypeExpression exp env in
+                                                                                                    case exp1 of
+                                                                                                        TResult env (Pointer t depth) pos -> case exp2 of
+                                                                                                                                                TResult env (Array ts dim) pos -> if t==ts
+                                                                                                                                                    && checkDef_ (Abs.ExpressionUnary pos unary def)==depth &&
+                                                                                                                                                    checkDimIndex_ exp==dim
+                                                                                                                                                    then True
+                                                                                                                                                    else False
+                                                                                                                                                TResult env ts pos -> if t==ts
+                                                                                                                                                    && checkDef_ (Abs.ExpressionUnary pos unary def)==depth
+                                                                                                                                                    then True
+                                                                                                                                                    else False
+                                                                                                                                                _ -> False
+                                                                                                        _ -> False
+checkOrder exp (Abs.ExpressionUnary pos unary def) env = let exp1 = checkTypeExpression (Abs.ExpressionUnary pos unary def) env in
+                                                                                                let exp2 = checkTypeExpression exp env in
+                                                                                                    case exp1 of
+                                                                                                        TResult env (Pointer t depth) pos -> case exp2 of
+                                                                                                                                                TResult env (Array ts dim) pos -> if t==ts
+                                                                                                                                                    && checkDef_ (Abs.ExpressionUnary pos unary def)==depth &&
+                                                                                                                                                    checkDimIndex_ exp==dim
+                                                                                                                                                    then True
+                                                                                                                                                    else False
+                                                                                                                                                TResult env ts pos -> if t==ts
+                                                                                                                                                    && checkDef_ (Abs.ExpressionUnary pos unary def)==depth
+                                                                                                                                                    then True
+                                                                                                                                                    else False
+                                                                                                                                                _ -> False
+                                                                                                        _ -> False 
+checkOrder exp1 exp2 env = if (checkCompatibility (checkTypeExpression exp1 env) (checkTypeExpression exp2 env)) then True else False
 
 -- Check the superType in a given RangeExp
 checkSuperTypeRangeExp :: TCheckResult -> TCheckResult

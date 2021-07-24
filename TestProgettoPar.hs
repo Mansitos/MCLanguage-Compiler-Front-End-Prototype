@@ -157,7 +157,11 @@ pointersSyntaxPreprocessing (x:xs) zs output= if x==' ' || x=='*' || x==':'
                                       then
                                         pointersSyntaxPreprocessing xs zs (output++[x])
                                       else
-                                        pointersSyntaxPreprocessing xs [] (output++[x])
+                                        if zs=="["
+                                        then
+                                          pointersSyntaxPreprocessing xs zs (output++[x])
+                                        else
+                                          pointersSyntaxPreprocessing xs [] (output++[x])
                               else
                                 if x==':'
                                   then
@@ -173,7 +177,11 @@ pointersSyntaxPreprocessing (x:xs) zs output= if x==' ' || x=='*' || x==':'
                                               then
                                                 pointersSyntaxPreprocessing xs zs (output++[x] ++ [' '])
                                               else
-                                                pointersSyntaxPreprocessing xs [] (output++[x])
+                                                if zs=="["
+                                                  then 
+                                                    pointersSyntaxPreprocessing xs zs (output++[x] ++ [' '])
+                                                  else
+                                                    pointersSyntaxPreprocessing xs [] (output++[x])
                                       else
                                         pointersSyntaxPreprocessing xs [] (output++[x])
                           else
@@ -189,7 +197,15 @@ pointersSyntaxPreprocessing (x:xs) zs output= if x==' ' || x=='*' || x==':'
                                       else
                                         pointersSyntaxPreprocessing xs zs (output++[x])
                                   else
-                                    pointersSyntaxPreprocessing xs (zs++[x]) (output++[x])
+                                    if zs=="["
+                                      then
+                                        if x==']'
+                                          then
+                                            pointersSyntaxPreprocessing xs [] (output++[x])
+                                          else
+                                            pointersSyntaxPreprocessing xs zs (output++[x])
+                                      else
+                                        pointersSyntaxPreprocessing xs (zs++[x]) (output++[x])
 
 last :: String -> Char -> Char
 last [] e = e
