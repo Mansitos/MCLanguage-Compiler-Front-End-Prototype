@@ -17,6 +17,8 @@ Problema parser default (*p) - done
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 
+testare return funzioni (casi particolari array e puntatori)
+
 ------------
 Altro:
 updateEnv refactor (lavora solo su statement?)

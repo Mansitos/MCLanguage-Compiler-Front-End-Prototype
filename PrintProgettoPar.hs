@@ -156,6 +156,7 @@ instance Print (AbsProgettoPar.PARAMETERS attr) where
 instance Print (AbsProgettoPar.PARAMETER attr) where
   prt i = \case
     AbsProgettoPar.Parameter _ id_ primitivetype -> prPrec i 0 (concatD [prt 0 id_, doc (showString ":"), prt 0 primitivetype])
+    AbsProgettoPar.ParameterPointer _ id_ primitivetype pointer -> prPrec i 0 (concatD [prt 0 id_, doc (showString ":"), prt 0 primitivetype, prt 0 pointer])
 
 instance Print (AbsProgettoPar.ASSIGNOP attr) where
   prt i = \case
@@ -364,9 +365,16 @@ instance Print (AbsProgettoPar.TYPEINDEX attr) where
   prt i = \case
     AbsProgettoPar.TypeOfIndexInt _ typeindex n -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 (AbsProgettoPar.valueInt n)])
     AbsProgettoPar.TypeOfIndexIntSingle _ n -> prPrec i 0 (concatD [prt 0 (AbsProgettoPar.valueInt n)])
-    AbsProgettoPar.TypeOfIndexVar _ typeindex id_ -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 id_])
-    AbsProgettoPar.TypeOfIndexVarSingle _ id_ -> prPrec i 0 (concatD [prt 0 id_])
-
+    AbsProgettoPar.TypeOfIndexVar _ typeindex id_ index -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 id_, prt 0 index])
+    AbsProgettoPar.TypeOfIndexVarSingle _ id_ index-> prPrec i 0 (concatD [prt 0 id_, prt 0 index])
+    AbsProgettoPar.TypeOfIndexPointer _ typeindex unaryop def_-> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 unaryop, prt 0 def_])
+    AbsProgettoPar.TypeOfIndexPointerSingle _ unaryop def_-> prPrec i 0 (concatD [prt 0 unaryop, prt 0 def_])
+    AbsProgettoPar.TypeOfIndexBinary _ typeindex def_ binaryop exp -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 def_, prt 0 binaryop, prt 0 exp])
+    AbsProgettoPar.TypeOfIndexBinarySingle _ def_ binaryop exp -> prPrec i 0 (concatD [prt 0 def_, prt 0 binaryop, prt 0 exp])
+    AbsProgettoPar.TypeOfIndexExpressionCall _ typeindex id_ exps -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 id_, prt 0 exps])
+    AbsProgettoPar.TypeOfIndexExpressionCallSingle _ id_ exps -> prPrec i 0 (concatD [prt 0 id_, prt 0 exps])
+    AbsProgettoPar.TypeOfIndexExpressionBracket _ typeindex exp -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 exp])
+    AbsProgettoPar.TypeOfIndexExpressionBracketSingle _  exp -> prPrec i 0 (concatD [prt 0 exp])
 
 --printStringS :: Show a => AbsProgettoPar.S a -> String
 --printStringS (AbsProgettoPar.StartCode pol statements) = "StartCode {s_content = ("++show pol++"),\n\ts_statements = "++ printStringStatements statements ++ "}"

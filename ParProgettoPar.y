@@ -138,6 +138,7 @@ PARAMETERS : PARAMETER ',' PARAMETERS { Abs.ParameterList (Abs.parameter_content
 
 PARAMETER :: { Abs.PARAMETER Posn }
 PARAMETER : Ident ':' PRIMITIVETYPE { Abs.Parameter (Abs.contentId $1) $1 $3 }
+PARAMETER : Ident ':' PRIMITIVETYPE POINTER { Abs.ParameterPointer (Abs.contentId $1) $1 $3 $4 }
 
 ASSIGNOP :: { Abs.ASSIGNOP Posn }
 ASSIGNOP : '=' { Abs.AssignOperationEq (tokenPosn $1)}
@@ -314,8 +315,17 @@ ARRAYINDEXELEMENT : '[' TYPEINDEX ']' { Abs.ArrayIndexElement (tokenPosn $1) $2 
 TYPEINDEX :: { Abs.TYPEINDEX Posn }
 TYPEINDEX : TYPEINDEX ',' Integer { Abs.TypeOfIndexInt (Abs.typeindex_content $1) $1 $3 }
           | Integer { Abs.TypeOfIndexIntSingle (Abs.contentInt $1) $1 }
-          | TYPEINDEX ',' Ident { Abs.TypeOfIndexVar (Abs.typeindex_content $1) $1 $3 }
-          | Ident { Abs.TypeOfIndexVarSingle (Abs.contentId $1) $1 }
+          | TYPEINDEX ',' Ident ARRAYINDEXELEMENT { Abs.TypeOfIndexVar (Abs.typeindex_content $1) $1 $3 $4 }
+          | Ident ARRAYINDEXELEMENT { Abs.TypeOfIndexVarSingle (Abs.contentId $1) $1 $2 }
+          | TYPEINDEX ',' UNARYOP DEFAULT {Abs.TypeOfIndexPointer (Abs.typeindex_content $1) $1 $3 $4}
+          | UNARYOP DEFAULT {Abs.TypeOfIndexPointerSingle (Abs.unaryop_content $1) $1 $2}
+          | TYPEINDEX ',' DEFAULT BINARYOP EXPRESSION {Abs.TypeOfIndexBinary (Abs.typeindex_content $1) $1 $3 $4 $5}
+          | DEFAULT BINARYOP EXPRESSION {Abs.TypeOfIndexBinarySingle (Abs.default_content $1) $1 $2 $3}
+          | TYPEINDEX ',' Ident '(' EXPRESSIONS ')' {Abs.TypeOfIndexExpressionCall (Abs.typeindex_content $1) $1 $3 $5}
+          | Ident '(' EXPRESSIONS ')' {Abs.TypeOfIndexExpressionCallSingle (Abs.contentId $1) $1 $3}
+          | TYPEINDEX ',' '(' EXPRESSION ')' {Abs.TypeOfIndexExpressionBracket (Abs.typeindex_content $1) $1 $4}
+          | '(' EXPRESSION ')' {Abs.TypeOfIndexExpressionBracketSingle (tokenPosn $1) $2}
+          
 {
 
 type Err = Either String

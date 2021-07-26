@@ -141,3 +141,40 @@ x = true;
   ciao (x);
   }
 x;
+
+------------
+
+function hh():int{}
+var x : [1 .. 1] int;
+var p:int*;
+var y:int = *p;
+y= x[1];
+y = +*p + x[1];
+y = x[1] + -*p;
+y = *p + +*p;
+y = -x[1] + x[1];
+if x[1]==2 then x;
+if *p == 2 then p;
+if x[1,2]==2 then x;
+if * *p == 2 then p;
+var b:[1..1]bool;
+var pp:bool*;
+if b[1] then b;
+if *pp then pp;
+var z:[*p..*p]bool;
+var zz:[x[1]..x[1]]bool;
+var zzz:[x[1]..*p]bool;
+var zzzz:[*p..x[1]]bool;
+var mz:[1..1,1..1]bool;
+var t:bool = z[ x[1] ];
+var tt:bool = z[ *p ];
+var ttt:bool = z[ 1+2 ];
+var mt:bool = mz[*p,*p];
+var f:bool=z[hh()];
+
+------------------
+
+var x : [1 .. 1] int;
+var p:int*;
+function f (a:int,pa:int,b:[]int,c:int*):int{}
+f(x[1],*p,x,p);

@@ -62,6 +62,7 @@ transPARAMETERS x = case x of
 transPARAMETER :: Show attr => (AbsProgettoPar.PARAMETER attr) -> Result
 transPARAMETER x = case x of
   AbsProgettoPar.Parameter _ ident primitivetype -> failure x
+  AbsProgettoPar.ParameterPointer _ id_ primitivetype pointer -> failure x
 
 transASSIGNOP :: Show attr => (AbsProgettoPar.ASSIGNOP attr) -> Result
 transASSIGNOP x = case x of
@@ -270,5 +271,13 @@ transTYPEINDEX :: Show attr => (AbsProgettoPar.TYPEINDEX attr) -> Result
 transTYPEINDEX x = case x of
   AbsProgettoPar.TypeOfIndexInt _ typeindex integer -> failure x
   AbsProgettoPar.TypeOfIndexIntSingle _ integer -> failure x
-  AbsProgettoPar.TypeOfIndexVar _ typeindex ident -> failure x
-  AbsProgettoPar.TypeOfIndexVarSingle _ ident -> failure x
+  AbsProgettoPar.TypeOfIndexVar _ typeindex ident index -> failure x
+  AbsProgettoPar.TypeOfIndexVarSingle _ ident index -> failure x
+  AbsProgettoPar.TypeOfIndexPointer _ typeindex unaryop def_-> failure x
+  AbsProgettoPar.TypeOfIndexPointerSingle _ unaryop def_-> failure x
+  AbsProgettoPar.TypeOfIndexBinary _ typeindex def_ binaryop exp -> failure x
+  AbsProgettoPar.TypeOfIndexBinarySingle _ def_ binaryop exp -> failure x
+  AbsProgettoPar.TypeOfIndexExpressionCall _ typeindex id_ exps -> failure x
+  AbsProgettoPar.TypeOfIndexExpressionCallSingle _ id_ exps -> failure x
+  AbsProgettoPar.TypeOfIndexExpressionBracket _ typeindex exp -> failure x
+  AbsProgettoPar.TypeOfIndexExpressionBracketSingle _  exp -> failure x

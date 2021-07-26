@@ -50,6 +50,7 @@ data PARAMETERS a
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data PARAMETER a = Parameter {parameter_content::a, parameter_ident::(Ident a), parameter_primitivetype::(PRIMITIVETYPE a)}
+                 | ParameterPointer {parameter_content::a, parameter_ident::(Ident a), parameter_primitivetype::(PRIMITIVETYPE a), parameter_pointer::(POINTER a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data ASSIGNOP a
@@ -251,8 +252,16 @@ data ARRAYINDEXELEMENT a
 data TYPEINDEX a
     = TypeOfIndexInt {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_integer::(AbsProgettoPar.Integer a)}
     | TypeOfIndexIntSingle {typeindex_content::a, typeindex_integer::(AbsProgettoPar.Integer a)}
-    | TypeOfIndexVar {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_ident::(Ident a)}
-    | TypeOfIndexVarSingle {typeindex_content::a, typeindex_ident::(Ident a)}
+    | TypeOfIndexVar {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_ident::(Ident a), typeindex_arrayindexelement::(ARRAYINDEXELEMENT a)}
+    | TypeOfIndexVarSingle {typeindex_content::a, typeindex_ident::(Ident a), typeindex_arrayindexelement::(ARRAYINDEXELEMENT a)}
+    | TypeOfIndexPointer {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_unaryop::(UNARYOP a), typeindex_default::(DEFAULT a)}
+    | TypeOfIndexPointerSingle {typeindex_content::a, typeindex_unaryop::(UNARYOP a), typeindex_default::(DEFAULT a)}
+    | TypeOfIndexBinary {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_default::(DEFAULT a), typeindex_binaryop::(BINARYOP a), typeindex_expression::(EXPRESSION a)}
+    | TypeOfIndexBinarySingle {typeindex_content::a, typeindex_default::(DEFAULT a), typeindex_binaryop::(BINARYOP a), typeindex_expression::(EXPRESSION a)}
+    | TypeOfIndexExpressionCall {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_ident::(Ident a), typeindex_expressions::(EXPRESSIONS a)}
+    | TypeOfIndexExpressionCallSingle {typeindex_content::a, typeindex_ident::(Ident a), typeindex_expressions::(EXPRESSIONS a)}
+    | TypeOfIndexExpressionBracket {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expression::(EXPRESSION a)}
+    | TypeOfIndexExpressionBracketSingle {typeindex_content::a, typeindex_expression::(EXPRESSION a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data Ident a = Ident {valueId::Prelude.String, contentId::a}
