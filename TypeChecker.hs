@@ -383,11 +383,35 @@ executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = let newEnv 
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
 executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
 executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env []))) in
-                                                                            let newEnv2 = Data.Map.delete "while" (first (insertWith (++) "return" [] newEnv, [])) in  
+                                                                            let newEnv2 = Data.Map.delete "while" (first (insertWith (++) "return_void" [] newEnv, [])) in  
                                                                                 Abs.ProcedureStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeStatements states newEnv2)
 executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env []))) in
-                                                                                let newEnv2 = Data.Map.delete "while" (first (insertWith (++) "return_tipo" [] newEnv, [])) in  
+                                                                                let newEnv2 = Data.Map.delete "while" (first (insertWith (++) ("return_"++stringTypeConv (subString (show tipo) [])) [] newEnv, [])) in  
                                                                                     Abs.FunctionStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states newEnv2)
+
+subString :: Prelude.String -> Prelude.String -> Prelude.String
+subString (x:xs) zs = case x of
+                    ' ' -> if (zs == "TypeArray") then "array"++researchType xs [] else zs
+                    _ -> subString xs (zs++[x])
+
+researchType :: Prelude.String -> Prelude.String -> Prelude.String
+researchType (x:xs) zs = case x of
+                        ' ' -> if (zs == "primitivetype_primitivetype") then researchType_ xs [] else researchType xs []
+                        _ -> researchType xs (zs++[x])
+
+researchType_ :: Prelude.String -> Prelude.String -> Prelude.String
+researchType_ (x:xs) zs = case x of
+                        ' ' -> if (zs == "=") then researchType_ xs [] else stringTypeConv zs
+                        _ -> researchType_ xs (zs++[x])
+stringTypeConv :: Prelude.String -> Prelude.String
+stringTypeConv str = case str of
+                    "PrimitiveTypeInt" -> "int"
+                    "PrimitiveTypeReal" -> "real"
+                    "PrimitiveTypeString" -> "string"
+                    "PrimitiveTypeChar" -> "char"
+                    "PrimitiveTypeBool" -> "bool"
+                    "PrimitiveTypeVoid" -> "void"
+                    _ -> str
 
 executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
 executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeExecuteParameter node env) (executeParameter param env) (executeParam params env)
@@ -842,12 +866,18 @@ checkTypeReturnStatement node@(Abs.ReturnStatement pos ret) env = checkTypeRetur
 
 checkTypeReturnState :: Abs.RETURNSTATEMENT Posn -> Env -> TCheckResult
 checkTypeReturnState node@(Abs.ReturnState pos retExp) env = let retExpTCheck = checkTypeExpression retExp env in
-                                                                case getRealType retExpTCheck of
+                                                                case retExpTCheck of
+                                                                    TResult env (Array t dim) pos -> case Data.Map.lookup ("return"++"_array"++(show t)) env of
+                                                                                            Just result -> retExpTCheck
+                                                                                            Nothing -> TError ["Unexpected return statement at " ++ (show pos)]
+                                                                    TResult env (Pointer t depth) pos -> case Data.Map.lookup ("return"++"_"++(show t)) env of
+                                                                                            Just result -> if depth == checkDef_ retExp then getRealType retExpTCheck else TError ["Unexpected return statement at " ++ (show pos)]
+                                                                                            Nothing -> TError ["Unexpected return statement at " ++ (show pos)]
                                                                     TResult env t pos -> case Data.Map.lookup ("return"++"_"++show t) env of
                                                                                             Just result -> retExpTCheck
                                                                                             Nothing -> TError ["Unexpected return statement at " ++ (show pos)]
                                                                     _ -> TError ["Unexpected return statement at " ++ (show pos)]
-checkTypeReturnState node@(Abs.ReturnStateEmpty pos ) env = case Data.Map.lookup "return" env of
+checkTypeReturnState node@(Abs.ReturnStateEmpty pos ) env = case Data.Map.lookup "return_void" env of
     Just result -> TResult env (B_type Type_Void) pos
     Nothing -> TError ["Unexpected return statement at " ++ (show pos)]
 
