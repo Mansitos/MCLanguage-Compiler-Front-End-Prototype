@@ -19,6 +19,8 @@ Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 
 testare return funzioni (casi particolari array e puntatori)
 
+param variables non devono essere modificate! sono costanti a compile-time
+
 ------------
 Altro:
 updateEnv refactor (lavora solo su statement?)
