@@ -87,8 +87,15 @@ data TYPEPART a = TypePart {type_part::a, typepart_typeexpression::(TYPEEXPRESSI
 
 data INITPART a
     = InitializzationPart {initpart_content::a, initpart_expression::(EXPRESSION a)}
-    | InitializzationPartArray {initpart_content::a, initpart_listelementary::(LISTELEMENTARRAY a)}
+    | InitializzationPartArray {initpart_content::a, initpart_listelementary::(ARRAYINIT a)}
     | InitializzationPartEmpty {initpart_content::a}
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data ARRAYINIT a
+    = ArrayInitSingle {arrayinit_content::a, arrayinit_arrayinit::(ARRAYINIT a)}
+    | ArrayInit {arrayinit_content::a, arrayinit_arrayinit1::(ARRAYINIT a), arrayinit_arrayinit2::(ARRAYINIT a)}
+    | ArrayInitSingleElems {arrayinit_content::a, arrayinit_listelementarray::(LISTELEMENTARRAY a) }
+    | ArrayInitElems {arrayinit_content::a, arrayinit_listelementarray::(LISTELEMENTARRAY a), arrayinit_arrayinit::(ARRAYINIT a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data LISTELEMENTARRAY a

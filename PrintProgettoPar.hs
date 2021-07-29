@@ -196,13 +196,20 @@ instance Print (AbsProgettoPar.TYPEPART attr) where
 instance Print (AbsProgettoPar.INITPART attr) where
   prt i = \case
     AbsProgettoPar.InitializzationPart _ expression -> prPrec i 0 (concatD [doc (showString "="), prt 0 expression])
-    AbsProgettoPar.InitializzationPartArray _ listelementarray -> prPrec i 0 (concatD [doc (showString "="), doc (showString "["), prt 0 listelementarray])
+    AbsProgettoPar.InitializzationPartArray _ arrayinit -> prPrec i 0 (concatD [doc (showString "="), prt 0 arrayinit])
     AbsProgettoPar.InitializzationPartEmpty _ -> prPrec i 0 (concatD [])
+
+instance Print (AbsProgettoPar.ARRAYINIT attr) where
+  prt i = \case
+    AbsProgettoPar.ArrayInitSingle _ arrayinit -> prPrec i 0 (concatD [doc (showString "["), prt 0 arrayinit ,doc (showString "]")])
+    AbsProgettoPar.ArrayInit _ arrayinit1 arrayinit2 -> prPrec i 0 (concatD [doc (showString "["), prt 0 arrayinit1 ,doc (showString ","), prt 0 arrayinit2 , doc (showString "]")])
+    AbsProgettoPar.ArrayInitSingleElems _ listelementarray -> prPrec i 0 (concatD [doc (showString "["), prt 0 listelementarray ,doc (showString "]")])
+    AbsProgettoPar.ArrayInitElems _ listelementarray arrayinit -> prPrec i 0 (concatD [doc (showString "["), prt 0 listelementarray ,doc (showString "],"),prt 0 arrayinit])
 
 instance Print (AbsProgettoPar.LISTELEMENTARRAY attr) where
   prt i = \case
     AbsProgettoPar.ListElementsOfArray _ expression listelementarray -> prPrec i 0 (concatD [prt 0 expression, doc (showString ","), prt 0 listelementarray])
-    AbsProgettoPar.ListElementOfArray _ expression -> prPrec i 0 (concatD [prt 0 expression, doc (showString "]")])
+    AbsProgettoPar.ListElementOfArray _ expression -> prPrec i 0 (concatD [prt 0 expression])
 
 instance Print (AbsProgettoPar.TYPEEXPRESSION attr) where
   prt i = \case

@@ -171,12 +171,18 @@ TYPEPART : ':' TYPEEXPRESSION { Abs.TypePart (tokenPosn $1) $2 }
 
 INITPART :: { Abs.INITPART Posn }
 INITPART : '=' EXPRESSION { Abs.InitializzationPart (tokenPosn $1) $2 }
-         | '=' '[' LISTELEMENTARRAY { Abs.InitializzationPartArray (tokenPosn $1) $3 }
+         | '=' ARRAYINIT { Abs.InitializzationPartArray (tokenPosn $1) $2 }
          | {- empty -} { Abs.InitializzationPartEmpty (Pn 0 0 0)}
 
+ARRAYINIT :: { Abs.ARRAYINIT Posn}
+          : '[' ARRAYINIT ']' {Abs.ArrayInitSingle (tokenPosn $1) $2 }
+          | '[' ARRAYINIT ',' ARRAYINIT ']' {Abs.ArrayInit (tokenPosn $1) $2 $4}
+          | '['LISTELEMENTARRAY ']' {Abs.ArrayInitSingleElems (tokenPosn $1) $2 }
+          | '['LISTELEMENTARRAY ']' ',' ARRAYINIT {Abs.ArrayInitElems (tokenPosn $1) $2 $5}
+     
 LISTELEMENTARRAY :: { Abs.LISTELEMENTARRAY Posn }
 LISTELEMENTARRAY : EXPRESSION ',' LISTELEMENTARRAY { Abs.ListElementsOfArray (Abs.expression_content $1) $1 $3 }
-                 | EXPRESSION ']' { Abs.ListElementOfArray (Abs.expression_content $1) $1 }
+                 | EXPRESSION { Abs.ListElementOfArray (Abs.expression_content $1) $1 }
 
 TYPEEXPRESSION :: { Abs.TYPEEXPRESSION Posn }
 TYPEEXPRESSION : PRIMITIVETYPE { Abs.TypeExpression (Abs.primitivetype_content $1) $1 }

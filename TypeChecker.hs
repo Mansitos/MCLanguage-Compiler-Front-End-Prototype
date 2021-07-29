@@ -476,8 +476,14 @@ executeTypePart node@(Abs.TypePart pos tipo) env = Abs.TypePart (checkTypeTypePa
 
 executeInitPart :: Abs.INITPART Posn -> Env -> Abs.INITPART TCheckResult
 executeInitPart node@(Abs.InitializzationPart pos initExp) env = Abs.InitializzationPart (checkTypeInitializzationPart node env) (executeExpression initExp env)
-executeInitPart node@(Abs.InitializzationPartArray pos listelementarray) env = Abs.InitializzationPartArray (checkTypeInitializzationPart node env) (executeListElementArray listelementarray env)
+executeInitPart node@(Abs.InitializzationPartArray pos arrayinit) env = Abs.InitializzationPartArray (checkTypeInitializzationPart node env) (executeArrayInit arrayinit env)
 executeInitPart node@(Abs.InitializzationPartEmpty pos) env = Abs.InitializzationPartEmpty (TResult env (B_type Type_Void) pos)
+
+executeArrayInit :: Abs.ARRAYINIT Posn -> Env -> Abs.ARRAYINIT TCheckResult
+executeArrayInit node@(Abs.ArrayInitSingle pos arrayinit) env = Abs.ArrayInitSingle (checkTypeArrayInit node env) (executeArrayInit arrayinit env)
+executeArrayInit node@(Abs.ArrayInit pos arrayinit1 arrayinit2) env = Abs.ArrayInit (checkTypeArrayInit node env) (executeArrayInit arrayinit1 env) (executeArrayInit arrayinit2 env)
+executeArrayInit node@(Abs.ArrayInitSingleElems pos listelementarray) env = Abs.ArrayInitSingleElems (checkTypeArrayInit node env) (executeListElementArray listelementarray env)
+executeArrayInit node@(Abs.ArrayInitElems pos listelementarray arrayinit) env = Abs.ArrayInitElems (checkTypeArrayInit node env) (executeListElementArray listelementarray env) (executeArrayInit arrayinit env)
 
 executeListElementArray :: Abs.LISTELEMENTARRAY Posn -> Env -> Abs.LISTELEMENTARRAY TCheckResult
 executeListElementArray node@(Abs.ListElementsOfArray pos expr elementlist) env = Abs.ListElementsOfArray (checkListElementsOfArray node env) (executeExpression expr env) (executeListElementArray elementlist env)
@@ -1249,7 +1255,7 @@ checkTypeTypePart node@(Abs.TypePart pos typexpr) env = checkTypeTypeExpression 
 
 checkTypeInitializzationPart ::  Abs.INITPART Posn -> Env -> TCheckResult
 checkTypeInitializzationPart node@(Abs.InitializzationPart pos expr) env = checkTypeExpression expr env
-checkTypeInitializzationPart node@(Abs.InitializzationPartArray pos listelementarray) env = checkListElementsOfArray listelementarray env
+checkTypeInitializzationPart node@(Abs.InitializzationPartArray pos arrayinit) env = checkTypeArrayInit arrayinit env
 checkTypeInitializzationPart node@(Abs.InitializzationPartEmpty pos ) env = TResult env (B_type Type_Void) pos
 
 checkTypeExpressionpointer :: Abs.POINTER Posn -> Env -> TCheckResult
@@ -1542,6 +1548,9 @@ checkTypeExecuteParameter node@(Abs.ParameterList pos param params) env = let pa
 checkTypeExecuteParameter node@(Abs.ParameterListSingle pos param) env = TResult env (B_type Type_Integer) pos -- single can't have dups in ids
 checkTypeExecuteParameter node@(Abs.ParameterListEmpty pos) env = TResult env (B_type Type_Void) pos -- empty can't have dups in ids
 
-checkTypeParameter:: Abs.PARAMETER Posn -> Env -> TCheckResult
+checkTypeParameter :: Abs.PARAMETER Posn -> Env -> TCheckResult
 checkTypeParameter node@(Abs.Parameter pos id ty) env = TResult env (B_type Type_Void) pos
 checkTypeParameter node@(Abs.ParameterPointer pos id primitivetype pointer) env = TResult env (B_type Type_Void) pos
+
+checkTypeArrayInit :: Abs.ARRAYINIT Posn -> Env -> TCheckResult
+checkTypeArrayInit _ _ = TError ["TODO ARRAYINIT"]
