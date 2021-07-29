@@ -29,7 +29,7 @@ data TCheckResult
     = TResult {environment::Env, t_type::Type, t_position::LexProgettoPar.Posn}
     | TError {errors::[Prelude.String]}
 
-    -------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
 --- SHOW ISTANCES FOR ENV DATA TYPES ------------------------------------------------------------
 -------------------------------------------------------------------------------------------------
 
@@ -683,14 +683,16 @@ checkListStatement (Abs.ListStatements pos stat stats) env = TResult env (B_type
 
 checkTypeLvalueExpression :: Abs.LVALUEEXPRESSION Posn -> Env -> TCheckResult
 checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id posI) index) env = case Data.Map.lookup id env of
-                                                                        Just [Variable (Array t dim) pos mode override] -> if dim == (countIndex index) then checkTypeIdentVar ident env else TError ["number of index different at "++show pos] 
-                                                                        Just _ -> checkTypeIdentVar ident env
+                                                                        Just [Variable (Array t dim) pos mode override] -> if dim == (countIndex index) then checkTypeIdentVar ident env else TError ["number of index different at "++show pos]  -- ?? TODO
+                                                                        Just [Variable _ _ mode _] -> if mode == "param" then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] else checkTypeIdentVar ident env
                                                                         Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
 checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id posI) index next) env = case Data.Map.lookup id env of
                                                                         Just [Variable (Array t dim) pos mode override] -> if dim == (countIndex index) 
-                                                                            then if (checkCompatibility (getRealType (checkTypeIdentVar ident env)) (checkTypeLvalueExpression next env)) then checkTypeIdentVar ident env else TError ["not all ident have same type at "++show pos]
-                                                                            else TError ["number of index different at "++show pos] -- ?? 
-                                                                        Just _ -> if (checkCompatibility (getRealType (checkTypeIdentVar ident env)) (checkTypeLvalueExpression next env)) then checkTypeIdentVar ident env else TError ["not all ident have same type at "++show pos]
+                                                                            then if (checkCompatibility (getRealType (checkTypeIdentVar ident env)) (checkTypeLvalueExpression next env)) then checkTypeIdentVar ident env else TError ["Cannot assign values of list of variables of uncompatible types! "++show pos]
+                                                                            else TError ["number of index different at "++show pos] -- TODO?? 
+                                                                        Just [Variable _ _ mode _] -> if mode == "param" then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] else (case (checkTypeLvalueExpression next env) of 
+                                                                                                                                                                                                                                                        TError errs -> TError errs -- if one of the previous vars had an error (for example because it was a param) then propagate errors; if not then continue the check!
+                                                                                                                                                                                                                                                        _ -> if (checkCompatibility (getRealType (checkTypeIdentVar ident env)) (checkTypeLvalueExpression next env)) then checkTypeIdentVar ident env else TError ["Cannot assign values of list of variables of uncompatible types! "++show pos])
                                                                         Nothing -> (TError ["Variables undeclared! Position: " ++ (show posI)])
 
 countIndex :: Abs.ARRAYINDEXELEMENT Posn -> Prelude.Integer 
@@ -1126,14 +1128,15 @@ checkTypeExpressionCallD_ (Abs.ExpressionCallD pos (Abs.Ident id posid) exps) en
 
 checkTypeIdentVar :: Abs.Ident Posn -> Env -> TCheckResult
 checkTypeIdentVar node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
-    Just [Variable t pos mode override] -> TResult env t pos -- check if var TODO
+    Just [Variable t pos mode override] -> TResult env t pos
     Just (x:xs) -> case findEntryOfType (x:xs) "var" of
                     [] -> TError ["Variable " ++ id ++ " undeclared at position: " ++ (show pos)]
                     [y] -> TResult env (getTypeEnvEntry [y]) pos
     Nothing -> TError ["Variable " ++ id ++ " undeclared at position: " ++ (show pos)]
+    
 checkTypeIdentFunc :: Abs.Ident Posn -> Env -> TCheckResult
 checkTypeIdentFunc node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
-    Just [Function t pos param canOverride] -> TResult env t pos -- check if var TODO
+    Just [Function t pos param canOverride] -> TResult env t pos
     Just (x:xs) -> case findEntryOfType (x:xs) "func" of
                     [] -> TError ["Function " ++ id ++ "( ) undeclared at position: " ++ (show pos)]
                     [y] -> TResult env (getTypeEnvEntry [y]) pos
