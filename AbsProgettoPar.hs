@@ -105,7 +105,6 @@ data LISTELEMENTARRAY a
 
 data TYPEEXPRESSION a
     = TypeExpression {typeexpression_content::a, typeexpression_primitivetype::(PRIMITIVETYPE a)}
-    | TypeExpressionArraySimple {typeexpression_content::a, typeexpression_rangeexp::(RANGEEXP a), typeexpression_primitivetype::(PRIMITIVETYPE a)}
     | TypeExpressionArraySimple {typeexpression_content::a, typeexpression_rangeexp::(RANGEEXP a), typeexpression_typeexpression::(TYPEEXPRESSION a)}
     | TypeExpressionArray {typeexpression_content::a, typeexpression_rangeexp::(RANGEEXP a), typeexpression_typeexpression::(TYPEEXPRESSION a)}
     | TypeExpressionPointer {typeexpression_content::a, typeexpression_primitivetype::(PRIMITIVETYPE a), typexpression_pointer::(POINTER a)}

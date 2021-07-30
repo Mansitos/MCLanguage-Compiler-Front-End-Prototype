@@ -214,7 +214,6 @@ instance Print (AbsProgettoPar.LISTELEMENTARRAY attr) where
 instance Print (AbsProgettoPar.TYPEEXPRESSION attr) where
   prt i = \case
     AbsProgettoPar.TypeExpression _ primitivetype -> prPrec i 0 (concatD [prt 0 primitivetype])
-    AbsProgettoPar.TypeExpressionArraySimple _ rangeexp primitivetype -> prPrec i 0 (concatD [doc (showString "["), prt 0 rangeexp, doc (showString "]"), prt 0 primitivetype])
     AbsProgettoPar.TypeExpressionArraySimple _ rangeexp typeexpression -> prPrec i 0 (concatD [doc (showString "["), prt 0 rangeexp, doc (showString "]"), prt 0 typeexpression])
     AbsProgettoPar.TypeExpressionArray _ rangeexp typeexpression -> prPrec i 0 (concatD [doc (showString "["), doc (showString "{"), prt 0 rangeexp, doc (showString "}"), doc (showString "]"), prt 0 typeexpression])
     AbsProgettoPar.TypeExpressionPointer _ primitivetype pointer -> prPrec i 0 (concatD [prt 0 primitivetype, prt 0 pointer])
