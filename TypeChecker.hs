@@ -216,13 +216,6 @@ updateIfCanOverride_ ((str,entry:entries):xs) = case entry of
 updateIfCanOverride_ ((str,[]):xs) = ((str,[]):xs)
 updateIfCanOverride_ [] = []
 
--- Sub-Function of updateIfCanOverride_
--- updateIfCanOverrideEntries_ :: [EnvEntry] -> [EnvEntry]
--- updateIfCanOverrideEntries_ (x:xs) = case x of
---                                         Variable ty pos varMode canOverride -> (Variable ty pos varMode True):xs
---                                         _ -> [x] ++ updateIfCanOverrideEntries_ xs
--- updateIfCanOverrideEntries_ []     = [] 
-
 -- TODO
 checkErr :: Env -> Abs.STATEMENT Posn -> [Prelude.String]
 checkErr env stat = []   
