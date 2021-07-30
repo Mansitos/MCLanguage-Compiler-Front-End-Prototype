@@ -1132,7 +1132,6 @@ checkTypeIdentVar node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
                     [] -> TError ["Variable " ++ id ++ " undeclared at position: " ++ (show pos)]
                     [y] -> TResult env (getTypeEnvEntry [y]) pos
     Nothing -> TError ["Variable " ++ id ++ " undeclared at position: " ++ (show pos)]
-    
 checkTypeIdentFunc :: Abs.Ident Posn -> Env -> TCheckResult
 checkTypeIdentFunc node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
     Just [Function t pos param canOverride] -> TResult env t pos

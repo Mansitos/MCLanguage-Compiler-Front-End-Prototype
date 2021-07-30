@@ -187,8 +187,10 @@ LISTELEMENTARRAY : EXPRESSION ',' LISTELEMENTARRAY { Abs.ListElementsOfArray (Ab
 TYPEEXPRESSION :: { Abs.TYPEEXPRESSION Posn }
 TYPEEXPRESSION : PRIMITIVETYPE { Abs.TypeExpression (Abs.primitivetype_content $1) $1 }
                | '[' RANGEEXP ']' PRIMITIVETYPE { Abs.TypeExpressionArraySimple (tokenPosn $1) $2 $4 }
-               | '[' '{' RANGEEXP '}' ']' PRIMITIVETYPE { Abs.TypeExpressionArray (tokenPosn $1) $3 $6 }
+               | '[' RANGEEXP ']' TYPEEXPRESSION { Abs.TypeExpressionArraySimple (tokenPosn $1) $2 $4 }
+               | '[' '{' RANGEEXP '}' ']' TYPEEXPRESSION { Abs.TypeExpressionArray (tokenPosn $1) $3 $6 }
                | PRIMITIVETYPE POINTER { Abs.TypeExpressionPointer (Abs.primitivetype_content $1) $1 $2 }
+               | '(' TYPEEXPRESSION ')' POINTER { Abs.TypeExpressionPointerOfArray (tokenPosn $1) $2 $4 }
 
 POINTER :: { Abs.POINTER Posn }
 POINTER : POINTER '*' { Abs.PointerSymbol (Abs.pointer_content $1) $1 }
