@@ -1599,3 +1599,6 @@ checkTypeExecuteParameter node@(Abs.ParameterListEmpty pos) env = TResult env (B
 checkTypeParameter:: Abs.PARAMETER Posn -> Env -> TCheckResult
 checkTypeParameter node@(Abs.Parameter pos id ty) env = TResult env (B_type Type_Void) pos
 checkTypeParameter node@(Abs.ParameterPointer pos id primitivetype pointer) env = TResult env (B_type Type_Void) pos
+
+checkTypeArrayInit :: Abs.ARRAYINIT Posn -> Env -> TCheckResult
+checkTypeArrayInit _ _ = TError ["TODO ARRAYINIT"]
