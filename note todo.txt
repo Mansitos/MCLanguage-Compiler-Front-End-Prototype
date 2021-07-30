@@ -22,7 +22,7 @@ testare return funzioni (casi particolari array e puntatori)
 param variables non devono essere modificate! sono costanti a compile-time
 
 
-SKEL FOR ARRAYINIT
+SKEL FOR ARRAYINIT!
 ------------
 Altro:
 updateEnv refactor (lavora solo su statement?)
