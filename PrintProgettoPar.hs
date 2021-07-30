@@ -1,3 +1,5 @@
+-- Progetto LC Cagnoni Mansi
+
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
@@ -217,7 +219,7 @@ instance Print (AbsProgettoPar.TYPEEXPRESSION attr) where
     AbsProgettoPar.TypeExpressionArraySimple _ rangeexp typeexpression -> prPrec i 0 (concatD [doc (showString "["), prt 0 rangeexp, doc (showString "]"), prt 0 typeexpression])
     AbsProgettoPar.TypeExpressionArray _ rangeexp typeexpression -> prPrec i 0 (concatD [doc (showString "["), doc (showString "{"), prt 0 rangeexp, doc (showString "}"), doc (showString "]"), prt 0 typeexpression])
     AbsProgettoPar.TypeExpressionPointer _ primitivetype pointer -> prPrec i 0 (concatD [prt 0 primitivetype, prt 0 pointer])
-    AbsProgettoPar.TypeExpressionPointerOfArray _ typeexpression pointer -> prPrec i 0 (concatD [doc (showString "("),doc (showString "["), doc (showString "]"), prt 0 typeexpression,  doc (showString ")"), prt 0 pointer])
+    AbsProgettoPar.TypeExpressionPointerOfArray _ typeexpression pointer -> prPrec i 0 (concatD [doc (showString "("), prt 0 typeexpression,  doc (showString ")"), prt 0 pointer])
 
 instance Print (AbsProgettoPar.POINTER attr) where
   prt i = \case
@@ -383,30 +385,3 @@ instance Print (AbsProgettoPar.TYPEINDEX attr) where
     AbsProgettoPar.TypeOfIndexExpressionCallSingle _ id_ exps -> prPrec i 0 (concatD [prt 0 id_, prt 0 exps])
     AbsProgettoPar.TypeOfIndexExpressionBracket _ typeindex exp -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 exp])
     AbsProgettoPar.TypeOfIndexExpressionBracketSingle _  exp -> prPrec i 0 (concatD [prt 0 exp])
-
---printStringS :: Show a => AbsProgettoPar.S a -> String
---printStringS (AbsProgettoPar.StartCode pol statements) = "StartCode {s_content = ("++show pol++"),\n\ts_statements = "++ printStringStatements statements ++ "}"
---
---printStringStatements :: Show a => AbsProgettoPar.STATEMENTS a -> String
---printStringStatements (AbsProgettoPar.ListStatements pol statement statements) = "ListStatements {statements_content = ("++show pol++"),\n\tstatements_statement = "++printStringStatement statement ++",\n\tstatements_statements = "++printStringStatements statements++"}"
---printStringStatements (AbsProgettoPar.EmptyStatement pol ) = "EmptyStatement {statements_content = ("++show pol++") }"
---
---printStringStatement :: Show a => AbsProgettoPar.STATEMENT a -> String
---printStringStatement (AbsProgettoPar.Statement pol b) = "Statement {statement_content = ("++show pol++"),\n\tstatement_b = "++"(B a)"++"}"
---printStringStatement (AbsProgettoPar.ExpressionStatement pol expressionstatement) = "ExpressionStatement {statement_content = ("++show pol++"),\n\tstatement_expressionstatement = "++"cc"++"}"
---printStringStatement (AbsProgettoPar.AssignmentStatement pol lvalueexpression assignop expression) = "AssignmentStatement {statement_content = ("++show pol++"),\n\tstatement_lvalueexpression = "++"exp"++", statement_assignop = "++""++", statement_expression = "++""++"}"
---printStringStatement (AbsProgettoPar.ConditionalStatement pol conditionalstate) = "ConditionalStatement {statement_content = ("++show pol++"),\n\tstatement_conditionalstate = "++"if"++"}"
---printStringStatement (AbsProgettoPar.WhileDoStatement pol whilestatement) = "WhileDoStatement {statement_content = ("++show pol++"),\n\tstatement_whilestatement = "++"while"++"}"
---printStringStatement (AbsProgettoPar.DoWhileStatement pol dostatement) = "DoStatement {statement_content = ("++show pol++"),\n\tstatement_dostatement = "++"do"++"}"
---printStringStatement (AbsProgettoPar.ForStatement pol forstatement) = "ForStatement {statement_content = ("++show pol++"),\n\tstatement_forstatement = "++"for"++"}"
---printStringStatement (AbsProgettoPar.BreakStatement pol) = "BreakStatement {statement_content = ("++show pol++")"++"}"
---printStringStatement (AbsProgettoPar.ContinueStatement pol) = "ContinueStatement {statement_content = ("++show pol++")"++"}"
---printStringStatement (AbsProgettoPar.ReturnStatement pol returnstatement) = "ReturnStatement {statement_content = ("++show pol++"),\n\tstatement_returnstatement = "++"return"++"}"
---printStringStatement (AbsProgettoPar.VariableDeclarationStatement pol variabletype vardeclist) = "VariableDeclarationStatement {statement_content = ("++show pol++"),\n\tstatemenets_variabletype= "++""++", statemenets_vardeclist = "++""++"}"
---printStringStatement (AbsProgettoPar.ProcedureStatement pol id_ parameters statements) = "ProcedureStatement {statement_content = ("++show pol++"),\n\tstatement_ident = "++""++", statement_parameters = "++printStringParameters parameters++", statement_statements = "++""++"}"
---printStringStatement (AbsProgettoPar.FunctionStatement pol id_ parameters primitivetype statement) = "FunctionStatement {statement_content = ("++show pol++"),\n\tstatement_ident = "++""++", statement_parameters = "++printStringParameters parameters++", statement_primitivetype = "++""++", statement_statements = "++""++"}"
---
---printStringParameters :: Show a => AbsProgettoPar.PARAMETERS a -> String 
---printStringParameters (AbsProgettoPar.ParameterList pol param params) = "ParameterList {parameters_content = ("++show pol++"),\n\tparameters_parameter = "++"(PARAMETER a)"++", parameters_parameters = "++"(PARAMETERS a)" ++ "}"
---printStringParameters (AbsProgettoPar.ParameterListSingle pol param) = "ParameterListSingle {parameters_content = ("++show pol++"),\n\tparameters_parameter = "++"(PARAMETER a)"++"}"
---printStringParameters (AbsProgettoPar.ParameterListEmpty pol) = "ParameterListEmpty {parameters_content = ("++show pol++") }"
