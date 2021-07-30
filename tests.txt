@@ -178,3 +178,130 @@ var x : [1 .. 1] int;
 var p:int*;
 function f (a:int,pa:int,b:[]int,c:int*):int{}
 f(x[1],*p,x,p);
+
+----------
+
+var p : int;
+var x : [1 .. 1] int *;
+var y : ([] int) *;
+x [1] = p;
+y = x;
+if *x[1] == 1 then x;
+if *x[1,2] == 1 then x;
+if 1 == *x[1] then x;
+if 1 == *x[1,2] then x;
+if *y[1] == 1 then x;
+if *y[1,2] == 1 then x;
+if 1 == *y[1] then x;
+if 1 == *y[1,2] then x;
+while *x[1] == 1 do x;
+while *y[1] == 1 do x;
+do x; while *x[1] == 1;
+do x; while *y[1] == 1;
+
+-------------------------------
+var x:int;
+var y:[1..1]int;
+var z:int*;
+var p:[1..1]int*;
+var l:([]int)*;
+x=y;
+x=y[1];
+x=z;
+x=*z;
+x=p;
+x=p[1];
+x=*p;
+x=*p[1];
+x=l;
+x=l[1];
+x=*l;
+x=*l[1];
+
+y=x;
+p=*z;
+
+y[1]=p;
+y[1]=*l[1];
+
+z=x;
+z=y;
+z=y[1];
+z=p;
+z=p[1];
+z=*p;
+z=*p[1];
+z=l;
+z=l[1];
+z=*l;
+z=*l[1];
+
+l=y;
+-----------------------
+var x:int;
+var y:[1..1]int;
+var z:int*;
+if x==1 then x;
+if y==1 then y;
+if y[1]==1 then y;
+if z==1 then z;
+if *z==1 then z;
+while x==1 do x;
+while y==1 do y;
+while y[1]==1 do y;
+while z==1 do z;
+while *z==1 do z;
+do x; while x==1;
+do y; while y==1 ;
+do y;while y[1]==1 ;
+do z; while z==1 ;
+do z; while *z==1 ;
+----------------------------
+var x:int;
+var y:[1..1]int;
+var z:int*;
+x=+y;
+x=+y[1];
+x=+z;
+x=+*z;
+----------------------------
+var y:[1..1]int;
+var z:int*;
+var x:int=z;
+var xx:int=*z;
+var xxx:int=y;
+var xxxx:int=y[1];
+var a:[1..1]int=[1,2,3];
+var aa:[1..1]int=y;
+aa=y;
+var p:int*=5;
+var pp:int* * = z;
+var ppp:int* * = 5;
+var aaa:[1..1]int*=[z,z,z];
+--------------------------
+var y:[1..1]int;
+var l:([]int)*;
+var z:int*;
+var x:int;
+var a:[x..x]int;
+var aa:[z..z]int;
+var aaa:[*z..*z]int;
+var aaaa:[y..y]int;
+var aaaaa:[y[1]..y[1]]int;
+var ds:[*l..*l]int;
+var d:[*l[1]..*l[1]]int;
+var ddd:[*z..5]int;
+var f:[y..y]int;
+var ff:[z..5]int;
+var fff:[x..x]int;
+------------------------
+function x(a:int*):int{}
+var z:int*;
+x(z);
+function xl(a:int*,b:int,c:[]int,d:int):int{}
+var a:[1..1]int;
+xl(z,*z,a,a[1]);
+----------------------------
+var z:int*;
+var a:[1..1]int;
+var x:int=a[1]+*z;
