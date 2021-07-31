@@ -147,7 +147,7 @@ instance Print (AbsProgettoPar.STATEMENT attr) where
     AbsProgettoPar.ReturnStatement _ returnstatement -> prPrec i 0 (concatD [prt 0 returnstatement, doc (showString ";")])
     AbsProgettoPar.VariableDeclarationStatement _ variabletype vardeclist -> prPrec i 0 (concatD [prt 0 variabletype, prt 0 vardeclist, doc (showString ";")])
     AbsProgettoPar.ProcedureStatement _ id_ parameters statements -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 id_, doc (showString "("), prt 0 parameters, doc (showString ")"), doc (showString ":"), doc (showString "void"), doc (showString "{"), prt 0 statements, doc (showString "}")])
-    AbsProgettoPar.FunctionStatement _ id_ parameters primitivetype statements -> prPrec i 0 (concatD [doc (showString "function"), prt 0 id_, doc (showString "("), prt 0 parameters, doc (showString ")"), doc (showString ":"), prt 0 primitivetype, doc (showString "{"), prt 0 statements, doc (showString "}")])
+    AbsProgettoPar.FunctionStatement _ id_ parameters typeexpression statements -> prPrec i 0 (concatD [doc (showString "function"), prt 0 id_, doc (showString "("), prt 0 parameters, doc (showString ")"), doc (showString ":"), prt 0 typeexpression, doc (showString "{"), prt 0 statements, doc (showString "}")])
 
 instance Print (AbsProgettoPar.PARAMETERS attr) where
   prt i = \case

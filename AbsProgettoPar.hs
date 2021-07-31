@@ -40,7 +40,7 @@ data STATEMENT a
     | ReturnStatement {statement_content::a, statement_returnstatement::(RETURNSTATEMENT a)}
     | VariableDeclarationStatement {statement_content::a, statemenets_variabletype::(VARIABLETYPE a) , statemenets_vardeclist::(VARDECLIST a)}
     | ProcedureStatement {statement_content::a, statement_ident::(Ident a ), statement_parameters::(PARAMETERS a), statement_statements::(STATEMENTS a)}
-    | FunctionStatement {statement_content::a, statement_ident::(Ident a ), statement_parameters::(PARAMETERS a), statement_primitivetype::(PRIMITIVETYPE a), statement_statements::(STATEMENTS a)}
+    | FunctionStatement {statement_content::a, statement_ident::(Ident a ), statement_parameters::(PARAMETERS a), statement_typeexpression::(TYPEEXPRESSION a), statement_statements::(STATEMENTS a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data PARAMETERS a

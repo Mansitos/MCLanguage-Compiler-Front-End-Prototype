@@ -129,7 +129,7 @@ STATEMENT : B { Abs.Statement (Abs.b_content $1) $1 }
           | RETURNSTATEMENT ';' { Abs.ReturnStatement  (Abs.returnstatement_content $1) $1 }
           | VARIABLETYPE VARDECLIST ';' { Abs.VariableDeclarationStatement (Abs.variabletype_content $1) $1 $2 }
           | 'proc' Ident '(' PARAMETERS ')' ':' 'void' '{' STATEMENTS '}' { Abs.ProcedureStatement (tokenPosn $1) $2 $4 $9 }
-          | 'function' Ident '(' PARAMETERS ')' ':' PRIMITIVETYPE '{' STATEMENTS '}' { Abs.FunctionStatement (tokenPosn $1) $2 $4 $7 $9 }
+          | 'function' Ident '(' PARAMETERS ')' ':' TYPEEXPRESSION '{' STATEMENTS '}' { Abs.FunctionStatement (tokenPosn $1) $2 $4 $7 $9 }
 
 PARAMETERS :: { Abs.PARAMETERS Posn }
 PARAMETERS : PARAMETER ',' PARAMETERS { Abs.ParameterList (Abs.parameter_content $1) $1 $3 }

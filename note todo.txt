@@ -13,16 +13,13 @@ controllare ridefinizione funzioni. non deve esserci overloading! - done
 	(label nelle chiamate di funz?)		  - removed
 	togliere le label nelle chiamate? !?!?!?]
 Problema parser default (*p) - done
+param variables non devono essere modificate! sono costanti a compile-time -done
+testare return funzioni (casi particolari array e puntatori) - done
+updateEnv refactor (lavora solo su statement?) (togliere err) - done
+SKEL FOR ARRAYINIT! - done
+cast for pointers - done
 -----------
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 
-testare return funzioni (casi particolari array e puntatori)
-
-param variables non devono essere modificate! sono costanti a compile-time
-
-
-SKEL FOR ARRAYINIT!
 ------------
-Altro:
-updateEnv refactor (lavora solo su statement?)

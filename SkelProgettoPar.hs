@@ -52,7 +52,7 @@ transSTATEMENT x = case x of
   AbsProgettoPar.ReturnStatement _ returnstatement -> failure x
   AbsProgettoPar.VariableDeclarationStatement _ variabletype vardeclist -> failure x
   AbsProgettoPar.ProcedureStatement _ ident parameters statements -> failure x
-  AbsProgettoPar.FunctionStatement _ ident parameters primitivetype statements -> failure x
+  AbsProgettoPar.FunctionStatement _ ident parameters typeexpression statements -> failure x
 
 transPARAMETERS :: Show attr => (AbsProgettoPar.PARAMETERS attr) -> Result
 transPARAMETERS x = case x of

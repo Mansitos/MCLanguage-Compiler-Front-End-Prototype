@@ -137,63 +137,55 @@ getTypeEnvEntry (x:xs) = case x of
                             (Variable t pos mode canOverride) -> t
                             (Function t pos parameters canOverride) -> t
 
--- Returns the Env from a Map (Env,Errors) entry
-first :: (Env,[Prelude.String]) -> Env
-first (f,s) = f
-
--- Returns type checker Errors from a Map (Env,Errors) entry
-second :: (Env,[Prelude.String]) -> [Prelude.String]
-second (f,s) = s
-
 -- Called when an environment update is needed.
 -- It creates the right new env-entry when called with different types of statements
 -- Example: if called with a "Abs node of type funciton statements" it creates a new env-entry for that function,
 --          this is done by calling the required functions for getting the required infos for the entry: id, type, etc.
-updateEnv :: (Abs.STATEMENTS Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
-updateEnv node@(Abs.ListStatements pos stat stats) env err = case stat of
+updateEnv :: (Abs.STATEMENTS Posn) -> Env -> Env
+updateEnv node@(Abs.ListStatements pos stat stats) env = case stat of
                                                                 -- Variables
                                                                 Abs.VariableDeclarationStatement pos varType vardec -> let ty = getVarType vardec in -- getting variable type (int etc.)
                                                                                                                          (let varMode = getVarMode varType in -- getting variable mode (const etc.)
                                                                                                                             (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
                                                                                                                                 if (checkIfCanOverride ids env "var") -- check if vars can be overrided (yes if inside a new block)
-                                                                                                                                then (updateEnvFromListOfVarIds ids env pos varMode ty, err) -- updating env for each declared var.
-                                                                                                                                else (updateEnvFromListOfVarIds ids env pos varMode ty, err)))
+                                                                                                                                then updateEnvFromListOfVarIds ids env pos varMode ty -- updating env for each declared var.
+                                                                                                                                else updateEnvFromListOfVarIds ids env pos varMode ty))
                                                                 -- Functions and Procedures
                                                                 Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
                                                                                                                     if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
-                                                                                                                    then (insertWith (++) fid [Function (B_type Type_Void) pos parameters False] env, err)
-                                                                                                                    else (env, err) -- it was already defined
+                                                                                                                    then insertWith (++) fid [Function (B_type Type_Void) pos parameters False] env
+                                                                                                                    else env -- it was already defined
                                                                 Abs.FunctionStatement pos id params ty stats -> let parameters = getParamList params in
-                                                                                                                    let fty = getTypeFromPrimitive ty in
+                                                                                                                    let fty = getTypeFromTypeExp ty in
                                                                                                                         let fid = getIdFromIdent id in 
                                                                                                                             if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
-                                                                                                                            then (insertWith (++) fid [Function fty pos parameters False] env, err)
-                                                                                                                            else (env, err) -- it was already defined
+                                                                                                                            then insertWith (++) fid [Function fty pos parameters False] env
+                                                                                                                            else env -- it was already defined
                                                                 -- generic case
-                                                                _ -> (env,err) 
-updateEnv node@(Abs.EmptyStatement pos) env err = (env,err)
+                                                                _ -> env 
+updateEnv node@(Abs.EmptyStatement pos) env = env
 
 -- Update the env for Conditional if-then-else statement
-updateEnvCondStat :: (Abs.CONDITIONALSTATE Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
-updateEnvCondStat (Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env err = case ctrlState of
-                    Abs.CtrlDecStateVar pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err)
-                    Abs.CtrlDecStateConst pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env, err)
-updateEnvCondStat (Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env err = case ctrlState of
-                    Abs.CtrlDecStateVar pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err)
-                    Abs.CtrlDecStateConst pos id typepart exp -> (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env, err)
-updateEnvCondStat _ env err = (env,err)
+updateEnvCondStat :: (Abs.CONDITIONALSTATE Posn) -> Env -> Env
+updateEnvCondStat (Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env  = case ctrlState of
+                    Abs.CtrlDecStateVar pos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env
+                    Abs.CtrlDecStateConst pos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env
+updateEnvCondStat (Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env  = case ctrlState of
+                    Abs.CtrlDecStateVar pos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env
+                    Abs.CtrlDecStateConst pos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env
+updateEnvCondStat _ env  = env
 
 -- Update the env for while statement
-updateEnvWhileStat :: (Abs.WHILESTATEMENT Posn) -> Env -> [Prelude.String] -> (Env,[Prelude.String])
-updateEnvWhileStat (Abs.WhileStateCtrlDo pos ctrl state) env err = case ctrl of
-                    Abs.CtrlDecStateVar pos id typepart exp -> let newEnv = (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err) in (insertWith (++) "while" [] (first newEnv), err)
-                    Abs.CtrlDecStateConst pos id typepart exp -> let newEnv = (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env, err) in (insertWith (++) "while" [] (first newEnv), err)
-updateEnvWhileStat (Abs.WhileStateCtrlWDo pos ctrl b) env err = case ctrl of
-                    Abs.CtrlDecStateVar pos id typepart exp -> let newEnv = (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env, err) in (insertWith (++) "while" [] (first newEnv), err)
-                    Abs.CtrlDecStateConst pos id typepart exp -> let newEnv = (insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env, err) in (insertWith (++) "while" [] (first newEnv), err)
-updateEnvWhileStat (Abs.WhileStateSimpleDo pos expr state) env err = (insertWith (++) "while" [] env, err)
-updateEnvWhileStat (Abs.WhileStateSimpleWDo pos expr b) env err = (insertWith (++) "while" [] env, err)
+updateEnvWhileStat :: (Abs.WHILESTATEMENT Posn) -> Env -> Env
+updateEnvWhileStat (Abs.WhileStateCtrlDo pos ctrl state) env  = case ctrl of
+                    Abs.CtrlDecStateVar pos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateConst pos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env in insertWith (++) "while" [] newEnv
+updateEnvWhileStat (Abs.WhileStateCtrlWDo pos ctrl b) env  = case ctrl of
+                    Abs.CtrlDecStateVar pos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateConst pos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env in insertWith (++) "while" [] newEnv
+updateEnvWhileStat (Abs.WhileStateSimpleDo pos expr state) env  = insertWith (++) "while" [] env
+updateEnvWhileStat (Abs.WhileStateSimpleWDo pos expr b) env  = insertWith (++) "while" [] env
 
 -- Given a list of Params, it creates an envEntry of type param for each of them
 createEnvEntryForParams :: [TypeChecker.Parameter] -> Env -> Env
@@ -299,6 +291,23 @@ isInList :: Prelude.String -> [Prelude.String] -> Prelude.Bool
 isInList id (x:xs) = id == x || isInList id xs
 isInList id [] = False
 
+changeType :: TCheckResult -> Abs.PRIMITIVETYPE Posn -> TCheckResult
+changeType (TResult env (Array _ _) pos) pt = TError ["Incompatibility type for casting at "++ show pos]
+changeType (TResult env (Pointer _ _) pos) pt = TError ["Incompatibility type for casting at "++ show pos]
+changeType tcheck@(TResult env t pos) pt = if checkCompatibility tcheck (TResult env (getTypeFromPrimitive pt) pos)
+                                            then TResult env (getTypeFromPrimitive pt) pos
+                                            else TError ["Incompatibility type for casting at "++ show pos]
+changeType (TError e) _ = TError e
+
+isThereCast :: Abs.DEFAULT Posn -> Bool
+isThereCast (Abs.ExpressionCastD _ _ _) = True
+isThereCast (Abs.ExpressionUnaryD pos unary def) = isThereCast def
+isThereCast _ = False
+
+getTypeCast :: Abs.DEFAULT Posn -> Abs.PRIMITIVETYPE Posn
+getTypeCast (Abs.ExpressionCastD pos def t) = t
+getTypeCast (Abs.ExpressionUnaryD pos unary def) = getTypeCast def
+getTypeCast _ = Abs.PrimitiveTypeVoid (Pn 0 0 0)
 -------------------------------------------------------------------------------------------------------
 --- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY -----------------------------------
 -------------------------------------------------------------------------------------------------------
@@ -422,19 +431,32 @@ isTherePointer _ = False
 --- GENERIC FUNCTIONS used for RETURN KEYS CHECKS -------------------------------------------------
 ---------------------------------------------------------------------------------------------------
 
+-- TODO  bloccare caso [1..1] in function e discutere supporto ad array di puntatori come return
+
 subString :: Prelude.String -> Prelude.String -> Prelude.String
 subString (x:xs) zs = case x of
-                    ' ' -> if (zs == "TypeArray") then "array" ++ researchType xs [] else zs
+                    ' ' -> if (zs == "TypeArray") then "array" ++ researchType xs [] 
+                                                  else if (zs == "TypeExpressionPointer") then "pointer" ++ researchType xs []   
+                                                                                else if (zs == "TypeExpression") then researchType xs []   
+                                                                                     else if (zs == "TypeExpressionPointerOfArray") then "pointer" ++ researchType xs []   
+                                                                                          else zs
                     _ -> subString xs (zs++[x])
 
 researchType :: Prelude.String -> Prelude.String -> Prelude.String
 researchType (x:xs) zs = case x of
-                        ' ' -> if (zs == "primitivetype_primitivetype") then researchType_ xs [] else researchType xs []
+                        ' ' -> if (zs == "typeexpression_primitivetype") then researchType_ xs [] 
+                                                                         else if (zs == "typeexpression_typeexpression") then "pointer" ++ researchType xs []  
+                                                                                                                         else if (zs == "primitivetype_primitivetype") then  researchType_ xs []
+                                                                                                                                                                       else researchType xs []
                         _ -> researchType xs (zs++[x])
 
 researchType_ :: Prelude.String -> Prelude.String -> Prelude.String
 researchType_ (x:xs) zs = case x of
-                        ' ' -> if (zs == "=") then researchType_ xs [] else stringTypeConv zs
+                        ' ' -> if (zs == "=") 
+                                then researchType_ xs [] 
+                                else if (zs == "TypeArray") 
+                                    then "array" ++ researchType xs [] 
+                                    else  stringTypeConv zs
                         _ -> researchType_ xs (zs++[x])
 
 stringTypeConv :: Prelude.String -> Prelude.String
@@ -447,6 +469,11 @@ stringTypeConv str = case str of
                     "PrimitiveTypeVoid" -> "void"
                     _ -> str
 
+showTypeComplete :: Type -> Prelude.String
+showTypeComplete (Array t dim) = "array"++showTypeComplete t
+showTypeComplete (Pointer t depth) = "pointer"++showTypeComplete t
+showTypeComplete t = show t
+
 ---------------------------------------------------------------------------------------------------
 --- EXECUTION FUNCTIONS ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------
@@ -457,8 +484,8 @@ executeTypeChecking :: Abs.S Posn -> Env -> Abs.S TCheckResult
 executeTypeChecking node@(Abs.StartCode _ statements) start_env = Abs.StartCode (checkTypeStatements node start_env) (executeStatements statements start_env)
 
 executeStatements :: Abs.STATEMENTS Posn -> Env -> Abs.STATEMENTS TCheckResult                     
-executeStatements node@(Abs.ListStatements _ stat stats) env = let newEnv = updateEnv node env [] in 
-                                                                Abs.ListStatements (checkTypeStatement stat env) (executeStatement stat env) (executeStatements stats (first newEnv))
+executeStatements node@(Abs.ListStatements _ stat stats) env = let newEnv = updateEnv node env in 
+                                                                Abs.ListStatements (checkTypeStatement stat env) (executeStatement stat env) (executeStatements stats newEnv)
 executeStatements node@(Abs.EmptyStatement _) env = Abs.EmptyStatement (checkListStatement node env)
 
 executeStatement :: Abs.STATEMENT Posn -> Env -> Abs.STATEMENT TCheckResult
@@ -469,16 +496,16 @@ executeStatement node@(Abs.Statement _ b) env = let newEnv = updateIfCanOverride
 executeStatement node@(Abs.ExpressionStatement _ exp) env = Abs.ExpressionStatement (checkTypeStatement node env) (executeExpressionStatement exp env)
 executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = Abs.AssignmentStatement (checkTypeStatement node env) (executeLValue lval env) (executeAssignOp assignOp env) (executeExpression exp env)
 executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeVarType tipo env) (executeVarDecList vardec env)
-executeStatement node@(Abs.ConditionalStatement pos condition) env = let newEnv = updateEnvCondStat condition (updateIfCanOverride env) [] in Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition (first newEnv))
-executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = let newEnv = updateEnvWhileStat whileStaement (updateIfCanOverride env) [] in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStaement (first newEnv))
+executeStatement node@(Abs.ConditionalStatement pos condition) env = let newEnv = updateEnvCondStat condition (updateIfCanOverride env)  in Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition newEnv)
+executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = let newEnv = updateEnvWhileStat whileStaement (updateIfCanOverride env)  in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStaement newEnv)
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
 executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
-executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env []))) in
-                                                                            let newEnv2 = Data.Map.delete "while" (first (insertWith (++) "return_void" [] newEnv, [])) in  
+executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env )) in
+                                                                            let newEnv2 = Data.Map.delete "while" (insertWith (++) "return_void" [] newEnv) in  
                                                                                 Abs.ProcedureStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeStatements states newEnv2)
-executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (first (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env []))) in
-                                                                                let newEnv2 = Data.Map.delete "while" (first (insertWith (++) ("return_"++stringTypeConv (subString (show tipo) [])) [] newEnv, [])) in  
-                                                                                    Abs.FunctionStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executePrimitiveType tipo env) (executeStatements states newEnv2)
+executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env )) in
+                                                                                let newEnv2 = Data.Map.delete "while" (insertWith (++) ("return_"++stringTypeConv (subString (show tipo) [])) [] newEnv) in  
+                                                                                    Abs.FunctionStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeTypeExpression tipo env) (executeStatements states newEnv2)
 
 executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
 executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeExecuteParameter node env) (executeParameter param env) (executeParam params env)
@@ -981,16 +1008,16 @@ checkTypeContinueStatement (Abs.ContinueStatement pos) env = case Data.Map.looku
 checkTypeReturnStatement :: Abs.STATEMENT Posn -> Env -> TCheckResult
 checkTypeReturnStatement node@(Abs.ReturnStatement pos ret) env = checkTypeReturnState ret env
 
-checkTypeReturnState :: Abs.RETURNSTATEMENT Posn -> Env -> TCheckResult --TODO Pointers return --
+checkTypeReturnState :: Abs.RETURNSTATEMENT Posn -> Env -> TCheckResult
 checkTypeReturnState node@(Abs.ReturnState pos retExp) env = let retExpTCheck = checkTypeExpression retExp env in
                                                                 case retExpTCheck of
-                                                                    TResult env (Array t dim) pos -> case Data.Map.lookup ("return"++"_array"++(show t)) env of
+                                                                    TResult env (Array t dim) posa -> case Data.Map.lookup ("return"++"_array"++(showTypeComplete t)) env of
                                                                                             Just result -> retExpTCheck
                                                                                             Nothing -> TError ["Unexpected return statement at " ++ (show pos)]
-                                                                    TResult env (Pointer t depth) pos -> case Data.Map.lookup ("return"++"_"++(show t)) env of
-                                                                                            Just result -> if depth == checkDef_ retExp then retExpTCheck else TError ["Unexpected return statement at " ++ (show pos)]
+                                                                    TResult env (Pointer t depth) posp -> case Data.Map.lookup ("return"++"_pointer"++(showTypeComplete t)) env of
+                                                                                            Just result -> retExpTCheck
                                                                                             Nothing -> TError ["Unexpected return statement at " ++ (show pos)]
-                                                                    TResult env t pos -> case Data.Map.lookup ("return"++"_"++ show t) env of
+                                                                    TResult env t posb -> case Data.Map.lookup ("return"++"_"++ show t) env of
                                                                                             Just result -> retExpTCheck
                                                                                             Nothing -> TError ["Unexpected return statement at " ++ (show pos)]
                                                                     _ -> TError ["Unexpected return statement at " ++ (show pos)]
@@ -1025,14 +1052,13 @@ checkTypeExpression node@(Abs.ExpressionReal pos value) env = checkTypeReal valu
 checkTypeExpression node@(Abs.ExpressionBracket pos exp) env = checkTypeExpression exp env
 checkTypeExpression node@(Abs.ExpressionCast pos def tipo) env = let tipoTCheck = checkPrimitiveType tipo env in
                                                                     let defTCheck = checkTypeDefault 0 def env in
-                                                                        let realdefTCheck = getRealTypeDef defTCheck def in
-                                                                        case realdefTCheck of
-                                                                            TResult _ _ _ -> case tipoTCheck of
-                                                                                TResult _ _ _ -> if(checkCompatibility realdefTCheck tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++ show pos]
-                                                                                _ -> if(checkCompatibility realdefTCheck tipoTCheck) then checkErrors realdefTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) tipoTCheck
-                                                                            _ -> case tipoTCheck of
-                                                                                TResult _ _ _ -> if(checkCompatibility realdefTCheck tipoTCheck) then checkErrors realdefTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) realdefTCheck
-                                                                                _ -> if(checkCompatibility realdefTCheck tipoTCheck) then checkErrors realdefTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) (checkErrors realdefTCheck tipoTCheck)
+                                                                    case defTCheck of
+                                                                        TResult _ _ _ -> case tipoTCheck of
+                                                                            TResult _ _ _ -> if(checkCompatibility defTCheck tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++ show pos]
+                                                                            _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) tipoTCheck
+                                                                        _ -> case tipoTCheck of
+                                                                            TResult _ _ _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) defTCheck
+                                                                            _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) (checkErrors defTCheck tipoTCheck)
 checkTypeExpression node@(Abs.ExpressionUnary pos unary def) env = case unary of
                                                                     Abs.UnaryOperationPointer pos -> let numberDef= 1+checkDef__ def in
                                                                                                     (case def of
@@ -1045,26 +1071,26 @@ checkTypeExpression node@(Abs.ExpressionUnary pos unary def) env = case unary of
                                                                                                                                                                                                                     res@(TResult env (Array t dim) pos) -> if isTherePointer t then computeDeferencing (TResult env t pos) numberDef else mergeErrors (TError ["Pointer expected at Position: " ++ show pos]) pointer
                                                                                                                                                                                                                     res@(TResult env (Pointer t depth) pos) ->  if depth-numberDef==0 then indexing (TResult env t pos) index else TResult env (Pointer t (depth-numberDef)) pos
                                                                                                                                                                                                                     _ -> mergeErrors (TError ["Pointer expected at Position: " ++ show pos]) pointer
+                                                                                                    Abs.ExpressionCastD pos defD tipo -> changeType (checkTypeDefault 0 (Abs.ExpressionUnaryD pos unary defD) env) tipo
+                                                                                                    Abs.ExpressionBracketD pos exp -> computeDeferencing (checkTypeExpression exp env) 1
                                                                                                     _ -> TError ["Pointer expected at Position: " ++ show pos])
                                                                     _ -> let unaryTCheck = checkTypeUnaryOp unary env in
                                                                             let defTCheck = checkTypeDefault 0 def env in
                                                                                 if(checkCompatibility defTCheck unaryTCheck) then checkErrors  unaryTCheck defTCheck else mergeErrors (TError ["Incompatibility type for unary operator at "++ show pos]) defTCheck
-checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = let expCheck = checkTypeExpression exp env in
-                                                                            let realexpTCheck = getRealTypeExp expCheck exp in -- TODO forse remove
-                                                                            (let defCheck = checkTypeDefault 0 def env in 
-                                                                                let realdefTCheck = getRealTypeDef defCheck def in
-                                                                                (let binaryTCheck = checkTypeBinaryOp binary env in if (checkCompatibility realdefTCheck realexpTCheck || checkCompatibility realexpTCheck realdefTCheck)
-                                                                                    then let ty = returnSuperType realexpTCheck realdefTCheck in case binaryTCheck of
-                                                                                        TResult _ (B_type Type_Real) _ -> if (checkCompatibility ty binaryTCheck) then checkErrors realexpTCheck (checkErrors realdefTCheck ty) else  mergeErrors (mergeErrors (TError ["Operator requires operands to be of type real but " ++ show (getType realdefTCheck) ++ " and " ++ show (getType realexpTCheck) ++ " are given! Position: "++ show pos]) realdefTCheck) realexpTCheck
+checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = let expTCheck = checkTypeExpression exp env in
+                                                                            (let defTCheck = checkTypeDefault 0 def env in 
+                                                                                (let binaryTCheck = checkTypeBinaryOp binary env in if (checkCompatibility defTCheck expTCheck || checkCompatibility expTCheck defTCheck)
+                                                                                    then let ty = returnSuperType expTCheck defTCheck in case binaryTCheck of
+                                                                                        TResult _ (B_type Type_Real) _ -> if (checkCompatibility ty binaryTCheck) then checkErrors expTCheck (checkErrors defTCheck ty) else  mergeErrors (mergeErrors (TError ["Operator requires operands to be of type real but " ++ show (getType defTCheck) ++ " and " ++ show (getType expTCheck) ++ " are given! Position: "++ show pos]) defTCheck) expTCheck
                                                                                         TResult _ (B_type Type_Boolean) _ -> case binary of
-                                                                                            (Abs.BinaryOperationOr pos) -> if (checkCompatibility ty binaryTCheck) then checkErrors realexpTCheck (checkErrors realdefTCheck binaryTCheck) else mergeErrors (mergeErrors (TError ["Operator OR cannot be applied to operands of types different from bool! Position: "++ show pos]) realdefTCheck) realexpTCheck
-                                                                                            (Abs.BinaryOperationAnd pos) -> if (checkCompatibility ty binaryTCheck) then checkErrors realexpTCheck (checkErrors realdefTCheck binaryTCheck) else mergeErrors (mergeErrors (TError ["Operator AND cannot be applied to operands of types different from bool! Position: "++ show pos]) realdefTCheck) realexpTCheck
-                                                                                            (Abs.BinaryOperationEq pos) -> checkErrors realexpTCheck (checkErrors realdefTCheck binaryTCheck)
-                                                                                            (Abs.BinaryOperationNotEq pos) -> checkErrors realexpTCheck (checkErrors realdefTCheck binaryTCheck)
+                                                                                            (Abs.BinaryOperationOr pos) -> if (checkCompatibility ty binaryTCheck) then checkErrors expTCheck (checkErrors defTCheck binaryTCheck) else mergeErrors (mergeErrors (TError ["Operator OR cannot be applied to operands of types different from bool! Position: "++ show pos]) defTCheck) expTCheck
+                                                                                            (Abs.BinaryOperationAnd pos) -> if (checkCompatibility ty binaryTCheck) then checkErrors expTCheck (checkErrors defTCheck binaryTCheck) else mergeErrors (mergeErrors (TError ["Operator AND cannot be applied to operands of types different from bool! Position: "++ show pos]) defTCheck) expTCheck
+                                                                                            (Abs.BinaryOperationEq pos) -> checkErrors expTCheck (checkErrors defTCheck binaryTCheck)
+                                                                                            (Abs.BinaryOperationNotEq pos) -> checkErrors expTCheck (checkErrors defTCheck binaryTCheck)
                                                                                             _ -> if (checkCompatibility ty (TResult env (B_type Type_Real) pos)) || (checkCompatibility ty (TResult env (B_type Type_String) pos)) || (checkCompatibility ty (TResult env (B_type Type_Char) pos)) 
-                                                                                                then checkErrors realexpTCheck (checkErrors realdefTCheck binaryTCheck)
-                                                                                                else mergeErrors (mergeErrors (TError ["Operator cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) realdefTCheck) realexpTCheck
-                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType realdefTCheck) ++ " and " ++ show (getType realexpTCheck)++" are incompatible! Position:" ++ show pos]) realdefTCheck) realexpTCheck
+                                                                                                then checkErrors expTCheck (checkErrors defTCheck binaryTCheck)
+                                                                                                else mergeErrors (mergeErrors (TError ["Operator cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) defTCheck) expTCheck
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType defTCheck) ++ " and " ++ show (getType expTCheck)++" are incompatible! Position:" ++ show pos]) defTCheck) expTCheck
                                                                                     ))
 checkTypeExpression node@(Abs.ExpressionIdent pos ident@(Abs.Ident id posI) index) env =  case Data.Map.lookup id env of
                                                                                             Just [Variable (Array t dim) pos mode override] -> case index of
@@ -1091,40 +1117,6 @@ checkTypeExpression node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) env 
                                                                         [] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
                                                                         [Function t posf param canOverride] -> checkTypeExpressionCall_ node env [Function t posf param canOverride]
                                                                 Nothing -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)                                 
-
-getRealTypeExp :: TCheckResult -> Abs.EXPRESSION Posn -> TCheckResult
-getRealTypeExp (TResult env (Pointer t depth) pos) exp = if depth==checkDef_ exp then getRealTypeExp (TResult env t pos) exp else TError ["depth different at "++ show pos] -- TODO forse non serv
-getRealTypeExp (TResult env (Array t dim) pos) exp = if dim==checkDimIndex_ exp then getRealTypeExp (TResult env t pos) exp else TError ["dim different at "++ show pos] -- TODO forse non serv
-getRealTypeExp t exp = t
-
-getRealTypeDef :: TCheckResult -> Abs.DEFAULT Posn -> TCheckResult
-getRealTypeDef (TResult env (Pointer t depth) pos) def = if depth==checkDef__ def then getRealTypeDef (TResult env t pos) def else TError ["depth different at "++ show pos] -- TODO forse non serv
-getRealTypeDef (TResult env (Array t dim) pos) def = if dim==checkDimIndex__ def then getRealTypeDef (TResult env t pos) def else TError ["dim different at "++ show pos] -- TODO forse non serv
-getRealTypeDef t exp = t
-
-checkDimIndex_ ::Abs.EXPRESSION Posn -> Prelude.Integer
-checkDimIndex_ (Abs.ExpressionIdent pos id index) = case index of
-                                                      Abs.ArrayIndexElementEmpty posI -> 0
-                                                      Abs.ArrayIndexElement posI ty -> case ty of
-                                                                                        Abs.TypeOfIndexInt posv tyv idv -> 1 + checkDimIndex_ (Abs.ExpressionIdent pos id (Abs.ArrayIndexElement posI tyv))
-                                                                                        Abs.TypeOfIndexIntSingle posv idv -> 1
-                                                                                        Abs.TypeOfIndexVar posv tyv idv indexv-> 1 + checkDimIndex_ (Abs.ExpressionIdent pos id (Abs.ArrayIndexElement posI tyv))
-                                                                                        Abs.TypeOfIndexVarSingle posv idv indexv-> 1
-checkDimIndex_ (Abs.ExpressionBracket pos exp) = checkDimIndex_ exp
-checkDimIndex_ (Abs.ExpressionUnary pos unary def ) = checkDimIndex__ def
-checkDimIndex_ _ = 0
-
-checkDimIndex__ ::Abs.DEFAULT Posn -> Prelude.Integer
-checkDimIndex__ (Abs.ExpressionIdentD pos id index) = case index of
-                                                      Abs.ArrayIndexElementEmpty posI -> 0
-                                                      Abs.ArrayIndexElement posI ty -> case ty of
-                                                                                        Abs.TypeOfIndexInt posv tyv idv -> 1 + checkDimIndex__ (Abs.ExpressionIdentD pos id (Abs.ArrayIndexElement posI tyv))
-                                                                                        Abs.TypeOfIndexIntSingle posv idv -> 1
-                                                                                        Abs.TypeOfIndexVar posv tyv idv indexv-> 1 + checkDimIndex__ (Abs.ExpressionIdentD pos id (Abs.ArrayIndexElement posI tyv))
-                                                                                        Abs.TypeOfIndexVarSingle posv idv indexv-> 1
-checkDimIndex__ (Abs.ExpressionBracketD pos exp) = checkDimIndex_ exp
-checkDimIndex__ (Abs.ExpressionUnaryD pos unary def ) = checkDimIndex__ def
-checkDimIndex__ _ = 0
 
 -- sub-function of the previous one
 checkTypeExpressionCall_ :: Abs.EXPRESSION Posn -> Env -> [EnvEntry] -> TCheckResult
@@ -1202,14 +1194,13 @@ checkTypeDefault s node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) inde
                                                                         Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
 checkTypeDefault s node@(Abs.ExpressionCastD pos def ty) env = let tipoTCheck = checkPrimitiveType ty env in
                                                                     let defTCheck = checkTypeDefault 1 def env in
-                                                                        let realdefTCheck = getRealTypeDef defTCheck def in
-                                                                        case realdefTCheck of
+                                                                        case defTCheck of
                                                                             TResult _ _ _ -> case tipoTCheck of
-                                                                                TResult _ _ _ -> if(checkCompatibility realdefTCheck tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++ show pos]
-                                                                                _ -> if(checkCompatibility realdefTCheck tipoTCheck) then checkErrors realdefTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) tipoTCheck
+                                                                                TResult _ _ _ -> if(checkCompatibility defTCheck tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++ show pos]
+                                                                                _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) tipoTCheck
                                                                             _ -> case tipoTCheck of
-                                                                                TResult _ _ _ -> if(checkCompatibility realdefTCheck tipoTCheck) then checkErrors realdefTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) realdefTCheck
-                                                                                _ -> if(checkCompatibility realdefTCheck tipoTCheck) then checkErrors realdefTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) (checkErrors realdefTCheck tipoTCheck)
+                                                                                TResult _ _ _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) defTCheck
+                                                                                _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) (checkErrors defTCheck tipoTCheck)
 checkTypeDefault s node@(Abs.ExpressionCallD pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
                                                                                 Just [Function t posf param canOverride] -> checkTypeExpressionCallD_ node env [Function t posf param canOverride]
                                                                                 Just [Variable _ _ _ _] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
@@ -1221,15 +1212,22 @@ checkTypeDefault s node@(Abs.ExpressionUnaryD pos unary def) env = case unary of
                                                                     Abs.UnaryOperationPointer pos -> let numberDef= if s==2 then 2+checkDef__ def else 1+checkDef__ def in
                                                                                                     (case def of
                                                                                                     Abs.ExpressionUnaryD _ _ _ -> if s==0 then computeDeferencing (checkTypeDefault 1 def env) numberDef 
-                                                                                                                                            else if s==2 then computeDeferencing (checkTypeDefault 1 def env) numberDef  else checkTypeDefault 1 def env
+                                                                                                                                            else if s==2 then 
+                                                                                                                                                    if isThereCast def 
+                                                                                                                                                        then changeType (computeDeferencing (checkTypeDefault 1 def env) numberDef) (getTypeCast def) 
+                                                                                                                                                        else computeDeferencing (checkTypeDefault 1 def env) numberDef  
+                                                                                                                                                    else checkTypeDefault 1 def env
                                                                                                     Abs.ExpressionIdentD pos id index -> case index of 
                                                                                                                                         Abs.ArrayIndexElementEmpty pos -> let pointer = checkTypeIdentVar id env in case pointer of
-                                                                                                                                                                                                                    res@(TResult env (Pointer t depth) pos) -> if depth-numberDef==0 then TResult env t pos else TResult env (Pointer t (depth-numberDef)) pos
+                                                                                                                                                                                                                    res@(TResult env (Pointer t depth) pos) -> if s==1 then res else if depth-numberDef==0 then TResult env t pos else TResult env (Pointer t (depth-numberDef)) pos
                                                                                                                                                                                                                     _ -> mergeErrors (TError ["Pointer expected at position: "++ show pos]) pointer
                                                                                                                                         Abs.ArrayIndexElement pos t -> let pointer = checkTypeIdentVar id env in case pointer of
-                                                                                                                                                                                                                    res@(TResult env (Array t dim) pos) -> if isTherePointer t then res else mergeErrors (TError ["Pointer expected at position: "++ show pos]) pointer
-                                                                                                                                                                                                                    res@(TResult env (Pointer t depth) pos) -> if depth-numberDef==0 then TResult env t pos else TResult env (Pointer t (depth-numberDef)) pos
+                                                                                                                                                                                                                    res@(TResult env (Array t dim) pos) -> if s==1 then res else if isTherePointer t then res else mergeErrors (TError ["Pointer expected at position: "++ show pos]) pointer
+                                                                                                                                                                                                                    res@(TResult env (Pointer t depth) pos) ->if s==1 then res else  if depth-numberDef==0 then TResult env t pos else TResult env (Pointer t (depth-numberDef)) pos
                                                                                                                                                                                                                     _ -> mergeErrors (TError ["Pointer expected at position: "++ show pos]) pointer
+                                                                                                    Abs.ExpressionCastD pos defD tipo -> if s==1 then checkTypeDefault 1 (Abs.ExpressionUnaryD pos unary defD) env
+                                                                                                                                                 else changeType (computeDeferencing (checkTypeDefault 1 (Abs.ExpressionUnaryD pos unary defD) env) numberDef) (getTypeCast def) 
+                                                                                                    Abs.ExpressionBracketD pos exp -> if s==2 then computeDeferencing (checkTypeExpression exp env) 2 else computeDeferencing (checkTypeExpression exp env) 1
                                                                                                     _ -> TError ["Pointer expected at position: "++ show pos])
                                                                     _ -> let unaryTCheck = checkTypeUnaryOp unary env in
                                                                             let defTCheck = checkTypeDefault 1 def env in
@@ -1312,7 +1310,7 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                             TResult env (Pointer tI depthI) pos -> if (checkCompatibility (TResult env (Pointer tI ((depthI+1)-(checkDef initpart))) pos) (TResult env (Pointer t depth) pos)) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation incompatible type at "++ show (getPos initCheck)]) identTCheck)
                                                                                                             _ -> if (checkCompatibility initCheck (TResult env t pos) && depth==1) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation incompatible type at "++ show (getPos initCheck)]) identTCheck)
                                                                                                         TResult env (Array t dim) pos -> case initCheck of
-                                                                                                            TResult env (Array ts dims) pos -> if checkCompatibility (TResult env ts pos) (TResult env t pos) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize array of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position:" ++ show (getPos initCheck)]) identTCheck) -- TODO show better the primitive type!
+                                                                                                            TResult env (Array ts dims) pos -> if checkCompatibility (TResult env ts pos) (TResult env t pos) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize array of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position:" ++ show (getPos initCheck)]) identTCheck)
                                                                                                             _ -> mergeErrors initCheck (mergeErrors (TError ["Array initializzation incompatible type at "++ show (getPos initCheck)]) identTCheck)
                                                                                                         _ -> if (checkCompatibility initCheck typeCheck) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors identTCheck (mergeErrors initCheck (TError ["Cannot initialize variable of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position:" ++ show (getPos initCheck)])))
 
@@ -1405,8 +1403,8 @@ checkTypeTypeExpression node@(Abs.TypeExpressionPointerOfArray pos typeexpressio
 
 
 checkListElementsOfArray :: Abs.LISTELEMENTARRAY Posn -> Env -> TCheckResult
-checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env = let exprTCheck = checkTypeExpression expr env in if (checkCompatibility exprTCheck (getRealType (checkListElementsOfArray elementlist env))) then TResult env (Array (getType exprTCheck) 0) pos else TError ["Types incompatibles in TODO Position: "++ show pos]
-checkListElementsOfArray node@(Abs.ListElementOfArray pos expr) env = let exprTCheck = checkTypeExpression expr env in TResult env (Array (getType exprTCheck) 0) pos
+checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env = let exprTCheck = checkTypeExpression expr env in if (checkCompatibility exprTCheck (getRealType (checkListElementsOfArray elementlist env))) then TResult env (Array (getType exprTCheck) 1) pos else TError ["Array initializzation elemets incompatible with array type! Position: "++ show pos]
+checkListElementsOfArray node@(Abs.ListElementOfArray pos expr) env = let exprTCheck = checkTypeExpression expr env in TResult env (Array (getType exprTCheck) 1) pos
 
 getType :: TCheckResult -> Type
 getType (TResult env t pos) = t
@@ -1633,4 +1631,15 @@ checkTypeParameter node@(Abs.Parameter pos id ty) env = TResult env (B_type Type
 checkTypeParameter node@(Abs.ParameterPointer pos id primitivetype pointer) env = TResult env (B_type Type_Void) pos
 
 checkTypeArrayInit :: Abs.ARRAYINIT Posn -> Env -> TCheckResult
-checkTypeArrayInit _ _ = TError ["TODO ARRAYINIT"] -- TODO
+checkTypeArrayInit node@(Abs.ArrayInitSingle pos arrayInit) env = TResult env (Array (getType (checkTypeArrayInit arrayInit env)) 1) pos
+checkTypeArrayInit node@(Abs.ArrayInit pos arrayInit1 arrayInit2) env = if checkCompatibility (checkTypeArrayInit arrayInit1 env) (checkTypeArrayInit arrayInit2 env)
+                                                                            then
+                                                                                TResult env (Array (getType (checkTypeArrayInit arrayInit1 env)) 1) pos
+                                                                            else
+                                                                                mergeErrors (TError ["Elements of the array have different type at position: "++show pos]) (checkErrors (checkTypeArrayInit arrayInit1 env) (checkTypeArrayInit arrayInit2 env))
+checkTypeArrayInit node@(Abs.ArrayInitSingleElems pos listelement) env= checkListElementsOfArray listelement env
+checkTypeArrayInit node@(Abs.ArrayInitElems pos listelement arrayInit) env= if checkCompatibility (checkTypeArrayInit arrayInit env) (checkListElementsOfArray listelement env)
+                                                                            then
+                                                                                checkListElementsOfArray listelement env
+                                                                            else
+                                                                                mergeErrors (TError ["Elements of the array have different type at position: "++show pos]) (checkErrors (checkTypeArrayInit arrayInit env) (checkListElementsOfArray listelement env))
