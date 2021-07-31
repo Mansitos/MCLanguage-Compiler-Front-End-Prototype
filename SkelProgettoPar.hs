@@ -126,6 +126,7 @@ transTYPEEXPRESSION x = case x of
   AbsProgettoPar.TypeExpressionArray _ rangeexp typeexpression -> failure x
   AbsProgettoPar.TypeExpressionPointer _ primitivetype pointer -> failure x
   AbsProgettoPar.TypeExpressionPointerOfArray _ typeexpression pointer -> failure x
+  AbsProgettoPar.TypeExpressionArrayOfPointer _ typeexpression -> failure x
 
 transPOINTER :: Show attr => (AbsProgettoPar.POINTER attr) -> Result
 transPOINTER x = case x of

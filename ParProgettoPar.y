@@ -189,6 +189,7 @@ TYPEEXPRESSION : PRIMITIVETYPE { Abs.TypeExpression (Abs.primitivetype_content $
                | '[' RANGEEXP ']' TYPEEXPRESSION { Abs.TypeExpressionArraySimple (tokenPosn $1) $2 $4 }
                | '[' '{' RANGEEXP '}' ']' TYPEEXPRESSION { Abs.TypeExpressionArray (tokenPosn $1) $3 $6 }
                | PRIMITIVETYPE POINTER { Abs.TypeExpressionPointer (Abs.primitivetype_content $1) $1 $2 }
+               | '*' '[' ']' TYPEEXPRESSION { Abs.TypeExpressionArrayOfPointer (tokenPosn $1) $4 }
                | '(' TYPEEXPRESSION ')' POINTER { Abs.TypeExpressionPointerOfArray (tokenPosn $1) $2 $4 }
 
 POINTER :: { Abs.POINTER Posn }

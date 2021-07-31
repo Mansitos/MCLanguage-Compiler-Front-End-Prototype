@@ -220,6 +220,7 @@ instance Print (AbsProgettoPar.TYPEEXPRESSION attr) where
     AbsProgettoPar.TypeExpressionArray _ rangeexp typeexpression -> prPrec i 0 (concatD [doc (showString "["), doc (showString "{"), prt 0 rangeexp, doc (showString "}"), doc (showString "]"), prt 0 typeexpression])
     AbsProgettoPar.TypeExpressionPointer _ primitivetype pointer -> prPrec i 0 (concatD [prt 0 primitivetype, prt 0 pointer])
     AbsProgettoPar.TypeExpressionPointerOfArray _ typeexpression pointer -> prPrec i 0 (concatD [doc (showString "("), prt 0 typeexpression,  doc (showString ")"), prt 0 pointer])
+    AbsProgettoPar.TypeExpressionArrayOfPointer _ typeexpression -> prPrec i 0 (concatD [doc (showString "*"), doc (showString "["), doc (showString "]"), prt 0 typeexpression])
 
 instance Print (AbsProgettoPar.POINTER attr) where
   prt i = \case
