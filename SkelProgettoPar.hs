@@ -276,7 +276,13 @@ transLVALUEEXPRESSION x = case x of
 transARRAYINDEXELEMENT :: Show attr => (AbsProgettoPar.ARRAYINDEXELEMENT attr) -> Result
 transARRAYINDEXELEMENT x = case x of
   AbsProgettoPar.ArrayIndexElement _ typeindex -> failure x
+  AbsProgettoPar.ArrayIndexElements _ typeindex elements -> failure x
   AbsProgettoPar.ArrayIndexElementEmpty _ -> failure x
+
+transARRAYINDEXELEMENTS :: Show attr => (AbsProgettoPar.ARRAYINDEXELEMENTS attr) -> Result
+transARRAYINDEXELEMENTS x = case x of 
+  AbsProgettoPar.ArrayIndexElementsSingle _ typeindex -> failure x
+  AbsProgettoPar.ArrayIndexElementsMultiple _ typeindex elements -> failure x
 
 transTYPEINDEX :: Show attr => (AbsProgettoPar.TYPEINDEX attr) -> Result
 transTYPEINDEX x = case x of

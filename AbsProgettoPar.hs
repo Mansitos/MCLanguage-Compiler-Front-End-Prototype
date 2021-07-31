@@ -255,7 +255,13 @@ data LVALUEEXPRESSION a
 
 data ARRAYINDEXELEMENT a
     = ArrayIndexElement {arrayindexelement_content::a, arrayindexelement_typeindex::(TYPEINDEX a)}
+    | ArrayIndexElements {arrayindexelement_content::a, arrayindexelement_typeindex::(TYPEINDEX a), arrayindexelement_arrayindexelements::(ARRAYINDEXELEMENTS a)}
     | ArrayIndexElementEmpty {arrayindexelement_content::a}
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data ARRAYINDEXELEMENTS a
+  = ArrayIndexElementsSingle {arrayindexelements_content::a, arrayindexelements_typeindex::(TYPEINDEX a)}
+  | ArrayIndexElementsMultiple {arrayindexelements_content::a, arrayindexelements_typeindex::(TYPEINDEX a), arrayindexelements_arrayindexelements::(ARRAYINDEXELEMENTS a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data TYPEINDEX a

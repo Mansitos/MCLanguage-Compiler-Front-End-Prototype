@@ -318,7 +318,13 @@ LVALUEEXPRESSION : Ident ARRAYINDEXELEMENT ',' LVALUEEXPRESSION { Abs.LvalueExpr
 
 ARRAYINDEXELEMENT :: { Abs.ARRAYINDEXELEMENT Posn }
 ARRAYINDEXELEMENT : '[' TYPEINDEX ']' { Abs.ArrayIndexElement (tokenPosn $1) $2 }
+                  | '[' TYPEINDEX ']' ARRAYINDEXELEMENTS {Abs.ArrayIndexElements (tokenPosn $1) $2 $4}
                   | {- empty -} { Abs.ArrayIndexElementEmpty (Pn 0 0 0)}
+
+ARRAYINDEXELEMENTS :: { Abs.ARRAYINDEXELEMENTS Posn }
+ARRAYINDEXELEMENTS : '[' TYPEINDEX ']' { Abs.ArrayIndexElementsSingle (tokenPosn $1) $2 }
+                   | '[' TYPEINDEX ']'ARRAYINDEXELEMENTS { Abs.ArrayIndexElementsMultiple (tokenPosn $1) $2 $4}
+
 
 TYPEINDEX :: { Abs.TYPEINDEX Posn }
 TYPEINDEX : TYPEINDEX ',' Integer { Abs.TypeOfIndexInt (Abs.typeindex_content $1) $1 $3 }

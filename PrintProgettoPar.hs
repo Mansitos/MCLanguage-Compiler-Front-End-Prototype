@@ -370,7 +370,13 @@ instance Print (AbsProgettoPar.LVALUEEXPRESSION attr) where
 instance Print (AbsProgettoPar.ARRAYINDEXELEMENT attr) where
   prt i = \case
     AbsProgettoPar.ArrayIndexElement _ typeindex -> prPrec i 0 (concatD [doc (showString "["), prt 0 typeindex, doc (showString "]")])
+    AbsProgettoPar.ArrayIndexElements _ typeindex arrayindexelements -> prPrec i 0 (concatD [doc (showString "["), prt 0 typeindex, doc (showString "]"), prt 0 arrayindexelements])
     AbsProgettoPar.ArrayIndexElementEmpty _ -> prPrec i 0 (concatD [])
+
+instance Print (AbsProgettoPar.ARRAYINDEXELEMENTS attr) where
+  prt i = \case
+    AbsProgettoPar.ArrayIndexElementsSingle _ typeindex -> prPrec i 0 (concatD [doc (showString "["), prt 0 typeindex, doc (showString "]")])
+    AbsProgettoPar.ArrayIndexElementsMultiple _ typeindex arrayindexelements -> prPrec i 0 (concatD [doc (showString "["), prt 0 typeindex, doc (showString "]"), prt 0 arrayindexelements])
 
 instance Print (AbsProgettoPar.TYPEINDEX attr) where
   prt i = \case
