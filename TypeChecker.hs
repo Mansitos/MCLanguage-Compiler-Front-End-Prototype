@@ -1389,11 +1389,15 @@ checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = let ch
                                                                                                                                     _ -> checkArray
 checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp typeexpression) env = let rangeExpTCheck = checkRangeExpType rangeexp env in
                                                                                                 case rangeExpTCheck of
-                                                                                                    TResult env (B_type Type_Integer) pos -> TResult env (Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)) pos
+                                                                                                    TResult env (Array t dim) pos -> mergeErrors (TError ["Array declaration with wrong range is not allowed! Position: "++ show pos]) rangeExpTCheck
+                                                                                                    TResult env (Pointer t depth) pos -> mergeErrors (TError ["Array declaration with wrong range is not allowed! Position: "++ show pos]) rangeExpTCheck
+                                                                                                    TResult env t pos -> TResult env (Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)) pos
                                                                                                     _ -> mergeErrors (TError ["Array declaration with wrong range is not allowed! Position: "++ show pos]) rangeExpTCheck
 checkTypeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp typeexpression) env =  let rangeExpTCheck = checkRangeExpType rangeexp env in
                                                                                                 case rangeExpTCheck of
-                                                                                                    TResult env (B_type Type_Integer) pos -> TResult env (Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)) pos
+                                                                                                    TResult env (Array t dim) pos -> mergeErrors (TError ["Array declaration with wrong range is not allowed! Position: "++ show pos]) rangeExpTCheck
+                                                                                                    TResult env (Pointer t depth) pos -> mergeErrors (TError ["Array declaration with wrong range is not allowed! Position: "++ show pos]) rangeExpTCheck
+                                                                                                    TResult env t pos -> TResult env (Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)) pos
                                                                                                     _ -> mergeErrors (TError ["Array declaration with wrong range is not allowed! Position: "++ show pos]) rangeExpTCheck
 checkTypeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = TResult env (getTypeExpr node) pos
 checkTypeTypeExpression node@(Abs.TypeExpressionPointerOfArray pos typeexpression pointer) env = case typeexpression of
