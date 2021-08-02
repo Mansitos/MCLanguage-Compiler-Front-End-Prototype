@@ -1,3 +1,9 @@
-var a,b,c:int = 5;
-var a:int = 3;
-a = 3;
+var arr1:[1..10]int = [1,2,3,4,5,6,7,8,9,10];
+var arr2:[1..10][1..10]int;
+arr1[1] = 100;
+arr2[5][5] = arr1[5];
+arr2[1][1][1] = 10; 	// errore indexing
+arr1[1,5] = 10; 	// errore indexing
+var y:int = arr1[5];
+y = arr2[1][1];
+y = arr2[10,10][10,10]; // errore indexing

@@ -1,8 +1,9 @@
 var y:int = 5;
 var z:real = y;
 var sum:real = y+z;
+y=z;
+z=y;
 y = true;
 y = 1.0;
-z = 5;
-sum = z+y;
+
 

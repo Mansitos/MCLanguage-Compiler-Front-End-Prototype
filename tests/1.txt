@@ -1,2 +1,12 @@
 var x:int = 3;
 x;
+
+var y:int = 10;
+
+x=x+y;
+x=x+(x*y);
+
+{
+	var x:int = 30;
+	x=x+1;
+}

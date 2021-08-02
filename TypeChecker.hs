@@ -758,7 +758,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
                                                                                                                                                                     else case index of
                                                                                                                                                                         (Abs.ArrayIndexElement _ _) -> TResult env t pos
                                                                                                                                                                         (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
-                                                                                                                                                             else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show pos] 
+                                                                                                                                                             else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
                                                                         -- multiple entries; first is of type array
                                                                         Just ((Variable (Array t dim) pos mode override):xs) -> case index of
                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> if mode == "param"  -- if param.. error because it cannot be overwritten
@@ -769,7 +769,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
                                                                                                                                                                     else case index of
                                                                                                                                                                         (Abs.ArrayIndexElement _ _) -> TResult env t pos
                                                                                                                                                                         (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
-                                                                                                                                                                    else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show pos] 
+                                                                                                                                                                    else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
                                                                         -- 1 entry of type func
                                                                         Just [Function _ _ _ _] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
                                                                         -- multiple entries; first is of type func
@@ -784,7 +784,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
                                                                                                                                                                                                        then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!" ++ (show posI)] 
                                                                                                                                                                                                        else case index of
                                                                                                                                                                                                         (Abs.ArrayIndexElement _ _) -> TResult env t pos
-                                                                                                                                                                                                        (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env) else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! " ++ show pos] 
+                                                                                                                                                                                                        (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env) else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! " ++ show posI] 
                                                                                                             ((Variable t pos mode override):ys) -> if mode == "param" -- if param.. error because it cannot be overwritten
                                                                                                                                                    then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                    else TResult env t pos
@@ -814,7 +814,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id po
                                                                                                                                                                                                                                                             else case (checkTypeLvalueExpression next env) of
                                                                                                                                                                                                                                                                 TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                                                                                                                                                 _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
-                                                                                                                                else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show pos] 
+                                                                                                                                else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
                                                                         -- multiple entries; first is of type array
                                                                         Just ((Variable (Array t dim) pos mode override):xs) -> case index of
                                                                                                                             Abs.ArrayIndexElementEmpty posIn -> if (checkCompatibility (TResult env (Array t dim) pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
@@ -1170,7 +1170,7 @@ checkTypeExpressionCall_ (Abs.ExpressionCall pos (Abs.Ident id posid) exps) env 
                                                then if (checkCompatibilityOfExpsList (Abs.Expressions pos exp (Abs.ExpressionEmpty pos)) param env) then TResult env t pos 
                                                     else TError ["Function " ++ id ++ "( ) requires a parameter of type " ++ show (Prelude.head (getTypeListFromFuncParams param)) ++ " but " ++  show (getType (checkTypeExpression exp env)) ++ " is given! Position:" ++ show pos]
                                                else TError ["Function " ++ id ++ "( ) called with too few arguments! Position: " ++ show pos]
-    (Abs.ExpressionEmpty pos) -> if param == [] then TResult env t pos else TError ["Function " ++ id ++ " called without parameters! Position: " ++ show pos] -- The call was with no params, check if the definition requires no param too
+    (Abs.ExpressionEmpty pos) -> if param == [] then TResult env t pos else TError ["Function " ++ id ++ "( ) called without parameters! Position: " ++ show pos] -- The call was with no params, check if the definition requires no param too
     (Abs.Expressions pos exp expss) -> if Prelude.length (param) == 1 + (countNumberOfExps expss) -- The call has n params, does the definition requires n params?
                                                               then if (checkCompatibilityOfExpsList exps param env) then TResult env t pos 
                                                                    else TError ["Function " ++ id ++ "( ) called with parameters of the wrong type! Position: " ++ show pos]
@@ -1225,13 +1225,13 @@ checkTypeDefault s node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) inde
                                                                                                                             _ ->if dim == (countIndex index) then case index of
                                                                                                                                 (Abs.ArrayIndexElement _ _) -> TResult env t pos
                                                                                                                                 (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
-                                                                                                                                else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show pos] 
+                                                                                                                                else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
                                                                         Just ((Variable (Array t dim) pos mode override):xs) -> case index of
                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                                 _ ->if dim == (countIndex index) then case index of
                                                                                                                                     (Abs.ArrayIndexElement _ _) -> TResult env t pos
                                                                                                                                     (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
-                                                                                                                                    else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show pos] 
+                                                                                                                                    else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
                                                                         Just [Function _ _ _ _] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
                                                                         Just ((Function _ _ _ _):xs) -> let v =findEntryOfType xs "var" in
                                                                                                         case v of
@@ -1241,7 +1241,7 @@ checkTypeDefault s node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) inde
                                                                                                                                                                 _ ->if dim == (countIndex index) then case index of
                                                                                                                                                                     (Abs.ArrayIndexElement _ _) -> TResult env t pos
                                                                                                                                                                     (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
-                                                                                                                                                                    else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show pos] 
+                                                                                                                                                                    else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
                                                                                                             ((Variable t pos mode override):ys) -> TResult env t pos
                                                                         Just [Variable t pos mode override] -> TResult env t pos
                                                                         Just ((Variable t pos mode override):xs) -> TResult env t pos
@@ -1479,12 +1479,12 @@ checkRangeExpType node@(Abs.RangeExpression pos expr1 expr2 rangexp) env = if ((
                                                                                                                                                                 then if (checkCompatibility (returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env)) (checkRangeExpType rangexp env))
                                                                                                                                                                         then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env))
                                                                                                                                                                         else mergeErrors (mergeErrors (mergeErrors (TError ["Incompatible types in range expression! Position:" ++ show pos]) (checkTypeExpression expr1 env)) (checkTypeExpression expr2 env)) (checkRangeExpType rangexp env)
-                                                                                                                                                                     else TError ["Not valid range expression! Position: "++ show pos]
+                                                                                                                                                                     else TError ["Invalid range expression! Position: "++ show pos]
                                                                                                                                                                 else mergeErrors (mergeErrors (TError ["Incompatible types in range expression! Position: " ++ show pos]) (checkTypeExpression expr1 env)) (checkTypeExpression expr2 env)
 checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if ((checkCompatibility (checkTypeExpression expr1 env) (checkTypeExpression expr2 env) || checkCompatibility (checkTypeExpression expr2 env) (checkTypeExpression expr1 env)))
                                                                                                                                 then if (checkOrder expr1 expr2 env)
                                                                                                                                     then checkSuperTypeRangeExp(returnSuperType (checkTypeExpression expr1 env) (checkTypeExpression expr2 env))
-                                                                                                                                    else TError ["Not valid range expression! Position: "++ show pos]
+                                                                                                                                    else TError ["Invalid range expression! Position: "++ show pos]
                                                                                                                                 else mergeErrors (mergeErrors (TError ["Incompatible types in range expression! Position: " ++ show pos]) (checkTypeExpression expr1 env)) (checkTypeExpression expr2 env)
 
 checkOrder :: Abs.EXPRESSION Posn -> Abs.EXPRESSION Posn -> Env -> Bool
@@ -1548,17 +1548,17 @@ checkSuperTypeRangeExp (TResult env tipo pos) = case tipo of
                                                 B_type Type_Real -> (TResult env tipo pos)                                          
                                                 B_type Type_Char -> (TResult env tipo pos)                                            
                                                 B_type Type_String -> (TResult env tipo pos)
-                                                _ -> TError ["Incompatible types for range expression at position: "++ show pos]
+                                                _ -> TError ["Incompatible types for range expression!" ++ " (" ++ show tipo ++ "). Position: " ++ show pos]
 
 checkTypeTypeIndex :: Abs.TYPEINDEX Posn -> Env -> TCheckResult
 checkTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkTypeTypeIndex typeindex env)
                                                                          then TResult env (B_type Type_Integer) pos
-                                                                         else TError ["Index types of array are not all the same (int)!"]
+                                                                         else TError ["Index types of array not matching! (int)" ++ show pos]
 checkTypeTypeIndex node@(Abs.TypeOfIndexIntSingle pos integer) env = TResult env (B_type Type_Integer) pos
 checkTypeTypeIndex node@(Abs.TypeOfIndexVar pos typeindex id@(Abs.Ident idi posi) index) env = case index of
                                                                                     Abs.ArrayIndexElementEmpty pos -> if checkCompatibility (checkTypeIdentVar id env) (checkTypeTypeIndex typeindex env) && checkCompatibility (checkTypeIdentVar id env) (TResult env (B_type Type_Integer) pos)
                                                                                                                         then TResult env (B_type Type_Integer) pos
-                                                                                                                        else TError ["Index types of array not all the same"]
+                                                                                                                        else TError ["Index types of array not matching!" ++ show posi]
                                                                                     Abs.ArrayIndexElement pos tyindex -> case Data.Map.lookup idi env of
                                                                                                                         Just ident -> let idTCheck = getTypeEnvEntry ident in
                                                                                                                                     case idTCheck of
