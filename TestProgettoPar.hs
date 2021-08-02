@@ -26,6 +26,7 @@ import SkelProgettoPar  ()
 import TypeChecker
 import Type
 import Data.Map
+import TacGen
 
 type Err        = Either String
 type ParseFun a = [Token] -> Err a
