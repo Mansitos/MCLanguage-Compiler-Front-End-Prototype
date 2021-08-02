@@ -213,6 +213,11 @@ instance Print (AbsProgettoPar.LISTELEMENTARRAY attr) where
     AbsProgettoPar.ListElementsOfArray _ expression listelementarray -> prPrec i 0 (concatD [prt 0 expression, doc (showString ","), prt 0 listelementarray])
     AbsProgettoPar.ListElementOfArray _ expression -> prPrec i 0 (concatD [prt 0 expression])
 
+instance Print (AbsProgettoPar.TYPEEXPRESSIONFUNC attr) where
+  prt i = \case
+    AbsProgettoPar.TypeExpressionArrayOfPointer _ typeexpression -> prPrec i 0 (concatD [doc (showString "*"), doc (showString "["), doc (showString "]"), prt 0 typeexpression])
+    AbsProgettoPar.TypeExpressionFunction _ typeexpression -> prPrec i 0 (concatD [prt 0 typeexpression])
+
 instance Print (AbsProgettoPar.TYPEEXPRESSION attr) where
   prt i = \case
     AbsProgettoPar.TypeExpression _ primitivetype -> prPrec i 0 (concatD [prt 0 primitivetype])
@@ -220,7 +225,6 @@ instance Print (AbsProgettoPar.TYPEEXPRESSION attr) where
     AbsProgettoPar.TypeExpressionArray _ rangeexp typeexpression -> prPrec i 0 (concatD [doc (showString "["), doc (showString "{"), prt 0 rangeexp, doc (showString "}"), doc (showString "]"), prt 0 typeexpression])
     AbsProgettoPar.TypeExpressionPointer _ primitivetype pointer -> prPrec i 0 (concatD [prt 0 primitivetype, prt 0 pointer])
     AbsProgettoPar.TypeExpressionPointerOfArray _ typeexpression pointer -> prPrec i 0 (concatD [doc (showString "("), prt 0 typeexpression,  doc (showString ")"), prt 0 pointer])
-    AbsProgettoPar.TypeExpressionArrayOfPointer _ typeexpression -> prPrec i 0 (concatD [doc (showString "*"), doc (showString "["), doc (showString "]"), prt 0 typeexpression])
 
 instance Print (AbsProgettoPar.POINTER attr) where
   prt i = \case

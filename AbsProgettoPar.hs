@@ -40,7 +40,7 @@ data STATEMENT a
     | ReturnStatement {statement_content::a, statement_returnstatement::(RETURNSTATEMENT a)}
     | VariableDeclarationStatement {statement_content::a, statemenets_variabletype::(VARIABLETYPE a) , statemenets_vardeclist::(VARDECLIST a)}
     | ProcedureStatement {statement_content::a, statement_ident::(Ident a ), statement_parameters::(PARAMETERS a), statement_statements::(STATEMENTS a)}
-    | FunctionStatement {statement_content::a, statement_ident::(Ident a ), statement_parameters::(PARAMETERS a), statement_typeexpression::(TYPEEXPRESSION a), statement_statements::(STATEMENTS a)}
+    | FunctionStatement {statement_content::a, statement_ident::(Ident a ), statement_parameters::(PARAMETERS a), statement_typeexpressionfunc::(TYPEEXPRESSIONFUNC a), statement_statements::(STATEMENTS a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data PARAMETERS a
@@ -103,13 +103,17 @@ data LISTELEMENTARRAY a
     | ListElementOfArray {listelementarray_content::a, listelementarray_expression::(EXPRESSION a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
+data TYPEEXPRESSIONFUNC a
+    = TypeExpressionArrayOfPointer {typeexpressionfunc_content::a, typeexpressionfunc_typeexpressionfunc::(TYPEEXPRESSIONFUNC a)}
+    | TypeExpressionFunction {typeexpressionfunc_content::a, typeexpressionfunc_typeexpression::(TYPEEXPRESSION a)}
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
 data TYPEEXPRESSION a
     = TypeExpression {typeexpression_content::a, typeexpression_primitivetype::(PRIMITIVETYPE a)}
-    | TypeExpressionArraySimple {typeexpression_content::a, typeexpression_rangeexp::(RANGEEXP a), typeexpression_typeexpression::(TYPEEXPRESSION a)}
-    | TypeExpressionArray {typeexpression_content::a, typeexpression_rangeexp::(RANGEEXP a), typeexpression_typeexpression::(TYPEEXPRESSION a)}
+    | TypeExpressionArraySimple {typeexpression_content::a, typeexpression_rangeexp::(RANGEEXP a), typeexpression_typeexpressionfunc::(TYPEEXPRESSIONFUNC a)}
+    | TypeExpressionArray {typeexpression_content::a, typeexpression_rangeexp::(RANGEEXP a), typeexpression_typeexpressionfunc::(TYPEEXPRESSIONFUNC a)}
     | TypeExpressionPointer {typeexpression_content::a, typeexpression_primitivetype::(PRIMITIVETYPE a), typexpression_pointer::(POINTER a)}
-    | TypeExpressionPointerOfArray {typeexpression_content::a, typeexpression_typeexpression::(TYPEEXPRESSION a), typexpression_pointer::(POINTER a)}
-    | TypeExpressionArrayOfPointer {typeexpression_content::a, typeexpression_typeexpression::(TYPEEXPRESSION a)}
+    | TypeExpressionPointerOfArray {typeexpression_content::a, typeexpression_typeexpressionfunc::(TYPEEXPRESSIONFUNC a), typexpression_pointer::(POINTER a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data POINTER a 

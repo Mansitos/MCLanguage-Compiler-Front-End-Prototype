@@ -52,7 +52,7 @@ transSTATEMENT x = case x of
   AbsProgettoPar.ReturnStatement _ returnstatement -> failure x
   AbsProgettoPar.VariableDeclarationStatement _ variabletype vardeclist -> failure x
   AbsProgettoPar.ProcedureStatement _ ident parameters statements -> failure x
-  AbsProgettoPar.FunctionStatement _ ident parameters typeexpression statements -> failure x
+  AbsProgettoPar.FunctionStatement _ ident parameters typeexpressionfunc statements -> failure x
 
 transPARAMETERS :: Show attr => (AbsProgettoPar.PARAMETERS attr) -> Result
 transPARAMETERS x = case x of
@@ -118,15 +118,19 @@ transARRAYINIT x = case x of
     AbsProgettoPar.ArrayInit _ arrayinit1 arrayinit2 -> failure x
     AbsProgettoPar.ArrayInitSingleElems _ listelementarray -> failure x
     AbsProgettoPar.ArrayInitElems _ listelementarray arrayinit -> failure x
-  
+
+transTYPEEXPRESSIONFUNC :: Show attr => (AbsProgettoPar.TYPEEXPRESSIONFUNC attr) -> Result
+transTYPEEXPRESSIONFUNC x = case x of
+    AbsProgettoPar.TypeExpressionArrayOfPointer _ typeexpression -> failure x
+    AbsProgettoPar.TypeExpressionFunction _ typeexpression -> failure x
+
 transTYPEEXPRESSION :: Show attr => (AbsProgettoPar.TYPEEXPRESSION attr) -> Result
 transTYPEEXPRESSION x = case x of
-  AbsProgettoPar.TypeExpression _ primitivetype -> failure x
-  AbsProgettoPar.TypeExpressionArraySimple _ rangeexp typeexpression -> failure x
-  AbsProgettoPar.TypeExpressionArray _ rangeexp typeexpression -> failure x
-  AbsProgettoPar.TypeExpressionPointer _ primitivetype pointer -> failure x
-  AbsProgettoPar.TypeExpressionPointerOfArray _ typeexpression pointer -> failure x
-  AbsProgettoPar.TypeExpressionArrayOfPointer _ typeexpression -> failure x
+    AbsProgettoPar.TypeExpression _ primitivetype -> failure x
+    AbsProgettoPar.TypeExpressionArraySimple _ rangeexp typeexpression -> failure x
+    AbsProgettoPar.TypeExpressionArray _ rangeexp typeexpression -> failure x
+    AbsProgettoPar.TypeExpressionPointer _ primitivetype pointer -> failure x
+    AbsProgettoPar.TypeExpressionPointerOfArray _ typeexpression pointer -> failure x
 
 transPOINTER :: Show attr => (AbsProgettoPar.POINTER attr) -> Result
 transPOINTER x = case x of

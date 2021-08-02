@@ -157,7 +157,7 @@ updateEnv node@(Abs.ListStatements pos stat stats) env = case stat of
                                                                                                                     then insertWith (++) fid [Function (B_type Type_Void) pos parameters False] env
                                                                                                                     else env -- it was already defined
                                                                 Abs.FunctionStatement pos id params ty stats -> let parameters = getParamList params in
-                                                                                                                    let fty = getTypeFromTypeExp ty in
+                                                                                                                    let fty = getTypeFromTypeExpF ty in
                                                                                                                         let fid = getIdFromIdent id in 
                                                                                                                             if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
                                                                                                                             then insertWith (++) fid [Function fty pos parameters False] env
@@ -332,14 +332,17 @@ getVarType (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ _ ty _)) 
 getTypePart :: Abs.TYPEPART Posn -> Type
 getTypePart (Abs.TypePart _ typeExpr) = getTypeExpr typeExpr
 
+getTypeExprF :: Abs.TYPEEXPRESSIONFUNC Posn -> Type
+getTypeExprF (Abs.TypeExpressionArrayOfPointer pos typeexpressionfunc) = Array (getTypeExprF typeexpressionfunc) 0
+getTypeExprF (Abs.TypeExpressionFunction pos typeexpression) = (getTypeFromTypeExp typeexpression)
+
 -- Given a TypeExpression node of the abs, execute the right getType function for obtaining the Type
 getTypeExpr :: Abs.TYPEEXPRESSION Posn -> Type
 getTypeExpr (Abs.TypeExpression _ primitive) = getTypeFromPrimitive primitive
-getTypeExpr (Abs.TypeExpressionArraySimple _ rangeexp typeexpression) = Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)
-getTypeExpr (Abs.TypeExpressionArray _ rangeexp typeexpression) = Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)
+getTypeExpr (Abs.TypeExpressionArraySimple _ rangeexp typeexpression) = Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)
+getTypeExpr (Abs.TypeExpressionArray _ rangeexp typeexpression) = Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)
 getTypeExpr (Abs.TypeExpressionPointer _ primitive pointer) = Pointer (getTypeFromPrimitive primitive) (checkPointerDepth pointer)
-getTypeExpr (Abs.TypeExpressionPointerOfArray pos typeexpression pointer) = Pointer (getTypeFromTypeExp typeexpression) (checkPointerDepth pointer)
-getTypeExpr (Abs.TypeExpressionArrayOfPointer pos typeexpression) = Array (getTypeFromTypeExp typeexpression) 0
+getTypeExpr (Abs.TypeExpressionPointerOfArray pos typeexpression pointer) = Pointer (getTypeFromTypeExpF typeexpression) (checkPointerDepth pointer)
 
 -- Given a Pointer node of the ABS, it counts the depth (how much pointers '*' there are) of that pointer
 -- Example: var x:int***** -> depth: 5
@@ -347,14 +350,16 @@ checkPointerDepth :: Abs.POINTER Posn -> Prelude.Integer
 checkPointerDepth (Abs.PointerSymbol _ p) = 1 + checkPointerDepth p
 checkPointerDepth (Abs.PointerSymbolSingle _) = 1
 
+getTypeFromTypeExpF :: Abs.TYPEEXPRESSIONFUNC Posn -> Type
+getTypeFromTypeExpF (Abs.TypeExpressionArrayOfPointer pos typeexpressionfunc) = Array (getTypeExprF typeexpressionfunc) 0
+getTypeFromTypeExpF (Abs.TypeExpressionFunction pos typeexpression) = (getTypeFromTypeExp typeexpression)
 -- Given a typeexpression returns the type
 getTypeFromTypeExp :: Abs.TYPEEXPRESSION Posn -> Type
 getTypeFromTypeExp (Abs.TypeExpression _ primitive) = getTypeFromPrimitive primitive
-getTypeFromTypeExp (Abs.TypeExpressionArraySimple _ rangeexp typeexpression) = Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)
-getTypeFromTypeExp (Abs.TypeExpressionArray _ rangeexp typeexpression) = Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)
+getTypeFromTypeExp (Abs.TypeExpressionArraySimple _ rangeexp typeexpression) = Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)
+getTypeFromTypeExp (Abs.TypeExpressionArray _ rangeexp typeexpression) = Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)
 getTypeFromTypeExp (Abs.TypeExpressionPointer _ primitive pointer) = Pointer (getTypeFromPrimitive primitive) (checkPointerDepth pointer)
-getTypeFromTypeExp (Abs.TypeExpressionPointerOfArray pos typeexpression pointer) = Pointer (getTypeFromTypeExp typeexpression) (checkPointerDepth pointer)
-getTypeFromTypeExp (Abs.TypeExpressionArrayOfPointer pos typeexpression) = Array (getTypeFromTypeExp typeexpression) 0
+getTypeFromTypeExp (Abs.TypeExpressionPointerOfArray pos typeexpression pointer) = Pointer (getTypeFromTypeExpF typeexpression) (checkPointerDepth pointer)
 
 -- Get a PrimitiveType node of the ABS, returns the correct Type
 getTypeFromPrimitive :: Abs.PRIMITIVETYPE Posn -> Type
@@ -433,66 +438,6 @@ isTherePointer _ = False
 --- GENERIC FUNCTIONS used for RETURN KEYS CHECKS -------------------------------------------------
 ---------------------------------------------------------------------------------------------------
 
--- TODO  bloccare caso [1..1] in function e discutere supporto ad array di puntatori come return
-
-subString :: Prelude.String -> Prelude.String -> Prelude.String
-subString (x:xs) zs = case x of
-                    ' ' -> if (zs == "TypeExpressionArrayOfPointer") then "array" ++ researchType xs [] 
-                                                  else if (zs == "TypeExpressionPointer") then researchTypePointer xs []   
-                                                                                else if (zs == "TypeExpression") then researchType xs []   
-                                                                                     else if (zs == "TypeExpressionPointerOfArray") then researchTypePointer xs []  
-                                                                                          else zs
-                    _ -> subString xs (zs++[x])
-
-researchTypePointer :: Prelude.String -> Prelude.String -> Prelude.String
-researchTypePointer (x:xs) zs = case x of
-                                ' ' -> if (zs == "typeexpression_primitivetype") then (researchTypePointer (getStringOverComma xs [] []) [])++(researchType_ (getStringUntilComma xs [] []) [])
-                                                                                 else if (zs == "PointerSymbol") then "pointer"++ researchTypePointer xs []
-                                                                                                                 else if (zs == "PointerSymbolSingle") then "pointer"
-                                                                                                                                                       else researchTypePointer xs []
-                                _ -> researchTypePointer xs (zs++[x])
-
-getStringUntilComma :: Prelude.String -> Prelude.String -> Prelude.String -> Prelude.String
-getStringUntilComma (x:xs) zs ys = case x of
-                              ',' -> if (zs=="}") then ys++[x] else getStringUntilComma xs zs (ys++[x])
-                              '}' -> if (zs=="}") then getStringUntilComma xs zs (ys++[x]) else getStringUntilComma xs [x] (ys++[x]) 
-                              _ -> getStringUntilComma xs zs (ys++[x])
-getStringOverComma :: Prelude.String -> Prelude.String -> Prelude.String -> Prelude.String
-getStringOverComma (x:xs) zs ys = case x of
-                              ',' -> if (zs=="}") then xs else getStringOverComma xs zs (ys++[x])
-                              '}' -> if (zs=="}") then getStringOverComma xs zs (ys++[x]) else getStringOverComma xs [x] (ys++[x]) 
-                              _ -> getStringOverComma xs zs (ys++[x])
-
-researchType :: Prelude.String -> Prelude.String -> Prelude.String
-researchType (x:xs) zs = case x of
-                        ' ' -> if (zs == "typeexpression_primitivetype") then researchType_ xs [] 
-                                                                         else if (zs == "typeexpression_typeexpression") then researchType_ xs []  
-                                                                                                                         else if (zs == "primitivetype_primitivetype") then  researchType_ xs []
-                                                                                                                                                                       else researchType xs []
-                        _ -> researchType xs (zs++[x])
-
-researchType_ :: Prelude.String -> Prelude.String -> Prelude.String
-researchType_ (x:xs) zs = case x of
-                        ' ' -> if (zs == "=") 
-                                then researchType_ xs [] 
-                                else if (zs == "TypeArray") then "array"++researchType xs zs
-                                    else if (zs == "TypeExpressionArrayOfPointer") then "array" ++ researchType xs [] 
-                                    else if (zs == "TypeExpressionPointer") then researchTypePointer xs []   
-                                        else if (zs == "TypeExpression") then researchType xs []   
-                                            else if (zs == "TypeExpressionPointerOfArray") then researchTypePointer xs []
-                                                else stringTypeConv zs
-                        _ -> researchType_ xs (zs++[x])
-
-stringTypeConv :: Prelude.String -> Prelude.String
-stringTypeConv str = case str of
-                    "PrimitiveTypeInt" -> "int"
-                    "PrimitiveTypeReal" -> "real"
-                    "PrimitiveTypeString" -> "string"
-                    "PrimitiveTypeChar" -> "char"
-                    "PrimitiveTypeBool" -> "bool"
-                    "PrimitiveTypeVoid" -> "void"
-                    _ -> str
-
 addPointerString :: Prelude.Integer -> Prelude.String
 addPointerString x = if x-1>0 then "pointer"++addPointerString (x-1) else "pointer"
 
@@ -500,6 +445,30 @@ showTypeComplete :: Type -> Prelude.String
 showTypeComplete (Array t dim) = "array"++showTypeComplete t
 showTypeComplete (Pointer t depth) = (addPointerString depth)++showTypeComplete t
 showTypeComplete t = show t
+
+countPoString :: Abs.POINTER Posn -> Prelude.String
+countPoString (Abs.PointerSymbol pos po) = "pointer"++countPoString po
+countPoString (Abs.PointerSymbolSingle pos) = "pointer"
+
+showTypeExpComplete :: Abs.TYPEEXPRESSIONFUNC Posn -> Prelude.String
+showTypeExpComplete (Abs.TypeExpressionArrayOfPointer pos typeexpfunc) = "array"++showTypeExpComplete typeexpfunc
+showTypeExpComplete (Abs.TypeExpressionFunction pos typeexp) = showTypeExpCompleteIn typeexp
+
+showTypeExpCompleteIn :: Abs.TYPEEXPRESSION Posn -> Prelude.String
+showTypeExpCompleteIn (Abs.TypeExpression pos prim) = showTypePrimitive prim
+showTypeExpCompleteIn (Abs.TypeExpressionPointer pos prim po) = countPoString po++showTypePrimitive prim
+showTypeExpCompleteIn (Abs.TypeExpressionArraySimple _ rangeexp typeexpression) = "array"++showTypeExpComplete typeexpression
+showTypeExpCompleteIn (Abs.TypeExpressionArray _ rangeexp typeexpression) = "array"++showTypeExpComplete typeexpression
+showTypeExpCompleteIn (Abs.TypeExpressionPointerOfArray pos typeexp po) = countPoString po++showTypeExpComplete typeexp
+
+showTypePrimitive :: Abs.PRIMITIVETYPE Posn -> Prelude.String
+showTypePrimitive (Abs.PrimitiveTypeVoid pos) = "void"
+showTypePrimitive (Abs.PrimitiveTypeBool pos) = "bool"
+showTypePrimitive (Abs.PrimitiveTypeInt pos) = "int"
+showTypePrimitive (Abs.PrimitiveTypeReal pos) = "real"
+showTypePrimitive (Abs.PrimitiveTypeString pos) = "string"
+showTypePrimitive (Abs.PrimitiveTypeChar pos) = "char"
+showTypePrimitive (Abs.TypeArray pos primitivetype) = "array"++showTypePrimitive primitivetype
 
 ---------------------------------------------------------------------------------------------------
 --- EXECUTION FUNCTIONS ---------------------------------------------------------------------------
@@ -531,9 +500,8 @@ executeStatement node@(Abs.ProcedureStatement pos id param states) env = let new
                                                                             let newEnv2 = Data.Map.delete "while" (insertWith (++) "return_void" [] newEnv) in  
                                                                                 Abs.ProcedureStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeStatements states newEnv2)
 executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env )) in
-                                                                                let newEnv2 = Data.Map.delete "while" (insertWith (++) ("return_"++stringTypeConv (subString (show tipo) [])) [] newEnv) in  
-                                                                                    Abs.FunctionStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeTypeExpression tipo env) (executeStatements states newEnv2)
-
+                                                                                let newEnv2 = Data.Map.delete "while" (insertWith (++) ("return_"++(showTypeExpComplete tipo)) [] newEnv) in  
+                                                                                    Abs.FunctionStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeTypeExpressionFunc tipo env) (executeStatements states newEnv2)
 executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
 executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeExecuteParameter node env) (executeParameter param env) (executeParam params env)
 executeParam node@(Abs.ParameterListSingle pos param) env = Abs.ParameterListSingle (checkTypeExecuteParameter node env) (executeParameter param env)
@@ -610,13 +578,16 @@ executeListElementArray :: Abs.LISTELEMENTARRAY Posn -> Env -> Abs.LISTELEMENTAR
 executeListElementArray node@(Abs.ListElementsOfArray pos expr elementlist) env = Abs.ListElementsOfArray (checkListElementsOfArray node env) (executeExpression expr env) (executeListElementArray elementlist env)
 executeListElementArray node@(Abs.ListElementOfArray pos expr) env = Abs.ListElementOfArray (checkListElementsOfArray node env) (executeExpression expr env)
 
+executeTypeExpressionFunc :: Abs.TYPEEXPRESSIONFUNC Posn -> Env -> Abs.TYPEEXPRESSIONFUNC TCheckResult
+executeTypeExpressionFunc node@(Abs.TypeExpressionArrayOfPointer pos typeexpressionfunc) env = Abs.TypeExpressionArrayOfPointer (checkTypeTypeExpressionFunc node env) (executeTypeExpressionFunc typeexpressionfunc env)
+executeTypeExpressionFunc node@(Abs.TypeExpressionFunction pos typeexpression) env = Abs.TypeExpressionFunction (checkTypeTypeExpressionFunc node env) (executeTypeExpression typeexpression env)
+
 executeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> Abs.TYPEEXPRESSION TCheckResult
 executeTypeExpression node@(Abs.TypeExpression pos primitivetype) env = Abs.TypeExpression (checkTypeTypeExpression node env) (executePrimitiveType primitivetype env)
-executeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp typeexpression) env = Abs.TypeExpressionArraySimple (checkTypeTypeExpression node env) (executeRangeExp rangeexp env) (executeTypeExpression typeexpression env)
-executeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp typeexpression) env = Abs.TypeExpressionArray (checkTypeTypeExpression node env) (executeRangeExp rangeexp env) (executeTypeExpression typeexpression env)
+executeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp typeexpression) env = Abs.TypeExpressionArraySimple (checkTypeTypeExpression node env) (executeRangeExp rangeexp env) (executeTypeExpressionFunc typeexpression env)
+executeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp typeexpression) env = Abs.TypeExpressionArray (checkTypeTypeExpression node env) (executeRangeExp rangeexp env) (executeTypeExpressionFunc typeexpression env)
 executeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = Abs.TypeExpressionPointer (checkTypeTypeExpression node env) (executePrimitiveType primitivetype env) (executeTypeExpressionPointer pointer env)
-executeTypeExpression node@(Abs.TypeExpressionPointerOfArray pos typeexpression pointer) env = Abs.TypeExpressionPointerOfArray (checkTypeTypeExpression node env) (executeTypeExpression typeexpression env) (executeTypeExpressionPointer pointer env)
-executeTypeExpression node@(Abs.TypeExpressionArrayOfPointer pos typeexpression) env = Abs.TypeExpressionArrayOfPointer (checkTypeTypeExpression node env) (executeTypeExpression typeexpression env)
+executeTypeExpression node@(Abs.TypeExpressionPointerOfArray pos typeexpression pointer) env = Abs.TypeExpressionPointerOfArray (checkTypeTypeExpression node env) (executeTypeExpressionFunc typeexpression env) (executeTypeExpressionPointer pointer env)
 
 executeTypeExpressionPointer :: Abs.POINTER Posn -> Env -> Abs.POINTER TCheckResult
 executeTypeExpressionPointer node@(Abs.PointerSymbol pos pointer) env = Abs.PointerSymbol (checkTypeExpressionpointer node env) (executeTypeExpressionPointer pointer env)
@@ -940,7 +911,13 @@ checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhi
 checkTypeStatement node@(Abs.DoWhileStatement pos doState) env = checkTypeDo doState env
 checkTypeStatement node@(Abs.ForStatement pos forState) env = checkTypeForState forState env
 checkTypeStatement node@(Abs.ProcedureStatement pos id param states) env = checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env)
-checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env)
+checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = case tipo of
+                                                                                Abs.TypeExpressionFunction posf tipof ->
+                                                                                    case tipof of
+                                                                                        Abs.TypeExpressionArraySimple {} -> mergeErrors (mergeErrors (TError ["Warning: range expression not allowed here at position: "++show pos++" it will be ignored"]) (checkTypeExecuteParameter param env)) (checkFuncOverride id env)
+                                                                                        Abs.TypeExpressionArray {} -> mergeErrors (mergeErrors (TError ["Warning: range expression not allowed here at position: "++show pos++" it will be ignored"]) (checkTypeExecuteParameter param env)) (checkFuncOverride id env)
+                                                                                        _->checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env)
+                                                                                _->checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env)
 
 checkTypeCondition :: Abs.CONDITIONALSTATE Posn -> Env -> TCheckResult
 checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = let expTCheck = checkTypeExpression exp env in 
@@ -1392,9 +1369,7 @@ checkIdentifierList node@(Abs.IdentifierSingle pos ident@(Abs.Ident id posI)) en
                                                                                     Nothing -> TResult env (B_type Type_Void) pos
 
 checkTypeTypePart :: Abs.TYPEPART Posn -> Env -> TCheckResult
-checkTypeTypePart node@(Abs.TypePart pos typexpr) env = case typexpr of
-                                                        Abs.TypeExpressionArrayOfPointer {} -> TError ["Type incompatible for declaration of variables at position: "++show pos]
-                                                        _ ->checkTypeTypeExpression typexpr env
+checkTypeTypePart node@(Abs.TypePart pos typexpr) env = checkTypeTypeExpression typexpr env
 
 checkTypeInitializzationPart ::  Abs.INITPART Posn -> Env -> TCheckResult
 checkTypeInitializzationPart node@(Abs.InitializzationPart pos expr) env = checkTypeExpression expr env
@@ -1414,6 +1389,14 @@ checkPrimitiveType node@(Abs.PrimitiveTypeString pos) env = TResult env (B_type 
 checkPrimitiveType node@(Abs.PrimitiveTypeChar pos) env = TResult env (B_type Type_Char) pos
 checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env =  TResult env (Array (getArrayPrimitiveType primitivetype) (getArrayDimFunc primitivetype)) pos
 
+checkTypeTypeExpressionFunc :: Abs.TYPEEXPRESSIONFUNC Posn -> Env -> TCheckResult
+checkTypeTypeExpressionFunc node@(Abs.TypeExpressionArrayOfPointer pos typeexpressionfunc) env = TResult env (getTypeExprF node) pos
+checkTypeTypeExpressionFunc node@(Abs.TypeExpressionFunction pos typeexpression) env = case typeexpression of
+                                                                                        Abs.TypeExpressionArray {} -> TError ["Type Expression not allowed here! Position: " ++ show pos]
+                                                                                        Abs.TypeExpressionArraySimple {} -> TError ["Type Expression not allowed here! Position: " ++ show pos]
+                                                                                        _ ->TResult env (getTypeExprF node) pos
+
+
 checkTypeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> TCheckResult
 checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = let checkArray = checkPrimitiveType primitiveType env in case checkArray of
                                                                                                                                     TResult env (Array _ _) pos -> TError ["Array declaration without size specification is not allowed! Position: "++ show pos]
@@ -1422,23 +1405,16 @@ checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp typeexp
                                                                                                 case rangeExpTCheck of
                                                                                                     TResult env (Array t dim) pos -> mergeErrors (TError ["Array declaration with wrong range expression is not allowed! Position: "++ show pos]) rangeExpTCheck
                                                                                                     TResult env (Pointer t depth) pos -> mergeErrors (TError ["Array declaration with wrong range expression is not allowed! Position: "++ show pos]) rangeExpTCheck
-                                                                                                    TResult env t pos -> TResult env (Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)) pos
+                                                                                                    TResult env t pos -> TResult env (Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)) pos
                                                                                                     _ -> mergeErrors (TError ["Array declaration with wrong range expression is not allowed! Position: "++ show pos]) rangeExpTCheck
 checkTypeTypeExpression node@(Abs.TypeExpressionArray pos rangeexp typeexpression) env =  let rangeExpTCheck = checkRangeExpType rangeexp env in
                                                                                                 case rangeExpTCheck of
                                                                                                     TResult env (Array t dim) pos -> mergeErrors (TError ["Array declaration with wrong range expression is not allowed! Position: "++ show pos]) rangeExpTCheck
                                                                                                     TResult env (Pointer t depth) pos -> mergeErrors (TError ["Array declaration with wrong range expression is not allowed! Position: "++ show pos]) rangeExpTCheck
-                                                                                                    TResult env t pos -> TResult env (Array (getTypeFromTypeExp typeexpression) (getArrayLength rangeexp)) pos
+                                                                                                    TResult env t pos -> TResult env (Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)) pos
                                                                                                     _ -> mergeErrors (TError ["Array declaration with wrong range expression is not allowed! Position: "++ show pos]) rangeExpTCheck
 checkTypeTypeExpression node@(Abs.TypeExpressionPointer pos primitivetype pointer) env = TResult env (getTypeExpr node) pos
-checkTypeTypeExpression node@(Abs.TypeExpressionPointerOfArray pos typeexpression pointer) env = case typeexpression of
-                                                                                                    Abs.TypeExpressionArray {} -> TError ["Type Expression not allowed here! Position: " ++ show pos]
-                                                                                                    Abs.TypeExpressionArraySimple {} -> TError ["Type Expression not allowed here! Position: " ++ show pos]
-                                                                                                    _ ->TResult env (getTypeExpr node) pos
-checkTypeTypeExpression node@(Abs.TypeExpressionArrayOfPointer pos typeexpression) env = case typeexpression of
-                                                                                                    Abs.TypeExpressionArray {} -> TError ["Type Expression not allowed here! Position: " ++ show pos]
-                                                                                                    Abs.TypeExpressionArraySimple {} -> TError ["Type Expression not allowed here! Position: " ++ show pos]
-                                                                                                    _ ->TResult env (getTypeExpr node) pos
+checkTypeTypeExpression node@(Abs.TypeExpressionPointerOfArray pos typeexpression pointer) env = TResult env (getTypeExpr node) pos
 
 checkListElementsOfArray :: Abs.LISTELEMENTARRAY Posn -> Env -> TCheckResult
 checkListElementsOfArray node@(Abs.ListElementsOfArray pos expr elementlist) env = let exprTCheck = checkTypeExpression expr env in if (checkCompatibility exprTCheck (getRealType (checkListElementsOfArray elementlist env))) then TResult env (Array (getType exprTCheck) 1) pos else TError ["Array initializzation elemets incompatible with array type! Position: "++ show pos]

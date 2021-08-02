@@ -129,7 +129,7 @@ STATEMENT : B { Abs.Statement (Abs.b_content $1) $1 }
           | RETURNSTATEMENT ';' { Abs.ReturnStatement  (Abs.returnstatement_content $1) $1 }
           | VARIABLETYPE VARDECLIST ';' { Abs.VariableDeclarationStatement (Abs.variabletype_content $1) $1 $2 }
           | 'proc' Ident '(' PARAMETERS ')' ':' 'void' '{' STATEMENTS '}' { Abs.ProcedureStatement (tokenPosn $1) $2 $4 $9 }
-          | 'function' Ident '(' PARAMETERS ')' ':' TYPEEXPRESSION '{' STATEMENTS '}' { Abs.FunctionStatement (tokenPosn $1) $2 $4 $7 $9 }
+          | 'function' Ident '(' PARAMETERS ')' ':' TYPEEXPRESSIONFUNC '{' STATEMENTS '}' { Abs.FunctionStatement (tokenPosn $1) $2 $4 $7 $9 }
 
 PARAMETERS :: { Abs.PARAMETERS Posn }
 PARAMETERS : PARAMETER ',' PARAMETERS { Abs.ParameterList (Abs.parameter_content $1) $1 $3 }
@@ -184,13 +184,16 @@ LISTELEMENTARRAY :: { Abs.LISTELEMENTARRAY Posn }
 LISTELEMENTARRAY : EXPRESSION ',' LISTELEMENTARRAY { Abs.ListElementsOfArray (Abs.expression_content $1) $1 $3 }
                  | EXPRESSION { Abs.ListElementOfArray (Abs.expression_content $1) $1 }
 
+TYPEEXPRESSIONFUNC :: { Abs.TYPEEXPRESSIONFUNC Posn }
+TYPEEXPRESSIONFUNC : '*' '[' ']' TYPEEXPRESSIONFUNC { Abs.TypeExpressionArrayOfPointer (tokenPosn $1) $4 }
+                   | TYPEEXPRESSION { Abs.TypeExpressionFunction (Abs.typeexpression_content $1) $1}
+
 TYPEEXPRESSION :: { Abs.TYPEEXPRESSION Posn }
 TYPEEXPRESSION : PRIMITIVETYPE { Abs.TypeExpression (Abs.primitivetype_content $1) $1 }
-               | '[' RANGEEXP ']' TYPEEXPRESSION { Abs.TypeExpressionArraySimple (tokenPosn $1) $2 $4 }
-               | '[' '{' RANGEEXP '}' ']' TYPEEXPRESSION { Abs.TypeExpressionArray (tokenPosn $1) $3 $6 }
+               | '[' RANGEEXP ']' TYPEEXPRESSIONFUNC { Abs.TypeExpressionArraySimple (tokenPosn $1) $2 $4 }
+               | '[' '{' RANGEEXP '}' ']' TYPEEXPRESSIONFUNC { Abs.TypeExpressionArray (tokenPosn $1) $3 $6 }
                | PRIMITIVETYPE POINTER { Abs.TypeExpressionPointer (Abs.primitivetype_content $1) $1 $2 }
-               | '*' '[' ']' TYPEEXPRESSION { Abs.TypeExpressionArrayOfPointer (tokenPosn $1) $4 }
-               | '(' TYPEEXPRESSION ')' POINTER { Abs.TypeExpressionPointerOfArray (tokenPosn $1) $2 $4 }
+               | '(' TYPEEXPRESSIONFUNC ')' POINTER { Abs.TypeExpressionPointerOfArray (tokenPosn $1) $2 $4 }
 
 POINTER :: { Abs.POINTER Posn }
 POINTER : POINTER '*' { Abs.PointerSymbol (Abs.pointer_content $1) $1 }
