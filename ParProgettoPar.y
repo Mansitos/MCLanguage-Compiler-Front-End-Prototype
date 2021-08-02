@@ -83,6 +83,14 @@ import LexProgettoPar
   L_integ  { PT _ (TI _) }
   L_quoted { PT _ (TL _) }
 
+%left '||'
+%left '&&'
+%nonassoc '!'
+%nonassoc '==' '!=' '>' '>=' '<' '<='
+%left '+' '-' '%'
+%left '*' '/'
+%right '**'
+
 %%
 
 Ident :: { Abs.Ident Posn }
