@@ -85,11 +85,12 @@ import LexProgettoPar
 
 %left '||'
 %left '&&'
-%nonassoc '!'
-%nonassoc '==' '!=' '>' '>=' '<' '<='
+%nonassoc '!' 
+%nonassoc '==' '*=' '+=' '-=' '**=' '/=' '%=' '!=' '>' '>=' '<' '<='
 %left '+' '-' '%'
 %left '*' '/'
 %right '**'
+%nonassoc UNARY
 
 %%
 
@@ -284,7 +285,7 @@ EXPRESSION : Ident ARRAYINDEXELEMENT { Abs.ExpressionIdent (Abs.contentId $1) $1
            | Char { Abs.ExpressionChar (Abs.contentChar $1) $1}
            | Boolean { Abs.ExpressionBoolean (Abs.contentBoolean $1) $1 }
            | DEFAULT BINARYOP EXPRESSION { Abs.ExpressionBinary (Abs.default_content $1) $1 $2 $3 }
-           | UNARYOP DEFAULT { Abs.ExpressionUnary (Abs.unaryop_content $1) $1 $2 }
+           | UNARYOP DEFAULT %prec UNARY { Abs.ExpressionUnary (Abs.unaryop_content $1) $1 $2 }
            | DEFAULT ':' PRIMITIVETYPE { Abs.ExpressionCast (Abs.default_content $1) $1 $3 }
            | '(' EXPRESSION ')' { Abs.ExpressionBracket (tokenPosn $1) $2 }
            | Ident '(' EXPRESSIONS ')' { Abs.ExpressionCall (Abs.contentId $1) $1 $3 }
@@ -299,7 +300,7 @@ DEFAULT : Ident ARRAYINDEXELEMENT { Abs.ExpressionIdentD (Abs.contentId $1) $1 $
         | '(' EXPRESSION ')' { Abs.ExpressionBracketD (tokenPosn $1) $2 }
         | Ident '(' EXPRESSIONS ')' { Abs.ExpressionCallD (Abs.contentId $1) $1 $3 }
         | DEFAULT ':' PRIMITIVETYPE { Abs.ExpressionCastD (Abs.default_content $1) $1 $3 }
-        | UNARYOP DEFAULT { Abs.ExpressionUnaryD (Abs.unaryop_content $1) $1 $2 }
+        | UNARYOP DEFAULT %prec UNARY { Abs.ExpressionUnaryD (Abs.unaryop_content $1) $1 $2 }
 
 UNARYOP :: { Abs.UNARYOP Posn }
 UNARYOP : '+' { Abs.UnaryOperationPositive (tokenPosn $1)}
