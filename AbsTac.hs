@@ -5,11 +5,12 @@ import AbsProgettoPar as Abs
 import Type
 
 data TAC = TAC {content::[TACEntry]}
+    deriving (Eq, Ord, Show, Read)
 
 data TACEntry
     = TacAssignUnaryOp  {unaryOp  :: TacUnaryOp} --{getValue:: Value, unaryOp  :: TacUnaryOp,  first::Value, second::Value, assignType::Type}
     | TacAssignBinaryOp {binaryOp :: TacBinaryOp} --{getValue:: Value, binaryOp :: TacBinaryOp, first::Value, second::Value, assignType::Type}
-    | TacAssignRelOp    {relOp    :: TacRelOp} --{getValue:: Value, relOp    :: TacRelOp,    first::Value, second::Value, assignType::Type}
+    | TacAssignRelOp    {getValue:: Address, relOp :: TacRelOp, first::Address, second :: Address, assignType::Type}
     | TacProcCall
     | TacFuncCall
     | TacJump
@@ -19,7 +20,7 @@ data TACEntry
     | TacComment        Prelude.String  -- for comments on TAC print
     | TacError          Prelude.String  -- array index out of bounds and function control reach
     | ExitTac           -- last tac entry (end of generation)
-
+  deriving (Eq, Ord, Show, Read)
 
 {-data Value a
     = IntVal {intVal::AbsProgettoPar.Integer a}
@@ -33,8 +34,10 @@ data TACEntry
 
 
 data TacUnaryOp     = IntCastToInt | Pos | Neg | Not | Point  
+    deriving (Eq, Ord, Read)
 
 data TacBinaryOp    = IntAdd | RealAdd | IntSub | RealSub | IntMul | RealMul | IntDiv | RealDiv | IntMod | IntPow | RealPow 
+    deriving (Eq, Ord, Read)
                     
 data TacRelOp       = EqInt | EqReal | EqString | EqChar | EqBool
                     | NeqInt | NeqReal | NeqString | NeqChar | NeqBool
@@ -43,6 +46,7 @@ data TacRelOp       = EqInt | EqReal | EqString | EqChar | EqBool
                     | GtInt | GtReal | GtString | GtChar
                     | LtInt | LtReal | LtString | LtChar
                     | And | Or
+    deriving (Eq, Ord, Read)
 
 instance Show TacUnaryOp where
     show op = case op of
@@ -99,5 +103,9 @@ instance Show TacRelOp where
         Or          -> "or"
 
 
-data Label = Label (Prelude.String,Int)
-    deriving (Eq, Ord, Read)
+data Label = Label {label_id :: Prelude.String}
+    deriving (Eq, Ord, Show, Read)
+
+data Address = AddrString {content_addr_string :: Prelude.String}
+             | AddrAddress {content_addr_addr :: Prelude.String}
+    deriving (Eq, Ord, Show, Read)

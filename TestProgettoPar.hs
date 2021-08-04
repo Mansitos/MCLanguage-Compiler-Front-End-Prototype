@@ -25,6 +25,7 @@ import PrintProgettoPar (Print, printTree)
 import SkelProgettoPar  ()
 import TypeChecker
 import Type
+import AbsTac
 import Data.Map
 import TacGen
 
@@ -54,16 +55,20 @@ run v p s =
       --let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
       --  putStrLn (show typecheckRes)
       
-      putStrLn "\n\n[Statements TypeChecker Result]\n   For each statements it shows the TCheckResult (env+infos) before the start of it's execution\n"
-      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in  
-        putStrLn (showTypeCheckResult typecheckRes True)
-
-      putStrLn "\n\n[Compiler Errors]\n"
-      let typecheckRes2 = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in  
-        putStrLn (showTypeCheckResult typecheckRes2 False)    
-
+      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in
+        let tacgeneration = TacGen.genTAC typecheckRes in
+          do
+            putStrLn (show typecheckRes)
+            putStrLn "\n\n[Statements TypeChecker Result]\n   For each statements it shows the TCheckResult (env+infos)\n"
+            putStrLn (showTypeCheckResult typecheckRes True)
+            putStrLn "\n\n[Compiler Errors]\n"        
+            putStrLn (showTypeCheckResult typecheckRes False)
+            putStrLn "\n\n[TAC]\n"    
+            putStrLn (show tacgeneration)
+            putStrLn "\n\n[TAC in code]\n"
+            putStrLn (showTac tacgeneration)
   where
-  ts = myLexer (pointersSyntaxPreprocessing s [] [])
+  ts = myLexer (pointersSyntaxPreprocessing s [])
 
 -- Given a path of test files, execute all of them
 runTests :: Prelude.Int -> Verbosity -> [String] -> IO()
@@ -146,76 +151,33 @@ showTypeCheckResultStatement (Abs.AssignmentStatement res _ _ _) spacer flag    
 showTypeCheckResultStatement (Abs.BreakStatement res) spacer flag                     = if flag then "\n" ++ spacer ++ show res else printErr res -- break case
 showTypeCheckResultStatement (Abs.ContinueStatement res ) spacer flag                 = if flag then "\n" ++ spacer ++ show res else printErr res -- continue case
 showTypeCheckResultStatement (Abs.ReturnStatement res _) spacer flag                  = if flag then "\n" ++ spacer ++ show res else printErr res -- return case
-                                                                                        
+
+----------------------------------------------------------------------------------------------------
+--- TAC CODE PRINTING  ---
+---------------------------------------------------------------------------------------------------- 
+
+showTac :: S TAC -> String
+showTac (Abs.StartCode tac@(TAC x) _) = showContent x
+
+showContent :: [TACEntry] -> String
+showContent (x:xs) = case x of
+                      TacAssignRelOp id op fst scnd ty -> show id++" "++show op++" "++ show fst ++" "++show scnd ++"\n"
+                      TacLabel (Label l) -> l++" "++showContent xs
+                      ExitTac -> ""++"\n\n"
+
 --------------------------------------------------------------------------------
---- Preprocessing of the input for multiple pointers compatibility "*******" ---
+--- Preprocessing of the input for multiple pointers compatibility "$$$$$$$" ---
 --------------------------------------------------------------------------------
 
 -- PreProcessing for pointer compatibility
-pointersSyntaxPreprocessing :: String -> String -> String -> String
-pointersSyntaxPreprocessing [] [] output = output
-pointersSyntaxPreprocessing [] zs output = output
-pointersSyntaxPreprocessing (x:xs) zs output= if x==' ' || x=='*' || x==':'
-                          then
-                            if x==' '
-                              then
-                                if zs=="int" || zs=="bool" || zs=="real" || zs=="string" || zs=="char"
-                                  then
-                                     pointersSyntaxPreprocessing xs zs (output++[x])
-                                  else
-                                    if zs=="="
-                                      then
-                                        pointersSyntaxPreprocessing xs zs (output++[x])
-                                      else
-                                        if zs=="["
-                                        then
-                                          pointersSyntaxPreprocessing xs zs (output++[x])
-                                        else
-                                          pointersSyntaxPreprocessing xs [] (output++[x])
-                              else
-                                if x==':'
-                                  then
-                                    pointersSyntaxPreprocessing xs [] (output++[x])
-                                  else
-                                    if x=='*'
-                                      then
-                                        if zs=="int" || zs=="bool" || zs=="real" || zs=="string" || zs=="char"
-                                          then
-                                            pointersSyntaxPreprocessing xs zs ((output++[x] ) ++ [' '] )
-                                          else
-                                            if zs=="="
+pointersSyntaxPreprocessing :: String -> String -> String
+pointersSyntaxPreprocessing [] output = output
+pointersSyntaxPreprocessing (x:xs) output= if x=='$'
                                               then
-                                                pointersSyntaxPreprocessing xs zs (output++[x] ++ [' '])
+                                                pointersSyntaxPreprocessing xs (output++[x]++" ")
                                               else
-                                                if zs=="["
-                                                  then 
-                                                    pointersSyntaxPreprocessing xs zs (output++[x] ++ [' '])
-                                                  else
-                                                    pointersSyntaxPreprocessing xs [] (output++[x])
-                                      else
-                                        pointersSyntaxPreprocessing xs [] (output++[x])
-                          else
-                            if x=='='
-                              then
-                                pointersSyntaxPreprocessing xs [x] (output++[x])  
-                              else
-                                if zs=="="
-                                  then
-                                    if x==';'
-                                      then
-                                        pointersSyntaxPreprocessing xs [] (output++[x])
-                                      else
-                                        pointersSyntaxPreprocessing xs zs (output++[x])
-                                  else
-                                    if zs=="["
-                                      then
-                                        if x==']'
-                                          then
-                                            pointersSyntaxPreprocessing xs [] (output++[x])
-                                          else
-                                            pointersSyntaxPreprocessing xs zs (output++[x])
-                                      else
-                                        pointersSyntaxPreprocessing xs (zs++[x]) (output++[x])
+                                                pointersSyntaxPreprocessing xs (output++[x])
+
 
 last :: String -> Char -> Char
 last [] e = e
