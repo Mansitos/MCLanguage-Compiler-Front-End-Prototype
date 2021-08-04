@@ -8,30 +8,20 @@ data TAC = TAC {content::[TACEntry]}
     deriving (Eq, Ord, Show, Read)
 
 data TACEntry
-    = TacAssignUnaryOp  {unaryOp  :: TacUnaryOp} --{getValue:: Value, unaryOp  :: TacUnaryOp,  first::Value, second::Value, assignType::Type}
-    | TacAssignBinaryOp {binaryOp :: TacBinaryOp} --{getValue:: Value, binaryOp :: TacBinaryOp, first::Value, second::Value, assignType::Type}
-    | TacAssignRelOp    {getValue:: Address, relOp :: TacRelOp, first::Address, second :: Address, assignType::Type}
-    | TacProcCall
-    | TacFuncCall
-    | TacJump
-    | TacCopy
-    {- todo -}
+    = TacAssignUnaryOp  {getAddr:: Address, unaryOp  :: TacUnaryOp,  first::Address, second :: Address, assignType::Type} --        x = + y
+    | TacAssignBinaryOp {getAddr:: Address, binaryOp :: TacBinaryOp, first::Address, second :: Address, assignType::Type} --        x = y + z
+    | TacAssignRelOp    {getAddr:: Address, relOp    :: TacRelOp,    first::Address, second :: Address, assignType::Type} --        x = y < z
+    | TacAssignNullOp   {getAddr:: Address,                          first::Address,                    assignType::Type} --        x = y
+    | TacProcCall       -- todo
+    | TacFuncCall       -- todo
+    | TacJump           Label
     | TacLabel          Label
     | TacComment        Prelude.String  -- for comments on TAC print
     | TacError          Prelude.String  -- array index out of bounds and function control reach
     | ExitTac           -- last tac entry (end of generation)
+    -- arrays?
+    -- pointers?
   deriving (Eq, Ord, Show, Read)
-
-{-data Value a
-    = IntVal {intVal::AbsProgettoPar.Integer a}
-    | BoolVal {boolVal::AbsProgettoPar.Boolean a}
-    | RealVal {realVal::AbsProgettoPar.Real a}
-    | CharVal {charVal::AbsProgettoPar.Char a}
-    | StringVal {stringVal::AbsProgettoPar.String a}
-    deriving (C.Eq, C.Ord, C.Show, C.Read)-}
-
-{- TODO: Show del tac tree -}
-
 
 data TacUnaryOp     = IntCastToInt | Pos | Neg | Not | Point  
     deriving (Eq, Ord, Read)
@@ -55,7 +45,6 @@ instance Show TacUnaryOp where
         Neg          -> "neg"
         Not          -> "not"
         Point        -> "ptr_ref"
-        
 
 instance Show TacBinaryOp where
     show op = case op of
@@ -106,6 +95,22 @@ instance Show TacRelOp where
 data Label = Label {label_id :: Prelude.String}
     deriving (Eq, Ord, Show, Read)
 
-data Address = AddrString {content_addr_string :: Prelude.String}
-             | AddrAddress {content_addr_addr :: Prelude.String}
+data Address = AddrString   {content_addr_string :: Prelude.String}
+             | AddrInt      {content_addr_int :: Prelude.Integer}
+             | AddrBool     {content_addr_bool :: Prelude.Bool}
+             | AddrReal     {content_addr_real :: Prelude.Double}
+             | AddrChar     {content_addr_char :: Prelude.Char}
+             | AddrAddress  {content_addr_addr :: Prelude.String} -- used for vars; params; temps.
+             | AddrNULL     {} -- for internal use only
     deriving (Eq, Ord, Show, Read)
+
+
+    {-data Value a
+    = IntVal {intVal::AbsProgettoPar.Integer a}
+    | BoolVal {boolVal::AbsProgettoPar.Boolean a}
+    | RealVal {realVal::AbsProgettoPar.Real a}
+    | CharVal {charVal::AbsProgettoPar.Char a}
+    | StringVal {stringVal::AbsProgettoPar.String a}
+    deriving (C.Eq, C.Ord, C.Show, C.Read)-}
+
+{- TODO: Show del tac tree -}

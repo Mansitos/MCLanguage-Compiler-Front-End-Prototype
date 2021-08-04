@@ -50,10 +50,6 @@ run v p s =
     Right tree -> do
       putStrLn "\n > Parse Successful! :) "
       Main.showTree v tree
-
-      -- Naive code for brutal Abs print with Tcheck results (too heavy syntax)
-      --let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in 
-      --  putStrLn (show typecheckRes)
       
       let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in
         let tacgeneration = TacGen.genTAC typecheckRes in
@@ -62,11 +58,10 @@ run v p s =
             putStrLn "\n\n[Statements TypeChecker Result]\n   For each statements it shows the TCheckResult (env+infos)\n"
             putStrLn (showTypeCheckResult typecheckRes True)
             putStrLn "\n\n[Compiler Errors]\n"        
-            putStrLn (showTypeCheckResult typecheckRes False)
-            putStrLn "\n\n[TAC]\n"    
-            putStrLn (show tacgeneration)
-            putStrLn "\n\n[TAC in code]\n"
-            putStrLn (showTac tacgeneration)
+            let compilerErrors = (showTypeCheckResult typecheckRes False) in
+              if compilerErrors == ""
+              then putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ (show tacgeneration) ++"\n\n[TAC in code]\n" ++ (showTac tacgeneration))
+              else putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ " Cannot generate TAC with compiler errors!\n")
   where
   ts = myLexer (pointersSyntaxPreprocessing s [])
 
@@ -161,9 +156,20 @@ showTac (Abs.StartCode tac@(TAC x) _) = showContent x
 
 showContent :: [TACEntry] -> String
 showContent (x:xs) = case x of
-                      TacAssignRelOp id op fst scnd ty -> show id++" "++show op++" "++ show fst ++" "++show scnd ++"\n"
-                      TacLabel (Label l) -> l++" "++showContent xs
-                      ExitTac -> ""++"\n\n"
+                      TacAssignRelOp id op fst scnd ty    -> showAddrContent id++" "   ++show op       ++" " ++ showAddrContent fst ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
+                      TacAssignNullOp id fst ty           -> showAddrContent id++" "   ++genAssignEq ty++" " ++ showAddrContent fst                             ++ "\n"   ++ showContent xs
+                      TacLabel (Label l)                  -> l  ++" "++showContent xs
+                      ExitTac                             -> "" ++"\n\n"
+
+genAssignEq:: Type -> String
+genAssignEq ty = case ty of
+  B_type Type_Integer  -> "=int"
+  B_type Type_Boolean  -> "=bool"
+  B_type Type_Char     -> "=char"
+  B_type Type_String   -> "=string"
+  B_type Type_Void     -> "=void" -- not reachable
+  B_type Type_Real     -> "=real"
+
 
 --------------------------------------------------------------------------------
 --- Preprocessing of the input for multiple pointers compatibility "$$$$$$$" ---
@@ -211,11 +217,4 @@ main = do
     []         -> getContents >>= run 2 pS
     "-s":fs    -> mapM_ (runFile 0 pS) fs
     fs         -> mapM_ (runFile 2 pS) fs
-
--- list of tests to be executed in --test mode
-testsList  = ["var x:int = 50;{var y:char = 100;x;if(x > 10) then {x=100;}if(z == \"ciaone\") then print(\"miao\");function print(input:string):string { input; }while(true) do print(\"deadlock\");}{{x=100;}}for x in x<100 do {x+=1;}",
-              "var x : int;function foooooooooo():int{    var i:int;    var o:char;    o;    function foo2():char{        var u:string;        o;        o;  proc foo3():void{x;}  }    }var z : int;var u : int;",
-              "var x : int;{  var y : int;  y;  x;  {    y;    var z:char;  }  x;  z;  }x;",
-              "if true then {var x : int;x;}x;"]
-    
 
