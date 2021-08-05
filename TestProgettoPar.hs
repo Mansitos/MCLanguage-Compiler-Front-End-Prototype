@@ -156,8 +156,10 @@ showTac (Abs.StartCode tac@(TAC x) _) = showContent x
 
 showContent :: [TACEntry] -> String
 showContent (x:xs) = case x of
-                      TacAssignRelOp id op fst scnd ty    -> showAddrContent id++" "   ++show op       ++" " ++ showAddrContent fst ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
-                      TacAssignNullOp id fst ty           -> showAddrContent id++" "   ++genAssignEq ty++" " ++ showAddrContent fst                             ++ "\n"   ++ showContent xs
+                      TacAssignBinaryOp id op fst scnd ty -> showAddrContent id++" "   ++genAssignEq ty++ " "  ++ showAddrContent fst ++" " ++ show op       ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
+                      TacAssignRelOp id op fst scnd ty    -> showAddrContent id++" "   ++genAssignEq ty++ " " ++ showAddrContent fst ++" " ++show op       ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
+                      TacAssignUnaryOp id op fst ty       -> showAddrContent id++" "   ++genAssignEq ty++" " ++ show op             ++" " ++showAddrContent fst  ++"\n"   ++ showContent xs
+                      TacAssignNullOp id fst ty           -> showAddrContent id++" "   ++genAssignEq ty++" " ++ showAddrContent fst                              ++"\n"   ++ showContent xs
                       TacLabel (Label l)                  -> l  ++" "++showContent xs
                       ExitTac                             -> "" ++"\n\n"
 
