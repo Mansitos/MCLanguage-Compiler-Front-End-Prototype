@@ -229,7 +229,20 @@ transEXPRESSION x = case x of
   AbsProgettoPar.ExpressionString _ string -> failure x
   AbsProgettoPar.ExpressionChar _ char -> failure x
   AbsProgettoPar.ExpressionBoolean _ boolean -> failure x
-  AbsProgettoPar.ExpressionBinary _ default_ binaryop expression -> failure x
+  AbsProgettoPar.ExpressionBinaryPlus _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryMinus _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryProduct _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryDivision _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryModule _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryPower _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryAnd _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryOr _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryEq _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryNotEq _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryGratherEq _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryGrather _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryLessEq _ exp1 exp2 -> failure x
+  AbsProgettoPar.ExpressionBinaryLess _ exp1 exp2 -> failure x
   AbsProgettoPar.ExpressionUnary _ unaryop default_ -> failure x
   AbsProgettoPar.ExpressionCast _ default_ primitivetype -> failure x
   AbsProgettoPar.ExpressionBracket _ expression -> failure x
@@ -296,8 +309,18 @@ transTYPEINDEX x = case x of
   AbsProgettoPar.TypeOfIndexVarSingle _ ident index -> failure x
   AbsProgettoPar.TypeOfIndexPointer _ typeindex unaryop def_-> failure x
   AbsProgettoPar.TypeOfIndexPointerSingle _ unaryop def_-> failure x
-  AbsProgettoPar.TypeOfIndexBinary _ typeindex def_ binaryop exp -> failure x
-  AbsProgettoPar.TypeOfIndexBinarySingle _ def_ binaryop exp -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryPlus _ typeindex expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryPlusSingle _ expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryMinus _ typeindex expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryMinusSingle _ expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryProduct _ typeindex expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryProductSingle _ expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryDivision _ typeindex expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryDivisionSingle _ expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryModule _ typeindex expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryModuleSingle _ expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryPower _ typeindex expr1 expr2 -> failure x
+  AbsProgettoPar.TypeOfIndexBinaryPowerSingle _ expr1 expr2 -> failure x
   AbsProgettoPar.TypeOfIndexExpressionCall _ typeindex id_ exps -> failure x
   AbsProgettoPar.TypeOfIndexExpressionCallSingle _ id_ exps -> failure x
   AbsProgettoPar.TypeOfIndexExpressionBracket _ typeindex exp -> failure x

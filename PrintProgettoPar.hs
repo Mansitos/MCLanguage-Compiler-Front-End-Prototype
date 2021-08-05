@@ -215,7 +215,7 @@ instance Print (AbsProgettoPar.LISTELEMENTARRAY attr) where
 
 instance Print (AbsProgettoPar.TYPEEXPRESSIONFUNC attr) where
   prt i = \case
-    AbsProgettoPar.TypeExpressionArrayOfPointer _ typeexpression -> prPrec i 0 (concatD [doc (showString "*"), doc (showString "["), doc (showString "]"), prt 0 typeexpression])
+    AbsProgettoPar.TypeExpressionArrayOfPointer _ typeexpression -> prPrec i 0 (concatD [doc (showString "$"), doc (showString "["), doc (showString "]"), prt 0 typeexpression])
     AbsProgettoPar.TypeExpressionFunction _ typeexpression -> prPrec i 0 (concatD [prt 0 typeexpression])
 
 instance Print (AbsProgettoPar.TYPEEXPRESSION attr) where
@@ -228,8 +228,8 @@ instance Print (AbsProgettoPar.TYPEEXPRESSION attr) where
 
 instance Print (AbsProgettoPar.POINTER attr) where
   prt i = \case
-    AbsProgettoPar.PointerSymbol _ pointer -> prPrec i 0 (concatD [prt 0 pointer, doc (showString "*")])
-    AbsProgettoPar.PointerSymbolSingle _ -> prPrec i 0 (concatD [doc (showString "*")])
+    AbsProgettoPar.PointerSymbol _ pointer -> prPrec i 0 (concatD [prt 0 pointer, doc (showString "$")])
+    AbsProgettoPar.PointerSymbolSingle _ -> prPrec i 0 (concatD [doc (showString "$")])
 
 instance Print (AbsProgettoPar.RANGEEXP attr) where
   prt i = \case
@@ -323,7 +323,20 @@ instance Print (AbsProgettoPar.EXPRESSION attr) where
     AbsProgettoPar.ExpressionString _ str -> prPrec i 0 (concatD [prt 0 (AbsProgettoPar.valueString  str)])
     AbsProgettoPar.ExpressionChar _ c -> prPrec i 0 (concatD [prt 0 (AbsProgettoPar.valueChar  c)])
     AbsProgettoPar.ExpressionBoolean _ boolean -> prPrec i 0 (concatD [prt 0 boolean])
-    AbsProgettoPar.ExpressionBinary _ default_ binaryop expression -> prPrec i 0 (concatD [prt 0 default_, prt 0 binaryop, prt 0 expression])
+    AbsProgettoPar.ExpressionBinaryPlus _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "+"), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryMinus _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "-"), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryProduct _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "*"), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryDivision _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "/"), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryModule _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "%"), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryPower _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "**"), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryAnd _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "&&"), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryOr _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "||"), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryEq _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "=="), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryNotEq _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "!="), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryGratherEq _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString ">="), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryGrather _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString ">"), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryLessEq _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "<="), prt 0 exp2])
+    AbsProgettoPar.ExpressionBinaryLess _ exp1 exp2 -> prPrec i 0 (concatD [prt 0 exp1, doc (showString "<"), prt 0 exp2])
     AbsProgettoPar.ExpressionUnary _ unaryop default_ -> prPrec i 0 (concatD [prt 0 unaryop, prt 0 default_])
     AbsProgettoPar.ExpressionCast _ default_ primitivetype -> prPrec i 0 (concatD [prt 0 default_, doc (showString ":"), prt 0 primitivetype])
     AbsProgettoPar.ExpressionBracket _ expression -> prPrec i 0 (concatD [doc (showString "("), prt 0 expression, doc (showString ")")])
@@ -347,7 +360,7 @@ instance Print (AbsProgettoPar.UNARYOP attr) where
     AbsProgettoPar.UnaryOperationPositive _ -> prPrec i 0 (concatD [doc (showString "+")])
     AbsProgettoPar.UnaryOperationNegative _ -> prPrec i 0 (concatD [doc (showString "-")])
     AbsProgettoPar.UnaryOperationNot _ -> prPrec i 0 (concatD [doc (showString "!")])
-    AbsProgettoPar.UnaryOperationPointer _ -> prPrec i 0 (concatD [doc (showString "*")])
+    AbsProgettoPar.UnaryOperationPointer _ -> prPrec i 0 (concatD [doc (showString "$")])
 
 instance Print (AbsProgettoPar.BINARYOP attr) where
   prt i = \case
@@ -390,8 +403,18 @@ instance Print (AbsProgettoPar.TYPEINDEX attr) where
     AbsProgettoPar.TypeOfIndexVarSingle _ id_ index-> prPrec i 0 (concatD [prt 0 id_, prt 0 index])
     AbsProgettoPar.TypeOfIndexPointer _ typeindex unaryop def_-> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 unaryop, prt 0 def_])
     AbsProgettoPar.TypeOfIndexPointerSingle _ unaryop def_-> prPrec i 0 (concatD [prt 0 unaryop, prt 0 def_])
-    AbsProgettoPar.TypeOfIndexBinary _ typeindex def_ binaryop exp -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 def_, prt 0 binaryop, prt 0 exp])
-    AbsProgettoPar.TypeOfIndexBinarySingle _ def_ binaryop exp -> prPrec i 0 (concatD [prt 0 def_, prt 0 binaryop, prt 0 exp])
+    AbsProgettoPar.TypeOfIndexBinaryPlus _ typeindex expr1 expr2 -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 expr1, doc (showString "+"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryPlusSingle _ expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryMinus _ typeindex expr1 expr2 -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 expr1, doc (showString "-"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryMinusSingle _ expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryProduct _ typeindex expr1 expr2 -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 expr1, doc (showString "*"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryProductSingle _ expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryDivision _ typeindex expr1 expr2 -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 expr1, doc (showString "/"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryDivisionSingle _ expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryModule _ typeindex expr1 expr2 -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 expr1, doc (showString "%"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryModuleSingle _ expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryPower _ typeindex expr1 expr2 -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 expr1, doc (showString "**"), prt 0 expr2])
+    AbsProgettoPar.TypeOfIndexBinaryPowerSingle _ expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 0 expr2])
     AbsProgettoPar.TypeOfIndexExpressionCall _ typeindex id_ exps -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 id_, prt 0 exps])
     AbsProgettoPar.TypeOfIndexExpressionCallSingle _ id_ exps -> prPrec i 0 (concatD [prt 0 id_, prt 0 exps])
     AbsProgettoPar.TypeOfIndexExpressionBracket _ typeindex exp -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 exp])

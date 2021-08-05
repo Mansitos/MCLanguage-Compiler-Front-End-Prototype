@@ -420,8 +420,18 @@ countIndex_ (Abs.TypeOfIndexVar pos ti val index) = 1 + countIndex_ ti
 countIndex_ (Abs.TypeOfIndexVarSingle pos val index) = 1 
 countIndex_ node@(Abs.TypeOfIndexPointer pos typeindex unaryop def) = 1 + countIndex_ typeindex
 countIndex_ node@(Abs.TypeOfIndexPointerSingle pos unaryop def) = 1
-countIndex_ node@(Abs.TypeOfIndexBinary pos typeindex def binaryop exp) = 1 + countIndex_ typeindex
-countIndex_ node@(Abs.TypeOfIndexBinarySingle pos def binaryop exp ) = 1
+countIndex_ node@(Abs.TypeOfIndexBinaryPlus pos typeindex exp1 exp2) = 1 + countIndex_ typeindex
+countIndex_ node@(Abs.TypeOfIndexBinaryPlusSingle pos exp1 exp2 ) = 1
+countIndex_ node@(Abs.TypeOfIndexBinaryMinus pos typeindex exp1 exp2) = 1 + countIndex_ typeindex
+countIndex_ node@(Abs.TypeOfIndexBinaryMinusSingle pos exp1 exp2 ) = 1
+countIndex_ node@(Abs.TypeOfIndexBinaryProduct pos typeindex exp1 exp2) = 1 + countIndex_ typeindex
+countIndex_ node@(Abs.TypeOfIndexBinaryProductSingle pos exp1 exp2 ) = 1
+countIndex_ node@(Abs.TypeOfIndexBinaryDivision pos typeindex exp1 exp2) = 1 + countIndex_ typeindex
+countIndex_ node@(Abs.TypeOfIndexBinaryDivisionSingle pos exp1 exp2 ) = 1
+countIndex_ node@(Abs.TypeOfIndexBinaryModule pos typeindex exp1 exp2) = 1 + countIndex_ typeindex
+countIndex_ node@(Abs.TypeOfIndexBinaryModuleSingle pos exp1 exp2 ) = 1
+countIndex_ node@(Abs.TypeOfIndexBinaryPower pos typeindex exp1 exp2) = 1 + countIndex_ typeindex
+countIndex_ node@(Abs.TypeOfIndexBinaryPowerSingle pos exp1 exp2 ) = 1
 countIndex_ node@(Abs.TypeOfIndexExpressionCall pos typeindex id exps ) = 1 + countIndex_ typeindex
 countIndex_ node@(Abs.TypeOfIndexExpressionCallSingle pos id exps ) = 1
 
@@ -648,7 +658,20 @@ executeExpression node@(Abs.ExpressionReal pos value) env = Abs.ExpressionReal (
 executeExpression node@(Abs.ExpressionBracket pos exp) env = Abs.ExpressionBracket (checkTypeExpression node env) (executeExpression exp env)
 executeExpression node@(Abs.ExpressionCast pos def tipo) env = Abs.ExpressionCast (checkTypeExpression node env) (executeDefault def env) (executePrimitiveType tipo env)
 executeExpression node@(Abs.ExpressionUnary pos unary def) env = Abs.ExpressionUnary (checkTypeExpression node env) (executeUnaryOp unary env) (executeDefault def env)
-executeExpression node@(Abs.ExpressionBinary pos def binary exp) env = Abs.ExpressionBinary (checkTypeExpression node env) (executeDefault def env) (executeBinaryOp binary env) (executeExpression exp env)
+executeExpression node@(Abs.ExpressionBinaryPlus pos exp1 exp2) env = Abs.ExpressionBinaryPlus (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryMinus pos exp1 exp2) env = Abs.ExpressionBinaryMinus (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryProduct pos exp1 exp2) env = Abs.ExpressionBinaryProduct (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryDivision pos exp1 exp2) env = Abs.ExpressionBinaryDivision (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryModule pos exp1 exp2) env = Abs.ExpressionBinaryModule (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryPower pos exp1 exp2) env = Abs.ExpressionBinaryPower (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryAnd pos exp1 exp2) env = Abs.ExpressionBinaryAnd (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryOr pos exp1 exp2) env = Abs.ExpressionBinaryOr (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryEq pos exp1 exp2) env = Abs.ExpressionBinaryEq (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryNotEq pos exp1 exp2) env = Abs.ExpressionBinaryNotEq (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryGratherEq pos exp1 exp2) env = Abs.ExpressionBinaryGratherEq (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryGrather pos exp1 exp2) env = Abs.ExpressionBinaryGrather (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryLessEq pos exp1 exp2) env = Abs.ExpressionBinaryLessEq (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryLess pos exp1 exp2) env = Abs.ExpressionBinaryLess (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
 executeExpression node@(Abs.ExpressionIdent pos id index) env = Abs.ExpressionIdent (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement index env)
 executeExpression node@(Abs.ExpressionCall pos id exps) env = Abs.ExpressionCall (checkTypeExpression node env) (executeIdentFunc id env) (executeExpressions exps env) 
 
@@ -658,7 +681,7 @@ executeUnaryOp node@(Abs.UnaryOperationNegative pos) env = Abs.UnaryOperationNeg
 executeUnaryOp node@(Abs.UnaryOperationNot pos) env = Abs.UnaryOperationNot (checkTypeUnaryOp node env)
 executeUnaryOp node@(Abs.UnaryOperationPointer pos) env = Abs.UnaryOperationPointer (checkTypeUnaryOp node env)
 
-executeBinaryOp :: Abs.BINARYOP Posn -> Env -> Abs.BINARYOP TCheckResult
+{-executeBinaryOp :: Abs.BINARYOP Posn -> Env -> Abs.BINARYOP TCheckResult
 executeBinaryOp node@(Abs.BinaryOperationPlus pos) env = Abs.BinaryOperationPlus (checkTypeBinaryOp node env)
 executeBinaryOp node@(Abs.BinaryOperationMinus pos) env = Abs.BinaryOperationMinus (checkTypeBinaryOp node env)
 executeBinaryOp node@(Abs.BinaryOperationProduct pos) env = Abs.BinaryOperationProduct (checkTypeBinaryOp node env)
@@ -672,7 +695,7 @@ executeBinaryOp node@(Abs.BinaryOperationNotEq pos) env = Abs.BinaryOperationNot
 executeBinaryOp node@(Abs.BinaryOperationGratherEq pos) env = Abs.BinaryOperationGratherEq (checkTypeBinaryOp node env)
 executeBinaryOp node@(Abs.BinaryOperationGrather pos) env = Abs.BinaryOperationGrather (checkTypeBinaryOp node env)
 executeBinaryOp node@(Abs.BinaryOperationLessEq pos) env = Abs.BinaryOperationLessEq (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationLess pos) env = Abs.BinaryOperationLess (checkTypeBinaryOp node env)
+executeBinaryOp node@(Abs.BinaryOperationLess pos) env = Abs.BinaryOperationLess (checkTypeBinaryOp node env)-}
 
 executeDefault :: Abs.DEFAULT Posn -> Env -> Abs.DEFAULT TCheckResult
 executeDefault node@(Abs.ExpressionIntegerD pos value) env = Abs.ExpressionIntegerD (checkTypeDefault 0 node env) (executeInteger value env)
@@ -714,8 +737,18 @@ executeTypeTypeIndex node@(Abs.TypeOfIndexVar pos typeindex id index) env = Abs.
 executeTypeTypeIndex node@(Abs.TypeOfIndexVarSingle pos id index) env = Abs.TypeOfIndexVarSingle (checkTypeTypeIndex node env) (executeIdentVar id env) (executeArrayIndexElement index env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexPointer pos typeindex unaryop def) env = Abs.TypeOfIndexPointer (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeUnaryOp unaryop env) (executeDefault def env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexPointerSingle pos unaryop def) env = Abs.TypeOfIndexPointerSingle (checkTypeTypeIndex node env) (executeUnaryOp unaryop env) (executeDefault def env)
-executeTypeTypeIndex node@(Abs.TypeOfIndexBinary pos typeindex def binaryop exp) env = Abs.TypeOfIndexBinary (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeDefault def env) (executeBinaryOp binaryop env) (executeExpression exp env)
-executeTypeTypeIndex node@(Abs.TypeOfIndexBinarySingle pos def binaryop exp ) env = Abs.TypeOfIndexBinarySingle (checkTypeTypeIndex node env) (executeDefault def env) (executeBinaryOp binaryop env) (executeExpression exp env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryPlus pos typeindex exp1 exp2) env = Abs.TypeOfIndexBinaryPlus (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryPlusSingle pos exp1 exp2 ) env = Abs.TypeOfIndexBinaryPlusSingle (checkTypeTypeIndex node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryMinus pos typeindex exp1 exp2) env = Abs.TypeOfIndexBinaryMinus (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryMinusSingle pos exp1 exp2 ) env = Abs.TypeOfIndexBinaryMinusSingle (checkTypeTypeIndex node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryProduct pos typeindex exp1 exp2) env = Abs.TypeOfIndexBinaryProduct (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryProductSingle pos exp1 exp2 ) env = Abs.TypeOfIndexBinaryProductSingle (checkTypeTypeIndex node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryDivision pos typeindex exp1 exp2) env = Abs.TypeOfIndexBinaryDivision (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryDivisionSingle pos exp1 exp2 ) env = Abs.TypeOfIndexBinaryDivisionSingle (checkTypeTypeIndex node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryModule pos typeindex exp1 exp2) env = Abs.TypeOfIndexBinaryModule (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryModuleSingle pos exp1 exp2 ) env = Abs.TypeOfIndexBinaryModuleSingle (checkTypeTypeIndex node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryPower pos typeindex exp1 exp2) env = Abs.TypeOfIndexBinaryPower (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryPowerSingle pos exp1 exp2 ) env = Abs.TypeOfIndexBinaryPowerSingle (checkTypeTypeIndex node env) (executeExpression exp1 env) (executeExpression exp2 env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexExpressionCall pos typeindex id exps ) env = Abs.TypeOfIndexExpressionCall (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeIdentVar id env) (executeExpressions exps env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexExpressionCallSingle pos id exps ) env = Abs.TypeOfIndexExpressionCallSingle (checkTypeTypeIndex node env) (executeIdentVar id env) (executeExpressions exps env)
 
@@ -1148,21 +1181,106 @@ checkTypeExpression node@(Abs.ExpressionUnary pos unary def) env = case unary of
                                                                     _ -> let unaryTCheck = checkTypeUnaryOp unary env in
                                                                             let defTCheck = checkTypeDefault 0 def env in
                                                                                 if(checkCompatibility defTCheck unaryTCheck) then checkErrors  unaryTCheck defTCheck else mergeErrors (TError ["Incompatibility type for unary operator at "++ show pos]) defTCheck
-checkTypeExpression node@(Abs.ExpressionBinary pos def binary exp) env = let expTCheck = checkTypeExpression exp env in
-                                                                            (let defTCheck = checkTypeDefault 0 def env in 
-                                                                                (let binaryTCheck = checkTypeBinaryOp binary env in if (checkCompatibility defTCheck expTCheck || checkCompatibility expTCheck defTCheck)
-                                                                                    then let ty = returnSuperType expTCheck defTCheck in case binaryTCheck of
-                                                                                        TResult _ (B_type Type_Real) _ -> if (checkCompatibility ty binaryTCheck) then checkErrors expTCheck (checkErrors defTCheck ty) else  mergeErrors (mergeErrors (TError ["Operator requires operands to be of type real but " ++ show (getType defTCheck) ++ " and " ++ show (getType expTCheck) ++ " are given! Position: "++ show pos]) defTCheck) expTCheck
-                                                                                        TResult _ (B_type Type_Boolean) _ -> case binary of
-                                                                                            (Abs.BinaryOperationOr posb) -> if (checkCompatibility ty binaryTCheck) then checkErrors expTCheck (checkErrors defTCheck binaryTCheck) else mergeErrors (mergeErrors (TError ["Operator OR cannot be applied to operands of types different from bool! Position: "++ show pos]) defTCheck) expTCheck
-                                                                                            (Abs.BinaryOperationAnd posb) -> if (checkCompatibility ty binaryTCheck) then checkErrors expTCheck (checkErrors defTCheck binaryTCheck) else mergeErrors (mergeErrors (TError ["Operator AND cannot be applied to operands of types different from bool! Position: "++ show pos]) defTCheck) expTCheck
-                                                                                            (Abs.BinaryOperationEq posb) -> checkErrors expTCheck (checkErrors defTCheck binaryTCheck)
-                                                                                            (Abs.BinaryOperationNotEq posb) -> checkErrors expTCheck (checkErrors defTCheck binaryTCheck)
-                                                                                            _ -> if (checkCompatibility ty (TResult env (B_type Type_Real) pos)) || (checkCompatibility ty (TResult env (B_type Type_String) pos)) || (checkCompatibility ty (TResult env (B_type Type_Char) pos)) 
-                                                                                                then checkErrors expTCheck (checkErrors defTCheck binaryTCheck)
-                                                                                                else mergeErrors (mergeErrors (TError ["Operator cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) defTCheck) expTCheck
-                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType defTCheck) ++ " and " ++ show (getType expTCheck)++" are incompatible! Position:" ++ show pos]) defTCheck) expTCheck
-                                                                                    ))
+checkTypeExpression node@(Abs.ExpressionBinaryPlus pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Plus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Plus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Plus cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryMinus pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Minus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Minus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Minus cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryProduct pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Product requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Product requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Product cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryDivision pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Division requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Division requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Division cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryModule pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Module requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Module requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Module cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryPower pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Power requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Power requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Power cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryAnd pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Boolean) _ -> if checkCompatibility ty (TResult env (B_type Type_Boolean) pos) then ty else (TError ["Operator And requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator And cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryOr pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Boolean) _ -> if checkCompatibility ty (TResult env (B_type Type_Boolean) pos) then ty else (TError ["Operator Or requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Or cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryEq pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then TResult env (B_type Type_Boolean) pos
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryNotEq pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                            let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                    then TResult env (B_type Type_Boolean) pos
+                                                                                    else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryGratherEq pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                                let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                    if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                        then TResult env (B_type Type_Boolean) pos
+                                                                                        else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryGrather pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                                let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                    if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                        then TResult env (B_type Type_Boolean) pos
+                                                                                        else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryLessEq pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                                let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                    if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                        then TResult env (B_type Type_Boolean) pos
+                                                                                        else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
+checkTypeExpression node@(Abs.ExpressionBinaryLess pos exp1 exp2) env = let exp1TCheck = checkTypeExpression exp1 env in
+                                                                                let exp2TCheck = checkTypeExpression exp2 env in 
+                                                                                    if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
+                                                                                        then TResult env (B_type Type_Boolean) pos
+                                                                                        else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression node@(Abs.ExpressionIdent pos ident@(Abs.Ident id posI) index) env =  case Data.Map.lookup id env of
                                                                                             Just [Variable (Array t dim) pose mode override] -> case index of
                                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
@@ -1231,7 +1349,7 @@ checkTypeUnaryOp node@(Abs.UnaryOperationNegative pos) env = TResult env (B_type
 checkTypeUnaryOp node@(Abs.UnaryOperationNot pos) env = TResult env (B_type Type_Boolean) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TResult env (B_type Type_Void) pos
 
-checkTypeBinaryOp :: Abs.BINARYOP Posn -> Env -> TCheckResult
+{-checkTypeBinaryOp :: Abs.BINARYOP Posn -> Env -> TCheckResult
 checkTypeBinaryOp node@(Abs.BinaryOperationPlus pos) env = TResult env (B_type Type_Real) pos
 checkTypeBinaryOp node@(Abs.BinaryOperationMinus pos) env = TResult env (B_type Type_Real) pos
 checkTypeBinaryOp node@(Abs.BinaryOperationProduct pos) env = TResult env (B_type Type_Real) pos
@@ -1245,7 +1363,7 @@ checkTypeBinaryOp node@(Abs.BinaryOperationNotEq pos) env = TResult env (B_type 
 checkTypeBinaryOp node@(Abs.BinaryOperationGratherEq pos) env = TResult env (B_type Type_Boolean) pos
 checkTypeBinaryOp node@(Abs.BinaryOperationGrather pos) env = TResult env (B_type Type_Boolean) pos
 checkTypeBinaryOp node@(Abs.BinaryOperationLessEq pos) env = TResult env (B_type Type_Boolean) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationLess pos) env = TResult env (B_type Type_Boolean) pos
+checkTypeBinaryOp node@(Abs.BinaryOperationLess pos) env = TResult env (B_type Type_Boolean) pos-}
 
 checkTypeDefault :: Prelude.Integer -> Abs.DEFAULT Posn -> Env -> TCheckResult
 checkTypeDefault s node@(Abs.ExpressionIntegerD pos value) env = checkTypeInteger value env
@@ -1714,14 +1832,64 @@ checkTypeTypeIndex node@(Abs.TypeOfIndexPointerSingle pos unaryop def) env = let
                                                                                     TResult env (Pointer t depth) pos -> TError ["Incompatible type for index at: "++ show pos]
                                                                                     TResult env (Array t dim) pos -> TError ["Incompatible type for index at: "++ show pos]
                                                                                     _ -> if checkCompatibility (TResult env (B_type Type_Integer) pos) defTCheck then defTCheck else mergeErrors (TError ["Incompatible type for index at: "++ show pos]) defTCheck
-checkTypeTypeIndex node@(Abs.TypeOfIndexBinary pos typeindex def binaryop exp) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinary pos def binaryop exp) env in
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryPlus pos typeindex exp1 exp2) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> if checkCompatibility expTCheck (checkTypeTypeIndex typeindex env) then expTCheck else TError ["Incompatible type for index at: "++ show pos]
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryPlusSingle pos exp1 exp2 ) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> expTCheck
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryMinus pos typeindex exp1 exp2) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> if checkCompatibility expTCheck (checkTypeTypeIndex typeindex env) then expTCheck else TError ["Incompatible type for index at: "++ show pos]
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryMinusSingle pos exp1 exp2 ) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> expTCheck
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryProduct pos typeindex exp1 exp2) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> if checkCompatibility expTCheck (checkTypeTypeIndex typeindex env) then expTCheck else TError ["Incompatible type for index at: "++ show pos]
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryProductSingle pos exp1 exp2 ) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> expTCheck
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryDivision pos typeindex exp1 exp2) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> if checkCompatibility expTCheck (checkTypeTypeIndex typeindex env) then expTCheck else TError ["Incompatible type for index at: "++ show pos]
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryDivisionSingle pos exp1 exp2 ) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> expTCheck
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryModule pos typeindex exp1 exp2) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> if checkCompatibility expTCheck (checkTypeTypeIndex typeindex env) then expTCheck else TError ["Incompatible type for index at: "++ show pos]
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryModuleSingle pos exp1 exp2 ) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> expTCheck
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryPower pos typeindex exp1 exp2) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> if checkCompatibility expTCheck (checkTypeTypeIndex typeindex env) then expTCheck else TError ["Incompatible type for index at: "++ show pos]
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryPowerSingle pos exp1 exp2 ) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinaryPlus pos exp1 exp2) env in
+                                                                                    case expTCheck of
+                                                                                                TResult env (B_type Type_Integer) pos -> expTCheck
+                                                                                                _ -> TError ["Incompatible type for index at: "++ show pos]
+
+
+{-checkTypeTypeIndex node@(Abs.TypeOfIndexBinary pos typeindex def binaryop exp) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinary pos def binaryop exp) env in
                                                                                     case expTCheck of
                                                                                         TResult env (B_type Type_Integer) pos -> if checkCompatibility expTCheck (checkTypeTypeIndex typeindex env) then expTCheck else TError ["Incompatible type for index at: "++ show pos]
                                                                                         _ -> TError ["Incompatible type for index at: "++ show pos]
 checkTypeTypeIndex node@(Abs.TypeOfIndexBinarySingle pos def binaryop exp ) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinary pos def binaryop exp) env in
                                                                                     case expTCheck of
                                                                                         TResult env (B_type Type_Integer) pos -> expTCheck
-                                                                                        _ -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                        _ -> TError ["Incompatible type for index at: "++ show pos]-}
 checkTypeTypeIndex node@(Abs.TypeOfIndexExpressionCall pos typeindex (Abs.Ident id posi) exps ) env = case checkTypeExpression (Abs.ExpressionCall pos (Abs.Ident id posi) exps) env of
                                                                                                 TResult _ _ _ ->
                                                                                                                     case Data.Map.lookup id env of

@@ -21,8 +21,8 @@ import LexProgettoPar
 %token
   '!' { PT _ (TS _ 1) }
   '!=' { PT _ (TS _ 2) }
-  '%' { PT _ (TS _ 3) }
-  '%=' { PT _ (TS _ 4) }
+  '%' { PT _ (TS _ 4) }
+  '%=' { PT _ (TS _ 5) }
   '&&' { PT _ (TS _ 6) }
   '(' { PT _ (TS _ 7) }
   ')' { PT _ (TS _ 8) }
@@ -77,6 +77,7 @@ import LexProgettoPar
   '{' { PT _ (TS _ 58) }
   '||' { PT _ (TS _ 59) }
   '}' { PT _ (TS _ 60) }
+  '$' { PT _ (TS _ 61) }
   L_Ident  { PT _ (TV _) }
   L_charac { PT _ (TC _) }
   L_doubl  { PT _ (TD _) }
@@ -194,7 +195,7 @@ LISTELEMENTARRAY : EXPRESSION ',' LISTELEMENTARRAY { Abs.ListElementsOfArray (Ab
                  | EXPRESSION { Abs.ListElementOfArray (Abs.expression_content $1) $1 }
 
 TYPEEXPRESSIONFUNC :: { Abs.TYPEEXPRESSIONFUNC Posn }
-TYPEEXPRESSIONFUNC : '*' '[' ']' TYPEEXPRESSIONFUNC { Abs.TypeExpressionArrayOfPointer (tokenPosn $1) $4 }
+TYPEEXPRESSIONFUNC : '$' '[' ']' TYPEEXPRESSIONFUNC { Abs.TypeExpressionArrayOfPointer (tokenPosn $1) $4 }
                    | TYPEEXPRESSION { Abs.TypeExpressionFunction (Abs.typeexpression_content $1) $1}
 
 TYPEEXPRESSION :: { Abs.TYPEEXPRESSION Posn }
@@ -205,8 +206,8 @@ TYPEEXPRESSION : PRIMITIVETYPE { Abs.TypeExpression (Abs.primitivetype_content $
                | '(' TYPEEXPRESSIONFUNC ')' POINTER { Abs.TypeExpressionPointerOfArray (tokenPosn $1) $2 $4 }
 
 POINTER :: { Abs.POINTER Posn }
-POINTER : POINTER '*' { Abs.PointerSymbol (Abs.pointer_content $1) $1 }
-        | '*' { Abs.PointerSymbolSingle (tokenPosn $1)}
+POINTER : POINTER '$' { Abs.PointerSymbol (Abs.pointer_content $1) $1 }
+        | '$' { Abs.PointerSymbolSingle (tokenPosn $1)}
 
 RANGEEXP :: { Abs.RANGEEXP Posn }
 RANGEEXP : EXPRESSION '..' EXPRESSION ',' RANGEEXP { Abs.RangeExpression (Abs.expression_content $1) $1 $3 $5 }
@@ -284,7 +285,20 @@ EXPRESSION : Ident ARRAYINDEXELEMENT { Abs.ExpressionIdent (Abs.contentId $1) $1
            | String { Abs.ExpressionString (Abs.contentString $1) $1 }
            | Char { Abs.ExpressionChar (Abs.contentChar $1) $1}
            | Boolean { Abs.ExpressionBoolean (Abs.contentBoolean $1) $1 }
-           | DEFAULT BINARYOP EXPRESSION { Abs.ExpressionBinary (Abs.default_content $1) $1 $2 $3 }
+           | EXPRESSION '+' EXPRESSION { Abs.ExpressionBinaryPlus (Abs.expression_content $1) $1 $3 }
+           | EXPRESSION '-' EXPRESSION { Abs.ExpressionBinaryMinus (Abs.expression_content $1) $1 $3 }
+           | EXPRESSION '*' EXPRESSION { Abs.ExpressionBinaryProduct (Abs.expression_content $1) $1 $3 }
+           | EXPRESSION '/' EXPRESSION { Abs.ExpressionBinaryDivision (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '%'  EXPRESSION { Abs.ExpressionBinaryModule (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '**' EXPRESSION { Abs.ExpressionBinaryPower (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '&&' EXPRESSION { Abs.ExpressionBinaryAnd (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '||' EXPRESSION { Abs.ExpressionBinaryOr (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '==' EXPRESSION { Abs.ExpressionBinaryEq (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '!=' EXPRESSION { Abs.ExpressionBinaryNotEq (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '>=' EXPRESSION { Abs.ExpressionBinaryGratherEq (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '>'  EXPRESSION { Abs.ExpressionBinaryGrather (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '<=' EXPRESSION { Abs.ExpressionBinaryLessEq (Abs.expression_content $1) $1 $3}
+           | EXPRESSION '<'  EXPRESSION { Abs.ExpressionBinaryLess (Abs.expression_content $1) $1 $3}
            | UNARYOP DEFAULT %prec UNARY { Abs.ExpressionUnary (Abs.unaryop_content $1) $1 $2 }
            | DEFAULT ':' PRIMITIVETYPE { Abs.ExpressionCast (Abs.default_content $1) $1 $3 }
            | '(' EXPRESSION ')' { Abs.ExpressionBracket (tokenPosn $1) $2 }
@@ -306,23 +320,7 @@ UNARYOP :: { Abs.UNARYOP Posn }
 UNARYOP : '+' { Abs.UnaryOperationPositive (tokenPosn $1)}
         | '-' { Abs.UnaryOperationNegative (tokenPosn $1)}
         | '!' { Abs.UnaryOperationNot (tokenPosn $1)}
-        | '*' { Abs.UnaryOperationPointer (tokenPosn $1)}
-
-BINARYOP :: { Abs.BINARYOP Posn}
-BINARYOP : '+' { Abs.BinaryOperationPlus (tokenPosn $1)}
-         | '-' { Abs.BinaryOperationMinus (tokenPosn $1)}
-         | '*' { Abs.BinaryOperationProduct (tokenPosn $1)}
-         | '/' { Abs.BinaryOperationDivision (tokenPosn $1)}
-         | '%' { Abs.BinaryOperationModule (tokenPosn $1)}
-         | '**' { Abs.BinaryOperationPower (tokenPosn $1)}
-         | '&&' { Abs.BinaryOperationAnd (tokenPosn $1)}
-         | '||' { Abs.BinaryOperationOr (tokenPosn $1)}
-         | '==' { Abs.BinaryOperationEq (tokenPosn $1)}
-         | '!=' { Abs.BinaryOperationNotEq (tokenPosn $1)}
-         | '>=' { Abs.BinaryOperationGratherEq (tokenPosn $1)}
-         | '>' { Abs.BinaryOperationGrather (tokenPosn $1)}
-         | '<=' { Abs.BinaryOperationLessEq (tokenPosn $1)}
-         | '<' { Abs.BinaryOperationLess (tokenPosn $1)}
+        | '$' { Abs.UnaryOperationPointer (tokenPosn $1)}
 
 LVALUEEXPRESSION :: { Abs.LVALUEEXPRESSION Posn }
 LVALUEEXPRESSION : Ident ARRAYINDEXELEMENT ',' LVALUEEXPRESSION { Abs.LvalueExpressions (Abs.contentId $1) $1 $2 $4 }
@@ -345,8 +343,18 @@ TYPEINDEX : TYPEINDEX ',' Integer { Abs.TypeOfIndexInt (Abs.typeindex_content $1
           | Ident ARRAYINDEXELEMENT { Abs.TypeOfIndexVarSingle (Abs.contentId $1) $1 $2 }
           | TYPEINDEX ',' UNARYOP DEFAULT {Abs.TypeOfIndexPointer (Abs.typeindex_content $1) $1 $3 $4}
           | UNARYOP DEFAULT {Abs.TypeOfIndexPointerSingle (Abs.unaryop_content $1) $1 $2}
-          | TYPEINDEX ',' DEFAULT BINARYOP EXPRESSION {Abs.TypeOfIndexBinary (Abs.typeindex_content $1) $1 $3 $4 $5}
-          | DEFAULT BINARYOP EXPRESSION {Abs.TypeOfIndexBinarySingle (Abs.default_content $1) $1 $2 $3}
+          | TYPEINDEX ',' EXPRESSION '+' EXPRESSION {Abs.TypeOfIndexBinaryPlus (Abs.typeindex_content $1) $1 $3 $5}
+          | EXPRESSION '+' EXPRESSION {Abs.TypeOfIndexBinaryPlusSingle (Abs.expression_content $1) $1 $3}
+          | TYPEINDEX ',' EXPRESSION '-' EXPRESSION {Abs.TypeOfIndexBinaryMinus (Abs.typeindex_content $1) $1 $3 $5}
+          | EXPRESSION '-' EXPRESSION {Abs.TypeOfIndexBinaryMinusSingle (Abs.expression_content $1) $1 $3}
+          | TYPEINDEX ',' EXPRESSION '*' EXPRESSION {Abs.TypeOfIndexBinaryProduct (Abs.typeindex_content $1) $1 $3 $5}
+          | EXPRESSION '*' EXPRESSION {Abs.TypeOfIndexBinaryProductSingle (Abs.expression_content $1) $1 $3}
+          | TYPEINDEX ',' EXPRESSION '/' EXPRESSION {Abs.TypeOfIndexBinaryDivision (Abs.typeindex_content $1) $1 $3 $5}
+          | EXPRESSION '/' EXPRESSION {Abs.TypeOfIndexBinaryDivisionSingle (Abs.expression_content $1) $1 $3}
+          | TYPEINDEX ',' EXPRESSION '%' EXPRESSION {Abs.TypeOfIndexBinaryModule (Abs.typeindex_content $1) $1 $3 $5}
+          | EXPRESSION '%' EXPRESSION {Abs.TypeOfIndexBinaryModuleSingle (Abs.expression_content $1) $1 $3}
+          | TYPEINDEX ',' EXPRESSION '**' EXPRESSION {Abs.TypeOfIndexBinaryPower (Abs.typeindex_content $1) $1 $3 $5}
+          | EXPRESSION '**' EXPRESSION {Abs.TypeOfIndexBinaryPowerSingle (Abs.expression_content $1) $1 $3}
           | TYPEINDEX ',' Ident '(' EXPRESSIONS ')' {Abs.TypeOfIndexExpressionCall (Abs.typeindex_content $1) $1 $3 $5}
           | Ident '(' EXPRESSIONS ')' {Abs.TypeOfIndexExpressionCallSingle (Abs.contentId $1) $1 $3}
           | TYPEINDEX ',' '(' EXPRESSION ')' {Abs.TypeOfIndexExpressionBracket (Abs.typeindex_content $1) $1 $4}

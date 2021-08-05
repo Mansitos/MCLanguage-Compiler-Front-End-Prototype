@@ -208,7 +208,20 @@ data EXPRESSION a
     | ExpressionString {expression_content::a, expression_string::(AbsProgettoPar.String a)}
     | ExpressionChar {expression_content::a, expression_char::(AbsProgettoPar.Char a)}
     | ExpressionBoolean {expression_content::a, expression_bool::(Boolean a)}
-    | ExpressionBinary {expression_content::a, expression_default::(DEFAULT a), expression_binaryop::(BINARYOP a), expression_expression::(EXPRESSION a)}
+    | ExpressionBinaryPlus {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryMinus {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryProduct {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryDivision {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryModule {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryPower {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryAnd {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryOr {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryEq {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryNotEq {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryGratherEq {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryGrather {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryLessEq {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
+    | ExpressionBinaryLess {expression_content::a, expression_expressionf::(EXPRESSION a), expression_expressionse::(EXPRESSION a)}
     | ExpressionUnary {expression_content::a, expression_unaryop::(UNARYOP a), expression_default::(DEFAULT a)}
     | ExpressionCast {expression_content::a, expression_default::(DEFAULT a), expression_primitivetype::(PRIMITIVETYPE a)}
     | ExpressionBracket {expression_content::a, expression_expression::(EXPRESSION a)}
@@ -275,8 +288,18 @@ data TYPEINDEX a
     | TypeOfIndexVarSingle {typeindex_content::a, typeindex_ident::(Ident a), typeindex_arrayindexelement::(ARRAYINDEXELEMENT a)}
     | TypeOfIndexPointer {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_unaryop::(UNARYOP a), typeindex_default::(DEFAULT a)}
     | TypeOfIndexPointerSingle {typeindex_content::a, typeindex_unaryop::(UNARYOP a), typeindex_default::(DEFAULT a)}
-    | TypeOfIndexBinary {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_default::(DEFAULT a), typeindex_binaryop::(BINARYOP a), typeindex_expression::(EXPRESSION a)}
-    | TypeOfIndexBinarySingle {typeindex_content::a, typeindex_default::(DEFAULT a), typeindex_binaryop::(BINARYOP a), typeindex_expression::(EXPRESSION a)}
+    | TypeOfIndexBinaryPlus {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expressionf::(EXPRESSION a), typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryPlusSingle {typeindex_content::a, typeindex_expressionf::(EXPRESSION a),typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryMinus {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expressionf::(EXPRESSION a), typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryMinusSingle {typeindex_content::a, typeindex_expressionf::(EXPRESSION a),typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryProduct {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expressionf::(EXPRESSION a), typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryProductSingle {typeindex_content::a, typeindex_expressionf::(EXPRESSION a),typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryDivision {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expressionf::(EXPRESSION a), typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryDivisionSingle {typeindex_content::a, typeindex_expressionf::(EXPRESSION a),typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryModule {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expressionf::(EXPRESSION a), typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryModuleSingle {typeindex_content::a, typeindex_expressionf::(EXPRESSION a),typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryPower {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expressionf::(EXPRESSION a), typeindex_expressionse::(EXPRESSION a)}
+    | TypeOfIndexBinaryPowerSingle {typeindex_content::a, typeindex_expressionf::(EXPRESSION a),typeindex_expressionse::(EXPRESSION a)}
     | TypeOfIndexExpressionCall {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_ident::(Ident a), typeindex_expressions::(EXPRESSIONS a)}
     | TypeOfIndexExpressionCallSingle {typeindex_content::a, typeindex_ident::(Ident a), typeindex_expressions::(EXPRESSIONS a)}
     | TypeOfIndexExpressionBracket {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expression::(EXPRESSION a)}
