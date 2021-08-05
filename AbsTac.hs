@@ -8,7 +8,7 @@ data TAC = TAC {content::[TACEntry]}
     deriving (Eq, Ord, Show, Read)
 
 data TACEntry
-    = TacAssignUnaryOp  {getAddr:: Address, unaryOp  :: TacUnaryOp,  first::Address, second :: Address, assignType::Type} --        x = + y
+    = TacAssignUnaryOp  {getAddr:: Address, unaryOp  :: TacUnaryOp,  first::Address, assignType::Type}                    --        x = + y
     | TacAssignBinaryOp {getAddr:: Address, binaryOp :: TacBinaryOp, first::Address, second :: Address, assignType::Type} --        x = y + z
     | TacAssignRelOp    {getAddr:: Address, relOp    :: TacRelOp,    first::Address, second :: Address, assignType::Type} --        x = y < z
     | TacAssignNullOp   {getAddr:: Address,                          first::Address,                    assignType::Type} --        x = y
@@ -26,14 +26,14 @@ data TACEntry
 data TacUnaryOp     = IntCastToInt | Pos | Neg | Not | Point  
     deriving (Eq, Ord, Read)
 
-data TacBinaryOp    = IntAdd | RealAdd | IntSub | RealSub | IntMul | RealMul | IntDiv | RealDiv | IntMod | IntPow | RealPow 
+data TacBinaryOp    = IntAdd | RealAdd | IntSub | RealSub | IntMul | RealMul | IntDiv | RealDiv | IntMod | RealMod | IntPow | RealPow 
     deriving (Eq, Ord, Read)
                     
 data TacRelOp       = EqInt | EqReal | EqString | EqChar | EqBool
                     | NeqInt | NeqReal | NeqString | NeqChar | NeqBool
-                    | GeqInt | GeqReal | GeqString | GeqChar
-                    | LeqInt | LeqReal | LeqString | LeqChar
-                    | GtInt | GtReal | GtString | GtChar
+                    | GeqInt | GeqReal | GeqString | GeqChar 
+                    | LeqInt | LeqReal | LeqString | LeqChar 
+                    | GtInt | GtReal | GtString | GtChar 
                     | LtInt | LtReal | LtString | LtChar
                     | And | Or
     deriving (Eq, Ord, Read)
