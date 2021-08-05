@@ -8,17 +8,19 @@ data TAC = TAC {content::[TACEntry]}
     deriving (Eq, Ord, Show, Read)
 
 data TACEntry
-    = TacAssignUnaryOp  {getAddr:: Address, unaryOp  :: TacUnaryOp,  first::Address, assignType::Type}                    --        x = + y
-    | TacAssignBinaryOp {getAddr:: Address, binaryOp :: TacBinaryOp, first::Address, second :: Address, assignType::Type} --        x = y + z
-    | TacAssignRelOp    {getAddr:: Address, relOp    :: TacRelOp,    first::Address, second :: Address, assignType::Type} --        x = y < z
-    | TacAssignNullOp   {getAddr:: Address,                          first::Address,                    assignType::Type} --        x = y
-    | TacProcCall       -- todo
-    | TacFuncCall       -- todo
-    | TacJump           Label
-    | TacLabel          Label
-    | TacComment        Prelude.String  -- for comments on TAC print
-    | TacError          Prelude.String  -- array index out of bounds and function control reach
-    | ExitTac           -- last tac entry (end of generation)
+    = TacAssignUnaryOp      {getAddr:: Address, unaryOp  :: TacUnaryOp,  first::Address, assignType::Type}                    --        x = + y
+    | TacAssignBinaryOp     {getAddr:: Address, binaryOp :: TacBinaryOp, first::Address, second :: Address, assignType::Type} --        x = y + z
+    | TacAssignRelOp        {getAddr:: Address, relOp    :: TacRelOp,    first::Address, second :: Address, assignType::Type} --        x = y < z
+    | TacAssignNullOp       {getAddr:: Address,                          first::Address,                    assignType::Type} --        x = y
+    | TacProcCall           -- todo
+    | TacFuncCall           -- todo
+    | TacJump               Label
+    | TacLabel              Label
+    | TacConditionalJump    {destination::Label, flag::Prelude.Bool, first::Address}                                        -- if first goto lab
+    | TacRelConditionalJump {destination::Label, flag::Prelude.Bool, relOp::TacRelOp, first::Address, second::Address}      -- if x rel y goto lab
+    | TacComment            Prelude.String  -- for comments on TAC print
+    | TacError              Prelude.String  -- array index out of bounds and function control reach
+    | ExitTac               -- last tac entry (end of generation)
     -- arrays?
     -- pointers?
   deriving (Eq, Ord, Show, Read)
