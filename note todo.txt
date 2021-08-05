@@ -23,3 +23,11 @@ cast for pointers - done
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 
 ------------
+
+typechecker:
+Variable y undeclared! Position: Row: 1 | Col: 13
+ Cannot initialize variable of type int with values of type void! Position:Row: 0 | Col: 0
+
+var x:int = y;
+
+non dovrebbe propagare cannot init...
