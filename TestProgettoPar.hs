@@ -156,11 +156,18 @@ showTac (Abs.StartCode tac@(TAC x) _) = showContent x
 
 showContent :: [TACEntry] -> String
 showContent (x:xs) = case x of
-                      TacAssignBinaryOp id op fst scnd ty -> showAddrContent id++" "   ++genAssignEq ty++ " "  ++ showAddrContent fst ++" " ++ show op       ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
-                      TacAssignRelOp id op fst scnd ty    -> showAddrContent id++" "   ++genAssignEq ty++ " " ++ showAddrContent fst ++" " ++show op       ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
-                      TacAssignUnaryOp id op fst ty       -> showAddrContent id++" "   ++genAssignEq ty++" " ++ show op             ++" " ++showAddrContent fst  ++"\n"   ++ showContent xs
-                      TacAssignNullOp id fst ty           -> showAddrContent id++" "   ++genAssignEq ty++" " ++ showAddrContent fst                              ++"\n"   ++ showContent xs
-                      TacLabel (Label l)                  -> l  ++" "++showContent xs
+                      TacAssignBinaryOp id op fst scnd ty -> "\t"++showAddrContent id++" "   ++genAssignEq ty++ " "  ++ showAddrContent fst ++" " ++ show op       ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
+                      TacAssignRelOp id op fst scnd ty    -> "\t"++showAddrContent id++" "   ++genAssignEq ty++ " " ++ showAddrContent fst ++" " ++show op       ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
+                      TacAssignUnaryOp id op fst ty       -> "\t"++showAddrContent id++" "   ++genAssignEq ty++" " ++ show op             ++" " ++showAddrContent fst  ++"\n"   ++ showContent xs
+                      TacAssignNullOp id fst ty           -> "\t"++showAddrContent id++" "   ++genAssignEq ty++" " ++ showAddrContent fst                              ++"\n"   ++ showContent xs
+                      TacLabel (Label l)                  -> l  ++"\n"++showContent xs
+                      TacJump (Label l)                   -> "\tgoto " ++ l  ++"\n"++showContent xs
+                      TacConditionalJump (Label lab) flag addr -> case flag of
+                        True ->  "\tif " ++ (showAddrContent addr) ++ " goto " ++ lab        ++"\n"++ showContent xs
+                        False -> "\tif_false " ++ (showAddrContent addr) ++ " goto " ++ lab  ++"\n"++ showContent xs
+                      TacRelConditionalJump (Label lab) flag relop laddr raddr -> case flag of
+                        True ->  "\tif " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (show raddr) ++ " goto " ++ lab              ++"\n"++ showContent xs
+                        False -> "\tif_false " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (show raddr) ++ " goto " ++ lab        ++"\n"++ showContent xs
                       ExitTac                             -> "" ++"\n\n"
 
 genAssignEq:: Type -> String

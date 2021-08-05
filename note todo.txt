@@ -31,3 +31,6 @@ Variable y undeclared! Position: Row: 1 | Col: 13
 var x:int = y;
 
 non dovrebbe propagare cannot init...
+
+
+short-cut flags
