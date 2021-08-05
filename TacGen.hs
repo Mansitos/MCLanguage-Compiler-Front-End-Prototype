@@ -39,6 +39,9 @@ instance Sel4 (a1,a2,a3,a4,a5,a6) a4 where sel4 (_,_,_,x,_,_) = x
 newLabel :: Prelude.Integer -> Label
 newLabel n = Label ("L"++show n++":")
 
+newTemp :: Prelude.Integer -> Address
+newTemp n = AddrAddress ("t"++show n)
+
 buildIDAddr :: TCheckResult -> Prelude.String -> Address
 buildIDAddr (TResult env t pos) id = case Data.Map.lookup id env of
                                 Just [Variable tv posv@(Pn a r c) mode override] -> AddrAddress (id++"@"++show r++","++show c)
@@ -48,6 +51,7 @@ mergeTac :: TAC -> TAC -> TAC
 mergeTac (TAC []) (TAC []) = TAC []
 mergeTac (TAC [x]) (TAC []) = TAC [x]
 mergeTac (TAC [x]) (TAC (y:ys)) = TAC (x:y:ys)
+mergeTac (TAC x) (TAC y) = TAC (x++y)
 
 showAddrContent :: Address -> Prelude.String 
 showAddrContent (AddrString s) = "\"" ++ s ++ "\""
@@ -88,6 +92,106 @@ genDefaultInitAddr ty = case ty of
     B_type Type_String   -> AddrString ""   
     B_type Type_Real     -> AddrReal  0.0
 
+getTypeFromDef :: Abs.DEFAULT TCheckResult -> Type
+getTypeFromDef (Abs.ExpressionIntegerD res@(TResult env t pos) value@(Abs.Integer val resi)) = t
+getTypeFromDef (Abs.ExpressionBooleanD res@(TResult env t pos) value@(Abs.Boolean_true resi)) = t
+getTypeFromDef (Abs.ExpressionBooleanD res@(TResult env t pos) value@(Abs.Boolean_false resi)) = t
+getTypeFromDef (Abs.ExpressionBooleanD res@(TResult env t pos) value@(Abs.Boolean_True resi)) = t
+getTypeFromDef (Abs.ExpressionBooleanD res@(TResult env t pos) value@(Abs.Boolean_False resi)) = t
+getTypeFromDef (Abs.ExpressionCharD res@(TResult env t pos) value@(Abs.Char val resi)) = t      
+getTypeFromDef (Abs.ExpressionStringD res@(TResult env t pos) value@(Abs.String val resi)) = t  
+getTypeFromDef (Abs.ExpressionRealD res@(TResult env t pos) value@(Abs.Real val resi)) = t      
+getTypeFromDef (Abs.ExpressionBracketD res@(TResult env t pos) exp) = t                   
+getTypeFromDef (Abs.ExpressionCastD res@(TResult env t pos) def tipo) = t
+getTypeFromDef (Abs.ExpressionUnaryD res@(TResult env t pos) unary def)  = t
+getTypeFromDef (Abs.ExpressionIdentD res@(TResult env t pos) id index) = t
+getTypeFromDef (Abs.ExpressionCallD res@(TResult env t pos) id exps) = t
+
+getTypeFromExpr :: Abs.EXPRESSION TCheckResult -> Type
+getTypeFromExpr (Abs.ExpressionInteger res@(TResult env t pos) value@(Abs.Integer val resi)) = t
+getTypeFromExpr (Abs.ExpressionBoolean res@(TResult env t pos) value@(Abs.Boolean_true resi)) = t
+getTypeFromExpr (Abs.ExpressionBoolean res@(TResult env t pos) value@(Abs.Boolean_false resi)) = t
+getTypeFromExpr (Abs.ExpressionBoolean res@(TResult env t pos) value@(Abs.Boolean_True resi)) = t
+getTypeFromExpr (Abs.ExpressionBoolean res@(TResult env t pos) value@(Abs.Boolean_False resi)) = t
+getTypeFromExpr (Abs.ExpressionChar res@(TResult env t pos) value@(Abs.Char val resi)) = t      
+getTypeFromExpr (Abs.ExpressionString res@(TResult env t pos) value@(Abs.String val resi)) = t  
+getTypeFromExpr (Abs.ExpressionReal res@(TResult env t pos) value@(Abs.Real val resi)) = t      
+getTypeFromExpr (Abs.ExpressionBracket res@(TResult env t pos) exp) = t                   
+getTypeFromExpr (Abs.ExpressionCast res@(TResult env t pos) def tipo) = t
+getTypeFromExpr (Abs.ExpressionUnary res@(TResult env t pos) unary def)  = t
+getTypeFromExpr (Abs.ExpressionIdent res@(TResult env t pos) id index) = t
+getTypeFromExpr (Abs.ExpressionCall res@(TResult env t pos) id exps) = t
+getTypeFromExpr (Abs.ExpressionBinary res@(TResult env t pos) def binary expr) = t
+
+buildOp :: Type -> Abs.BINARYOP a -> TacBinaryOp
+buildOp t binary = case binary of
+                    BinaryOperationPlus _ -> case t of
+                                                B_type Type_Integer -> IntAdd
+                                                B_type Type_Real -> RealAdd
+                    BinaryOperationMinus _ -> case t of
+                                                B_type Type_Integer -> IntSub
+                                                B_type Type_Real -> RealSub
+                    BinaryOperationProduct _ -> case t of
+                                                B_type Type_Integer -> IntMul
+                                                B_type Type_Real -> RealMul
+                    BinaryOperationDivision _ -> case t of
+                                                B_type Type_Integer -> IntDiv
+                                                B_type Type_Real -> RealDiv
+                    BinaryOperationModule _ -> case t of
+                                                B_type Type_Integer -> IntMod
+                                                B_type Type_Real -> RealMod
+                    BinaryOperationPower _ -> case t of
+                                                B_type Type_Integer -> IntPow
+                                                B_type Type_Real -> RealPow
+buildROp :: Type -> Type -> Abs.BINARYOP a -> TacRelOp
+buildROp t1 t2 binary = case binary of
+                    BinaryOperationAnd _ -> And
+                    BinaryOperationOr _ -> Or
+                    BinaryOperationEq _ -> case t1 of
+                                                B_type Type_Integer -> case t2 of
+                                                                        B_type Type_Integer -> EqInt
+                                                                        B_type Type_Real -> EqReal
+                                                B_type Type_Real -> EqReal
+                                                B_type Type_Char -> EqChar
+                                                B_type Type_String -> EqString
+                                                B_type Type_Boolean -> EqBool
+                    BinaryOperationNotEq _ -> case t1 of
+                                                B_type Type_Integer -> case t2 of
+                                                                        B_type Type_Integer -> NeqInt
+                                                                        B_type Type_Real -> NeqReal
+                                                B_type Type_Real -> NeqReal
+                                                B_type Type_Char -> NeqChar
+                                                B_type Type_String -> NeqString
+                                                B_type Type_Boolean -> NeqBool
+                    BinaryOperationGratherEq _ -> case t1 of
+                                                B_type Type_Integer -> case t2 of
+                                                                        B_type Type_Integer -> GeqInt
+                                                                        B_type Type_Real -> GeqReal
+                                                B_type Type_Real -> GeqReal
+                                                B_type Type_Char -> GeqChar
+                                                B_type Type_String -> GeqString
+                    BinaryOperationGrather _ -> case t1 of
+                                                B_type Type_Integer -> case t2 of
+                                                                        B_type Type_Integer -> GtInt
+                                                                        B_type Type_Real -> GtReal
+                                                B_type Type_Real -> GtReal
+                                                B_type Type_Char -> GtChar
+                                                B_type Type_String -> GtString
+                    BinaryOperationLessEq _ -> case t1 of
+                                                B_type Type_Integer -> case t2 of
+                                                                        B_type Type_Integer -> LeqInt
+                                                                        B_type Type_Real -> LeqReal
+                                                B_type Type_Real -> LeqReal
+                                                B_type Type_Char -> LeqChar
+                                                B_type Type_String -> LeqString
+                    BinaryOperationLess _ -> case t1 of
+                                                B_type Type_Integer -> case t2 of
+                                                                        B_type Type_Integer -> LtInt
+                                                                        B_type Type_Real -> LtReal
+                                                B_type Type_Real -> LtReal
+                                                B_type Type_Char -> LtChar
+                                                B_type Type_String -> LtString
+
 
 -- Given the start of a program (starting node Abs.S); starts the TAC generation process
 genTAC :: Abs.S TCheckResult -> Abs.S TAC
@@ -111,11 +215,13 @@ genTacStatements (Abs.EmptyStatement tres) n l = ((Abs.EmptyStatement (TAC [])),
 
 genTacStatement :: Abs.STATEMENT TCheckResult -> Prelude.Integer -> Label -> TCheckResult -> (Abs.STATEMENT TAC,Prelude.Integer,Address)
 genTacStatement (Abs.VariableDeclarationStatement res@(TResult _ ty _) tipo vardec) n l tres = let tipoTac = sel1 (genTacVariableType tipo n l) in
-                                                                                let vardecTac = genTacVarDecList vardec n l tres in
-                                                                                    let vardecContent = vardeclist_content (sel1 vardecTac) in
-                                                                                        let vardecAddrs = sel3 vardecTac in -- variable addresses # >1
-                                                                                            let initAddr = sel4 vardecTac in
-                                                                                                (Abs.VariableDeclarationStatement (TAC (buildTacEntriesForVarsDecl vardecAddrs initAddr ty)) tipoTac (sel1 vardecTac) ,n,AddrAddress "")
+                                                                                                    let tipoContent = variabletype_content tipoTac in
+                                                                                                        let vardecTac = genTacVarDecList vardec n l tres in
+                                                                                                            let vardecContent = vardeclist_content (sel1 vardecTac) in
+                                                                                                                let vardecAddrs = sel3 vardecTac in -- variable addresses # >1
+                                                                                                                    let initAddr = sel4 vardecTac in
+                                                                                                                        (Abs.VariableDeclarationStatement (mergeTac (mergeTac vardecContent (TAC (buildTacEntriesForVarsDecl vardecAddrs initAddr ty)) )
+                                                                                                                                                             tipoContent) tipoTac (sel1 vardecTac) ,n,AddrAddress "")
 {-genTacStatement Abs.BreakStatement tres)                          = 
 genTacStatement (Abs.ContinueStatement tres)                        = 
 genTacStatement (Abs.ReturnStatement tres ret)                      = 
@@ -146,20 +252,20 @@ genTacVarDecList (Abs.VariableDeclarationSingle res vardecId) n l tres = let var
                                                                                 (Abs.VariableDeclarationSingle (vardecid_content (sel1 vardecIdTac)) (sel1 vardecIdTac),n,vardecIdAddr,initAddr)
 
 genTacVarDecId :: Abs.VARDECID TCheckResult -> Prelude.Integer -> Label -> TCheckResult -> (Abs.VARDECID TAC,Prelude.Integer,[Address],Address)
-genTacVarDecId (Abs.VariableDeclaration res idlist typepart initpart) n l tres = case initpart of
-                                                                                InitializzationPartEmpty resi -> let idlistTac = genTacIdentifierList idlist n l tres in
-                                                                                                                    let tacId = identlist_content (sel1 idlistTac) in
-                                                                                                                        let addrIdList = sel3 idlistTac in
-                                                                                                                            let initAddr = AddrNULL in
-                                                                                                                                (Abs.VariableDeclaration (TAC []) (sel1 idlistTac) (Abs.TypePart (TAC []) (TypeExpression (TAC []) (Abs.PrimitiveTypeInt (TAC [])))) (Abs.InitializzationPartEmpty (TAC [])),n,addrIdList,initAddr)
-                                                                                InitializzationPart resi expr -> let idlistTac = genTacIdentifierList idlist n l tres in
-                                                                                                                    let tacId = identlist_content (sel1 idlistTac) in
-                                                                                                                        let addrIdList = sel3 idlistTac in
-                                                                                                                            let exprTac = (genTacExpression expr n l tres) in
-                                                                                                                                let initTac = (Abs.InitializzationPart (TAC []) (sel1 exprTac)) in
-                                                                                                                                    let initAddr = sel3 exprTac in
-                                                                                                                                        (Abs.VariableDeclaration (TAC []) (sel1 idlistTac) (Abs.TypePart (TAC []) (TypeExpression (TAC []) (Abs.PrimitiveTypeInt (TAC [])))) initTac ,n,addrIdList,initAddr)
-                                                                                --InitializzationPartArray resi array -> 
+genTacVarDecId (Abs.VariableDeclaration res@(TResult _ ty _) idlist typepart initpart) n l tres = case initpart of
+                                                                                    InitializzationPartEmpty resi -> let idlistTac = genTacIdentifierList idlist n l tres in
+                                                                                                                        let tacId = identlist_content (sel1 idlistTac) in
+                                                                                                                            let addrIdList = sel3 idlistTac in
+                                                                                                                                let initAddr = AddrNULL in
+                                                                                                                                    (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC []) (TypeExpression (TAC []) (Abs.PrimitiveTypeInt (TAC [])))) (Abs.InitializzationPartEmpty (TAC [])),n,addrIdList,initAddr)
+                                                                                    InitializzationPart resi expr -> let idlistTac = genTacIdentifierList idlist n l tres in
+                                                                                                                        let tacId = identlist_content (sel1 idlistTac) in
+                                                                                                                            let addrIdList = sel3 idlistTac in
+                                                                                                                                let exprTac = (genTacExpression expr n l tres) in
+                                                                                                                                    let initTac = (Abs.InitializzationPart (expression_content (sel1 exprTac)) (sel1 exprTac)) in
+                                                                                                                                        let initAddr = sel3 exprTac in
+                                                                                                                                            (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC []) (TypeExpression (TAC []) (Abs.PrimitiveTypeInt (TAC [])))) initTac ,n,addrIdList,initAddr)
+                                                                                    --InitializzationPartArray resi array -> 
 
 genTacExpression :: Abs.EXPRESSION TCheckResult -> Prelude.Integer -> Label -> TCheckResult -> (Abs.EXPRESSION TAC,Prelude.Integer,Address)
 genTacExpression (Abs.ExpressionInteger res value@(Abs.Integer val resi))       n l tres = (Abs.ExpressionInteger (TAC []) (Abs.Integer val (TAC [])),n, AddrInt val)
@@ -170,18 +276,36 @@ genTacExpression (Abs.ExpressionBoolean res value@(Abs.Boolean_False resi))     
 genTacExpression (Abs.ExpressionChar res value@(Abs.Char val resi))             n l tres = (Abs.ExpressionChar (TAC []) (Abs.Char val (TAC [])),n, AddrChar val)
 genTacExpression (Abs.ExpressionString res value@(Abs.String val resi))         n l tres = (Abs.ExpressionString (TAC []) (Abs.String val (TAC [])),n, AddrString val)
 genTacExpression (Abs.ExpressionReal res value@(Abs.Real val resi))             n l tres = (Abs.ExpressionReal (TAC []) (Abs.Real val (TAC [])),n, AddrReal val)
-genTacExpression (Abs.ExpressionBracket res exp)                                n l tres = let exprTac = genTacExpression exp n l tres in (Abs.ExpressionBracket (TAC []) (sel1 exprTac),n, (sel3 exprTac))
+genTacExpression (Abs.ExpressionBracket res exp)                                n l tres = let exprTac = genTacExpression exp n l tres in (Abs.ExpressionBracket (expression_content (sel1 exprTac)) (sel1 exprTac),n, (sel3 exprTac))
 {-genTacExpression (Abs.ExpressionCast res def tipo)  =-}   
-genTacExpression (Abs.ExpressionUnary res unary def)                            n l tres = let defTac = genTacDefault def n l tres in (case unary of 
-                                                                                                                                            UnaryOperationPositive _ -> (Abs.ExpressionUnary (TAC []) Abs.UnaryOperationPositive (TAC [])
-                                                                                                                                            UnaryOperationNegative _ -> (Abs.ExpressionUnary (TAC []) Abs.UnaryOperationNegative (TAC [])
-                                                                                                                                            UnaryOperationNot      _ -> (Abs.ExpressionUnary (TAC []) Abs.UnaryOperationNot (TAC [])
-                                                                                                                                            UnaryOperationPointer  _ -> (Abs.ExpressionUnary (TAC []) Abs.UnaryOperationPointer (TAC []))
-                                                                                                                                        (sel1 defTac),n,(sel3 defTac)) 
-{-genTacExpression (Abs.ExpressionBinary res def binary) =
-genTacExpression (Abs.ExpressionIdent res id index) =
+genTacExpression (Abs.ExpressionUnary res@(TResult env ty pos) unary def)       n l tres = let defTac = genTacDefault def (n+1) l tres in 
+                                                                                                let defAddr = sel3 defTac in
+                                                                                                    let temp = newTemp n in
+                                                                                                        case unary of 
+                                                                                                            UnaryOperationPositive _ -> (Abs.ExpressionUnary (mergeTac (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Pos defAddr ty]) ) (Abs.UnaryOperationPositive (TAC [])) (sel1 defTac),n,temp) 
+                                                                                                            UnaryOperationNegative _ -> (Abs.ExpressionUnary (mergeTac (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Neg defAddr ty]) ) (Abs.UnaryOperationNegative (TAC [])) (sel1 defTac),n,temp) 
+                                                                                                            UnaryOperationNot      _ -> (Abs.ExpressionUnary (mergeTac (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Not defAddr ty]) ) (Abs.UnaryOperationNot (TAC [])) (sel1 defTac),n,temp) 
+                                                                                                            UnaryOperationPointer  _ -> (Abs.ExpressionUnary (mergeTac (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Point defAddr ty]) ) (Abs.UnaryOperationPointer (TAC [])) (sel1 defTac),n,temp)
+genTacExpression (Abs.ExpressionBinary res@(TResult env t pos) def binary expr) n l tres = let defTac = genTacDefault def (n+1) l tres in 
+                                                                                                let exprTac = genTacExpression expr ((sel2 defTac)+1) l tres in
+                                                                                                    let temp = newTemp n in
+                                                                                                        case binary of
+                                                                                                            BinaryOperationPlus _ -> (Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignBinaryOp temp (buildOp t binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationPlus (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationMinus _ -> (Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignBinaryOp temp (buildOp t binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationMinus (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            BinaryOperationProduct _ -> (Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignBinaryOp temp (buildOp t binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationProduct (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationDivision _ -> (Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignBinaryOp temp (buildOp t binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationDivision (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationModule _ -> (Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignBinaryOp temp (buildOp t binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationModule (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationPower _ -> (Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignBinaryOp temp (buildOp t binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationPower (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationAnd _ ->(Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromDef def) (getTypeFromExpr expr) binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationAnd (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationOr _ ->(Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromDef def) (getTypeFromExpr expr) binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationOr (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationEq _ ->(Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromDef def) (getTypeFromExpr expr) binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationEq (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationNotEq _ ->(Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromDef def) (getTypeFromExpr expr) binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationNotEq (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationGratherEq _ ->(Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromDef def) (getTypeFromExpr expr) binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationGratherEq (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationGrather _ ->(Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromDef def) (getTypeFromExpr expr) binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationGrather (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationLessEq _ ->(Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromDef def) (getTypeFromExpr expr) binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationLessEq (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+                                                                                                            --BinaryOperationLess _ -> (Abs.ExpressionBinary (mergeTac (mergeTac (default_content (sel1 defTac)) (expression_content (sel1 exprTac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromDef def) (getTypeFromExpr expr) binary) (sel3 defTac) (sel3 exprTac) t])) (sel1 defTac) (Abs.BinaryOperationLess (TAC [])) (sel1 exprTac),(sel2 exprTac),temp)
+{-genTacExpression (Abs.ExpressionIdent res id index) =_ ->
 genTacExpression (Abs.ExpressionCall res id exps) = -}
--- TacAssignUnaryOp  {getAddr:: Address, unaryOp  :: TacUnaryOp,  first::Address, second :: Address, assignType::Type} --        x = + y
 
 genTacDefault :: Abs.DEFAULT TCheckResult -> Prelude.Integer -> Label -> TCheckResult -> (Abs.DEFAULT TAC,Prelude.Integer,Address)
 genTacDefault (Abs.ExpressionIntegerD res value@(Abs.Integer val resi))       n l tres = (Abs.ExpressionIntegerD (TAC []) (Abs.Integer val (TAC [])),n, AddrInt val)
@@ -192,10 +316,21 @@ genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_False resi))     n 
 genTacDefault (Abs.ExpressionCharD res value@(Abs.Char val resi))             n l tres = (Abs.ExpressionCharD (TAC []) (Abs.Char val (TAC [])),n, AddrChar val)
 genTacDefault (Abs.ExpressionStringD res value@(Abs.String val resi))         n l tres = (Abs.ExpressionStringD (TAC []) (Abs.String val (TAC [])),n, AddrString val)
 genTacDefault (Abs.ExpressionRealD res value@(Abs.Real val resi))             n l tres = (Abs.ExpressionRealD (TAC []) (Abs.Real val (TAC [])),n, AddrReal val)
-genTacDefault (Abs.ExpressionBracketD res exp)                                n l tres = let exprTac = genTacExpression exp n l tres in (Abs.ExpressionBracketD (TAC []) (sel1 exprTac),n, (sel3 exprTac))
-{-genTacDefault (Abs.ExpressionCastD res def tipo)  =   
-genTacDefault (Abs.ExpressionUnaryD res unary def)                            n l tres = let defTac = genTacDefault def n l tres in (Abs.ExpressionUnary (TAC []) (case unary of ...) (sel1 defTac)) 
-genTacDefault (Abs.ExpressionIdentD res id index) =
+genTacDefault (Abs.ExpressionBracketD res exp)                                n l tres = let exprTac = genTacExpression exp n l tres in (Abs.ExpressionBracketD (expression_content (sel1 exprTac)) (sel1 exprTac),n, (sel3 exprTac))
+{-genTacDefault (Abs.ExpressionCastD res def tipo)  = -}  
+genTacDefault (Abs.ExpressionUnaryD res@(TResult env ty pos) unary def)       n l tres = let defTac = genTacDefault def (n+1) l tres in 
+                                                                                            let temp = newTemp n in
+                                                                                                case def of
+                                                                                                    --Abs.ExpressionCastD res def tipo   
+                                                                                                    --Abs.ExpressionUnaryD res@(TResult env ty pos) unary def
+                                                                                                    --Abs.ExpressionIdentD res id index
+                                                                                                    --Abs.ExpressionCallD res id exps
+                                                                                                    _ -> case unary of 
+                                                                                                            UnaryOperationPositive _ -> (Abs.ExpressionUnaryD (mergeTac (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Pos (sel3 defTac) ty])) (Abs.UnaryOperationPositive (TAC [])) (sel1 defTac),n,temp) 
+                                                                                                            UnaryOperationNegative _ -> (Abs.ExpressionUnaryD (mergeTac (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Neg (sel3 defTac) ty])) (Abs.UnaryOperationNegative (TAC [])) (sel1 defTac),n,temp) 
+                                                                                                            UnaryOperationNot      _ -> (Abs.ExpressionUnaryD (mergeTac (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Not (sel3 defTac) ty])) (Abs.UnaryOperationNot (TAC [])) (sel1 defTac),n,temp) 
+                                                                                                            UnaryOperationPointer  _ -> (Abs.ExpressionUnaryD (mergeTac (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Point (sel3 defTac) ty])) (Abs.UnaryOperationPointer (TAC [])) (sel1 defTac),n,temp)
+{-genTacDefault (Abs.ExpressionIdentD res id index) =
 genTacDefault (Abs.ExpressionCallD res id exps) = -}
 
 
