@@ -1,0 +1,25 @@
+if true then var x : int = 1 + 2 + 3 + 4 + 5 + 6;
+if true then var x : int = 1 + 2 + 3 + 4 + 5 + 6;
+
+if true then if true then var x : int = 1 + 2 + 3 + 4 + 5 + 6;
+if true then var x : int = 1 + 2 + 3 + 4 + 5 + 6;
+if true then var x : int = 1 + 2 + 3 + 4 + 5 + 6;
+------------------------------------------------
+var x:int = 2*3*4*7 + ((8*9*0)**50);
+if (40==50 || true && false) then
+{
+while 5==6||false||true do
+var y:char='a';
+} else var y:char='z';
+----------------------------------------
+if true then {
+  var x : int = 10;
+  }
+else var x : int = 1;
+---------------------------------
+if true then {
+  var x : int = 10;
+  }
+else var x : int = 1;
+if true then var x : int = 9;
+else var x : int = 6;
