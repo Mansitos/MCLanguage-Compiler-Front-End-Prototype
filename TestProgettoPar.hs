@@ -79,7 +79,7 @@ runTests index v [] =  do
                       putStrLn "\n\n >>>>>>> End of testing Phase <<<<<<<\n"
                       putStrLn " For adding new test cases:\n   - create a new file n.txt with input code inside tests folder\n   - n must be the next number from the list\n   - modify variable \"numberOfTest\" with the new n-value in file TestProgettoPar.hs\n   - Rebuild and execute\n\n"
 
-numberOfTests = 11
+numberOfTests = 11  -- must be set to the number of files in the tests folder. Tests files must be of consecutive ints: 1.txt 2.txt 3.txt etc.
 testFilesPaths = ["tests/" ++ (show x) ++ ".txt"| x <- [1..numberOfTests]]
 
 ----------------------------------------------------------------------------------------------------
@@ -148,7 +148,7 @@ showTypeCheckResultStatement (Abs.ContinueStatement res ) spacer flag           
 showTypeCheckResultStatement (Abs.ReturnStatement res _) spacer flag                  = if flag then "\n" ++ spacer ++ show res else printErr res -- return case
 
 ----------------------------------------------------------------------------------------------------
---- TAC CODE PRINTING  ---
+--- TAC CODE PRINTING  -----------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------- 
 
 showTac :: S TAC -> String
@@ -156,33 +156,34 @@ showTac (Abs.StartCode tac@(TAC x) _) = showContent x
 
 showContent :: [TACEntry] -> String
 showContent (x:xs) = case x of
-                      TacAssignBinaryOp id op fst scnd ty -> "\t"++showAddrContent id++" "   ++genAssignEq ty++ " "  ++ showAddrContent fst ++" " ++ show op       ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
-                      TacAssignRelOp id op fst scnd ty    -> "\t"++showAddrContent id++" "   ++genAssignEq ty++ " " ++ showAddrContent fst ++" " ++show op       ++" "++showAddrContent scnd  ++"\n"    ++ showContent xs
-                      TacAssignUnaryOp id op fst ty       -> "\t"++showAddrContent id++" "   ++genAssignEq ty++" " ++ show op             ++" " ++showAddrContent fst  ++"\n"   ++ showContent xs
-                      TacAssignNullOp id fst ty           -> "\t"++showAddrContent id++" "   ++genAssignEq ty++" " ++ showAddrContent fst                              ++"\n"   ++ showContent xs
-                      TacLabel (Label l)                  -> l  ++"\n"++showContent xs
-                      TacJump (Label l)                   -> "\tgoto " ++ l  ++"\n"++showContent xs
+                      TacAssignBinaryOp id op fst scnd ty -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ showAddrContent fst ++ " " ++ show op           ++ " " ++ showAddrContent scnd ++ showContent xs
+                      TacAssignRelOp id op fst scnd ty    -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ showAddrContent fst ++ " " ++ show op           ++ " " ++ showAddrContent scnd ++ showContent xs
+                      TacAssignUnaryOp id op fst ty       -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ show op             ++ " " ++ showAddrContent fst  ++ showContent xs
+                      TacAssignNullOp id fst ty           -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ showAddrContent fst                                ++ showContent xs
+                      TacLabel (Label l)                  -> "\n" ++ l ++ ":" ++ showContent xs
+                      TacJump  (Label l)                  -> "\n" ++ "\t  goto " ++ l ++ showContent xs
                       TacConditionalJump (Label lab) flag addr -> case flag of
-                        True ->  "\tif " ++ (showAddrContent addr) ++ " goto " ++ lab        ++"\n"++ showContent xs
-                        False -> "\tif_false " ++ (showAddrContent addr) ++ " goto " ++ lab  ++"\n"++ showContent xs
+                          True ->  "\n" ++ "\t  if "       ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs
+                          False -> "\n" ++ "\t  if_false " ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs
                       TacRelConditionalJump (Label lab) flag relop laddr raddr -> case flag of
-                        True ->  "\tif " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab              ++"\n"++ showContent xs
-                        False -> "\tif_false " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab        ++"\n"++ showContent xs
-                      ExitTac                             -> "" ++"\n\n"
+                          True ->  "\n" ++ "\t  if "       ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab ++ showContent xs
+                          False -> "\n" ++ "\t  if_false " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab ++ showContent xs
+                      TacComment comment -> "\t  \t # "   ++ comment ++ "\n" ++ showContent xs 
+                      ExitTac -> "" ++"\n\n"
 
 genAssignEq:: Type -> String
 genAssignEq ty = case ty of
   B_type Type_Integer  -> "=int"
   B_type Type_Boolean  -> "=bool"
   B_type Type_Char     -> "=char"
-  B_type Type_String   -> "=string"
-  B_type Type_Void     -> "=void" -- not reachable
+  B_type Type_String   -> "=str"
+  B_type Type_Void     -> "=void" -- should not be reached!
   B_type Type_Real     -> "=real"
 
 
---------------------------------------------------------------------------------
---- Preprocessing of the input for multiple pointers compatibility "$$$$$$$" ---
---------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------
+--- Preprocessing of the input for multiple pointers compatibility "$$$$$$$" ---------------------
+--------------------------------------------------------------------------------------------------
 
 -- PreProcessing for pointer compatibility
 pointersSyntaxPreprocessing :: String -> String -> String
@@ -192,13 +193,7 @@ pointersSyntaxPreprocessing (x:xs) output= if x=='$'
                                                 pointersSyntaxPreprocessing xs (output++[x]++" ")
                                               else
                                                 pointersSyntaxPreprocessing xs (output++[x])
-
-
-last :: String -> Char -> Char
-last [] e = e
-last [x] e = last [] x
-last (x:xs) e = last xs x
-
+--------------------------------------------------------------------------------------------------
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()
 showTree v tree = do
@@ -214,16 +209,19 @@ usage = do
     , "  (files)         Parse content of files verbosely."
     , "  -s (files)      Silent mode. Parse content of files silently."
     , "  --test          Execute a list of tests located in tests folder."
+    , "\nFor adding new tests:     \n   - create a new file n.txt with input code inside tests folder\n   - n must be the next number from the list\n   - modify variable \"numberOfTest\" with the new n-value in file TestProgettoPar.hs\n   - Rebuild and execute\n\n"
     ]
   exitFailure
 
+
+-- Starting point of execution
 main :: IO ()
 main = do
   args <- getArgs
   case args of
-    ["--help"] -> usage
+    ["--help"]  -> usage
     ["--test"]  -> runTests 1 2 testFilesPaths
-    []         -> getContents >>= run 2 pS
-    "-s":fs    -> mapM_ (runFile 0 pS) fs
-    fs         -> mapM_ (runFile 2 pS) fs
+    []          -> getContents >>= run 2 pS
+    "-s":fs     -> mapM_ (runFile 0 pS) fs
+    fs          -> mapM_ (runFile 2 pS) fs
 
