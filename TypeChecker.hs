@@ -188,9 +188,12 @@ updateEnvWhileStat (Abs.WhileStateSimpleDo pos expr state) env  = insertWith (++
 updateEnvWhileStat (Abs.WhileStateSimpleWDo pos expr b) env  = insertWith (++) "while" [] env
 
 updateEnvForStat :: Abs.FORSTATEMENT Posn -> Env -> Env
-updateEnvForStat (Abs.ForStateIndexDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env
-updateEnvForStat (Abs.ForStateIndexWDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env
-updateEnvForStat _ env = env
+updateEnvForStat (Abs.ForStateIndexDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = let newEnv = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env in insertWith (++) "for" [] newEnv
+updateEnvForStat (Abs.ForStateIndexWDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = let newEnv = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env in insertWith (++) "for" [] newEnv
+updateEnvForStat _ env = insertWith (++) "for" [] env
+
+updateEnvDoWhileStat :: Abs.DOSTATEMENT Posn -> Env -> Env
+updateEnvDoWhileStat (Abs.DoWhileState _ _ _) env = insertWith (++) "dowhile" [] env
 
 -- Given a list of Params, it creates an envEntry of type param for each of them
 createEnvEntryForParams :: [TypeChecker.Parameter] -> Env -> Env
@@ -514,9 +517,9 @@ executeStatement node@(Abs.ExpressionStatement _ exp) env = Abs.ExpressionStatem
 executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = Abs.AssignmentStatement (checkTypeStatement node env) (executeLValue lval env) (executeAssignOp assignOp env) (executeExpression exp env)
 executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeVarType tipo env) (executeVarDecList vardec env)
 executeStatement node@(Abs.ConditionalStatement pos condition) env = let newEnv = updateEnvCondStat condition (updateIfCanOverride env)  in Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition newEnv)
-executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = let newEnv = updateEnvWhileStat whileStaement (updateIfCanOverride env)  in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStaement newEnv)
-executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
-executeStatement node@(Abs.ForStatement pos forStatement) env = let newEnv = updateEnvForStat forStatement env in Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement newEnv)
+executeStatement node@(Abs.WhileDoStatement pos whileStatement) env = let newEnv = updateEnvWhileStat whileStatement (updateIfCanOverride env)  in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStatement newEnv)
+executeStatement node@(Abs.DoWhileStatement pos doStatement) env = let newEnv = updateEnvDoWhileStat doStatement  (updateIfCanOverride env) in Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement newEnv)
+executeStatement node@(Abs.ForStatement pos forStatement) env = let newEnv = updateEnvForStat forStatement (updateIfCanOverride env) in Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement newEnv)
 executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env )) in
                                                                             let newEnv2 = Data.Map.delete "while" (insertWith (++) "return_void" [] newEnv) in  
                                                                                 Abs.ProcedureStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeStatements states newEnv2)
@@ -1123,12 +1126,20 @@ checkTypeB node@(Abs.BlockStatement pos statements) env = case statements of
 checkTypeBreakStatement :: Abs.STATEMENT Posn -> Env -> TCheckResult
 checkTypeBreakStatement (Abs.BreakStatement pos) env = case Data.Map.lookup "while" env of -- check if inside a while block
     Just result -> TResult env (B_type Type_Void) pos
-    Nothing -> TError ["Unexpected break statement at " ++ (show pos)]
+    Nothing -> case Data.Map.lookup "for" env of 
+                Just result -> TResult env (B_type Type_Void) pos
+                Nothing -> case Data.Map.lookup "dowhile" env of 
+                                Just result -> TResult env (B_type Type_Void) pos
+                                Nothing -> TError ["Unexpected break statement at " ++ (show pos)]
 
 checkTypeContinueStatement :: Abs.STATEMENT Posn -> Env -> TCheckResult
 checkTypeContinueStatement (Abs.ContinueStatement pos) env = case Data.Map.lookup "while" env of -- check if inside a while block
     Just result -> TResult env (B_type Type_Void) pos
-    Nothing -> TError ["Unexpected continue statement at " ++ (show pos)]
+    Nothing -> case Data.Map.lookup "for" env of 
+                Just result -> TResult env (B_type Type_Void) pos
+                Nothing -> case Data.Map.lookup "dowhile" env of 
+                                Just result -> TResult env (B_type Type_Void) pos
+                                Nothing -> TError ["Unexpected break statement at " ++ (show pos)]
 
 checkTypeReturnStatement :: Abs.STATEMENT Posn -> Env -> TCheckResult
 checkTypeReturnStatement node@(Abs.ReturnStatement pos ret) env = checkTypeReturnState ret env
@@ -1369,22 +1380,6 @@ checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type
 checkTypeUnaryOp node@(Abs.UnaryOperationNegative pos) env = TResult env (B_type Type_Real) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationNot pos) env = TResult env (B_type Type_Boolean) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationPointer pos) env = TResult env (B_type Type_Void) pos
-
-{-checkTypeBinaryOp :: Abs.BINARYOP Posn -> Env -> TCheckResult
-checkTypeBinaryOp node@(Abs.BinaryOperationPlus pos) env = TResult env (B_type Type_Real) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationMinus pos) env = TResult env (B_type Type_Real) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationProduct pos) env = TResult env (B_type Type_Real) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationDivision pos) env = TResult env (B_type Type_Real) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationModule pos) env = TResult env (B_type Type_Real) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationPower pos) env = TResult env (B_type Type_Real) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationAnd pos) env = TResult env (B_type Type_Boolean) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationOr pos) env = TResult env (B_type Type_Boolean) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationEq pos) env = TResult env (B_type Type_Boolean) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationNotEq pos) env = TResult env (B_type Type_Boolean) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationGratherEq pos) env = TResult env (B_type Type_Boolean) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationGrather pos) env = TResult env (B_type Type_Boolean) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationLessEq pos) env = TResult env (B_type Type_Boolean) pos
-checkTypeBinaryOp node@(Abs.BinaryOperationLess pos) env = TResult env (B_type Type_Boolean) pos-}
 
 checkTypeDefault :: Prelude.Integer -> Abs.DEFAULT Posn -> Env -> TCheckResult
 checkTypeDefault s node@(Abs.ExpressionIntegerD pos value) env = checkTypeInteger value env
