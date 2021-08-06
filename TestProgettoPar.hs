@@ -168,7 +168,7 @@ showContent (x:xs) = case x of
                       TacRelConditionalJump (Label lab) flag relop laddr raddr -> case flag of
                           True ->  "\n" ++ "\t  if "       ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab ++ showContent xs
                           False -> "\n" ++ "\t  if_false " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab ++ showContent xs
-                      TacComment comment -> "\t  \t # "   ++ comment ++ "\n" ++ showContent xs 
+                      TacComment comment -> "\t  \t # "   ++ comment ++ showContent xs 
                       ExitTac -> "" ++"\n\n"
 
 genAssignEq:: Type -> String
