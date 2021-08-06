@@ -32,4 +32,10 @@ Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 
 short-cut flags
 
+aggiornare posizioni indici
+
+RICORDARSI DI ATTIVARE L'ENV DI PARTENZA CON LE FUNZZZZZZZZZZS
+
+
+
 -------------
