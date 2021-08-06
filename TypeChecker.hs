@@ -190,7 +190,7 @@ updateEnvWhileStat (Abs.WhileStateSimpleWDo pos expr b) env  = insertWith (++) "
 updateEnvForStat :: Abs.FORSTATEMENT Posn -> Env -> Env
 updateEnvForStat (Abs.ForStateIndexDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env
 updateEnvForStat (Abs.ForStateIndexWDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env
-
+updateEnvForStat _ env = env
 -- Given a list of Params, it creates an envEntry of type param for each of them
 createEnvEntryForParams :: [TypeChecker.Parameter] -> Env -> Env
 createEnvEntryForParams ((TypeChecker.Parameter ty pos mode id):xs) env = createEnvEntryForParams xs (insertWith (++) id [Variable ty pos mode False] env)
