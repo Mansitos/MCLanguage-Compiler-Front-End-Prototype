@@ -187,6 +187,10 @@ updateEnvWhileStat (Abs.WhileStateCtrlWDo pos ctrl b) env  = case ctrl of
 updateEnvWhileStat (Abs.WhileStateSimpleDo pos expr state) env  = insertWith (++) "while" [] env
 updateEnvWhileStat (Abs.WhileStateSimpleWDo pos expr b) env  = insertWith (++) "while" [] env
 
+updateEnvForStat :: Abs.FORSTATEMENT Posn -> Env -> Env
+updateEnvForStat (Abs.ForStateIndexDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env
+updateEnvForStat (Abs.ForStateIndexWDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env
+
 -- Given a list of Params, it creates an envEntry of type param for each of them
 createEnvEntryForParams :: [TypeChecker.Parameter] -> Env -> Env
 createEnvEntryForParams ((TypeChecker.Parameter ty pos mode id):xs) env = createEnvEntryForParams xs (insertWith (++) id [Variable ty pos mode False] env)
@@ -511,7 +515,7 @@ executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = A
 executeStatement node@(Abs.ConditionalStatement pos condition) env = let newEnv = updateEnvCondStat condition (updateIfCanOverride env)  in Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition newEnv)
 executeStatement node@(Abs.WhileDoStatement pos whileStaement) env = let newEnv = updateEnvWhileStat whileStaement (updateIfCanOverride env)  in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStaement newEnv)
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement env)
-executeStatement node@(Abs.ForStatement pos forStatement) env = Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement env)
+executeStatement node@(Abs.ForStatement pos forStatement) env = let newEnv = updateEnvForStat forStatement env in Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement newEnv)
 executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env )) in
                                                                             let newEnv2 = Data.Map.delete "while" (insertWith (++) "return_void" [] newEnv) in  
                                                                                 Abs.ProcedureStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeStatements states newEnv2)
@@ -1059,30 +1063,46 @@ checkTypeDo node@(Abs.DoWhileState pos state exp) env = let expTCheck = checkTyp
 
 checkTypeForState :: Abs.FORSTATEMENT Posn -> Env -> TCheckResult
 checkTypeForState node@(Abs.ForStateIndexDo pos index rangexp state) env = let rangeTCheck = checkRangeExpType rangexp env in
-                                                                            let indexTCheck = checkTypeIndexVarDec index env in
-                                                                                case rangeTCheck of
-                                                                                    TResult _ _ _ -> case indexTCheck of
-                                                                                                    TResult _ _ _ -> if(checkCompatibility rangeTCheck indexTCheck ) then TResult env (B_type Type_Void) pos else TError ["Index-var type and range-expression have Incompatible types! Position "++ show pos]
-                                                                                                    _ -> indexTCheck
-                                                                                    _ -> case indexTCheck of
-                                                                                        TResult _ _ _ -> rangeTCheck
-                                                                                        _ -> mergeErrors rangeTCheck indexTCheck
+                                                                                let indexTCheck = checkTypeIndexVarDec index env in
+                                                                                    case rangeTCheck of
+                                                                                        TResult _ _ _ -> case indexTCheck of
+                                                                                                        TResult _ _ _ -> if(checkCompatibility rangeTCheck indexTCheck ) 
+                                                                                                            then case rangexp of
+                                                                                                                    Abs.RangeExpression {} -> TError ["Multiple range-expressions incompatible here! Position "++ show pos]
+                                                                                                                    _ -> TResult env (B_type Type_Void) pos 
+                                                                                                            else TError ["Index-var type and range-expression have Incompatible types! Position "++ show pos]
+                                                                                                        _ -> if(checkCompatibility rangeTCheck (TResult env (B_type Type_Integer) pos) ) 
+                                                                                                            then case rangexp of
+                                                                                                                    Abs.RangeExpression {} -> TError ["Multiple range-expressions incompatible here! Position "++ show pos]
+                                                                                                                    _ -> TResult env (B_type Type_Void) pos 
+                                                                                                            else TError ["Index-var type and range-expression have Incompatible types! Position "++ show pos]
+                                                                                        _ -> rangeTCheck
 checkTypeForState node@(Abs.ForStateIndexWDo pos index rangexp b) env = let rangeTCheck = checkRangeExpType rangexp env in
                                                                             let indexTCheck = checkTypeIndexVarDec index env in
                                                                                 case rangeTCheck of
                                                                                     TResult _ _ _ -> case indexTCheck of
-                                                                                                    TResult _ _ _ -> if(checkCompatibility rangeTCheck indexTCheck ) then TResult env (B_type Type_Void) pos else TError ["Index-var type and range-expression have Incompatible types! Position "++ show pos]
-                                                                                                    _ -> indexTCheck
-                                                                                    _ -> case indexTCheck of
-                                                                                        TResult _ _ _ -> rangeTCheck
-                                                                                        _ -> mergeErrors rangeTCheck indexTCheck
+                                                                                                    TResult _ _ _ -> if(checkCompatibility rangeTCheck indexTCheck ) 
+                                                                                                        then case rangexp of
+                                                                                                                    Abs.RangeExpression {} -> TError ["Multiple range-expressions incompatible here! Position "++ show pos]
+                                                                                                                    _ -> TResult env (B_type Type_Void) pos    
+                                                                                                        else TError ["Index-var type and range-expression have Incompatible types! Position "++ show pos]
+                                                                                                    _ -> if(checkCompatibility rangeTCheck (TResult env (B_type Type_Integer) pos) ) 
+                                                                                                            then case rangexp of
+                                                                                                                    Abs.RangeExpression {} -> TError ["Multiple range-expressions incompatible here! Position "++ show pos]
+                                                                                                                    _ -> TResult env (B_type Type_Void) pos 
+                                                                                                            else TError ["Index-var type and range-expression have Incompatible types! Position "++ show pos]
+                                                                                    _ -> rangeTCheck
 checkTypeForState node@(Abs.ForStateExprDo pos rangexp state) env = let rangeTCheck = checkRangeExpType rangexp env in 
                                                                         case rangeTCheck of
-                                                                            TResult _ _ _ -> TResult env (B_type Type_Void) pos
+                                                                            TResult _ _ _ -> case rangexp of
+                                                                                                Abs.RangeExpression {} -> TError ["Multiple range-expressions incompatible here! Position "++ show pos]
+                                                                                                _ -> TResult env (B_type Type_Void) pos 
                                                                             _ -> rangeTCheck
 checkTypeForState node@(Abs.ForStateExprWDo pos rangexp b) env = let rangeTCheck = checkRangeExpType rangexp env in 
                                                                         case rangeTCheck of
-                                                                            TResult _ _ _ -> TResult env (B_type Type_Void) pos
+                                                                            TResult _ _ _ -> case rangexp of
+                                                                                                Abs.RangeExpression {} -> TError ["Multiple range-expressions incompatible here! Position "++ show pos]
+                                                                                                _ -> TResult env (B_type Type_Void) pos 
                                                                             _ -> rangeTCheck
 checkTypeIndexVarDec :: Abs.INDEXVARDEC Posn -> Env -> TCheckResult
 checkTypeIndexVarDec node@(Abs.IndexVarDeclaration pos id) env =  checkTypeIdentVar id env
@@ -1655,23 +1675,18 @@ checkRangeExpType node@(Abs.RangeExpressionSingle pos expr1 expr2) env = if ((ch
 
 checkOrder :: Abs.EXPRESSION Posn -> Abs.EXPRESSION Posn -> Env -> Bool
 checkOrder (Abs.ExpressionInteger pos (Abs.Integer val posI)) (Abs.ExpressionInteger poss (Abs.Integer vals posIs)) _ = val<=vals
-checkOrder (Abs.ExpressionReal pos (Abs.Real val posR)) (Abs.ExpressionReal poss (Abs.Real vals posRs)) _ = val<=vals
-checkOrder (Abs.ExpressionInteger pos (Abs.Integer val posI)) (Abs.ExpressionReal poss (Abs.Real vals posRs)) _ = (Prelude.fromInteger val)<=vals
-checkOrder (Abs.ExpressionReal pos (Abs.Real val posR)) (Abs.ExpressionInteger poss (Abs.Integer vals posIs)) _ = val<=(Prelude.fromInteger vals)
-checkOrder (Abs.ExpressionChar pos (Abs.Char val posC)) (Abs.ExpressionChar poss (Abs.Char vals posCs)) _ = val<=vals
-checkOrder (Abs.ExpressionString pos (Abs.String val posS)) (Abs.ExpressionString poss (Abs.String vals posSs)) _ = val<=vals
 checkOrder (Abs.ExpressionIdent pos id index) exp env = let idTCheck = (checkTypeExpression (Abs.ExpressionIdent pos id index) env) in
                                                             let expTCheck = (checkTypeExpression exp env) in
                                                                 case idTCheck of
                                                                     TResult env (Pointer t depth) pos -> False
                                                                     TResult env (Array t dim) pos -> False
-                                                                    _ -> if (checkCompatibility idTCheck expTCheck) then True else False
+                                                                    _ -> if (checkCompatibility idTCheck (TResult env (B_type Type_Integer) pos) && checkCompatibility expTCheck (TResult env (B_type Type_Integer) pos)) then True else False
 checkOrder exp (Abs.ExpressionIdent pos id index) env = let idTCheck = (checkTypeExpression (Abs.ExpressionIdent pos id index) env) in
                                                             let expTCheck = (checkTypeExpression exp env) in
                                                                 case idTCheck of
                                                                     TResult env (Pointer t depth) pos -> False
                                                                     TResult env (Array t dim) pos -> False
-                                                                    _ -> if (checkCompatibility idTCheck expTCheck) then True else False
+                                                                    _ -> if (checkCompatibility idTCheck (TResult env (B_type Type_Integer) pos) && checkCompatibility expTCheck (TResult env (B_type Type_Integer) pos)) then True else False
 checkOrder (Abs.ExpressionUnary pos unary def) (Abs.ExpressionUnary poss unarys defs) env = let exp1 = checkTypeExpression (Abs.ExpressionUnary pos unary def) env in
                                                                                                 let exp2 = checkTypeExpression (Abs.ExpressionUnary pos unary def) env in
                                                                                                     case exp1 of
@@ -1680,7 +1695,7 @@ checkOrder (Abs.ExpressionUnary pos unary def) (Abs.ExpressionUnary poss unarys 
                                                                                                         TResult env t pos -> case exp2 of
                                                                                                                             TResult env (Pointer t depth) pos -> False
                                                                                                                             TResult env (Array t dim) pos -> False
-                                                                                                                            TResult env t pos -> if checkCompatibility exp1 exp2 then True else False
+                                                                                                                            TResult env t pos -> if checkCompatibility exp1 (TResult env (B_type Type_Integer) pos) && checkCompatibility exp2 (TResult env (B_type Type_Integer) pos) then True else False
                                                                                                                             _ -> False
                                                                                                         _ -> False
 checkOrder (Abs.ExpressionUnary pos unary def) exp env = let exp1 = checkTypeExpression (Abs.ExpressionUnary pos unary def) env in
@@ -1691,7 +1706,7 @@ checkOrder (Abs.ExpressionUnary pos unary def) exp env = let exp1 = checkTypeExp
                                                                                                         TResult env t pos -> case exp2 of
                                                                                                                             TResult env (Pointer t depth) pos -> False
                                                                                                                             TResult env (Array t dim) pos -> False
-                                                                                                                            TResult env t pos -> if checkCompatibility exp1 exp2 then True else False
+                                                                                                                            TResult env t pos -> if checkCompatibility exp1 (TResult env (B_type Type_Integer) pos) && checkCompatibility exp2 (TResult env (B_type Type_Integer) pos) then True else False
                                                                                                                             _ -> False
                                                                                                         _ -> False
 checkOrder exp (Abs.ExpressionUnary pos unary def) env = let exp1 = checkTypeExpression (Abs.ExpressionUnary pos unary def) env in
@@ -1702,10 +1717,10 @@ checkOrder exp (Abs.ExpressionUnary pos unary def) env = let exp1 = checkTypeExp
                                                                                                         TResult env t pos -> case exp2 of
                                                                                                                             TResult env (Pointer t depth) pos -> False
                                                                                                                             TResult env (Array t dim) pos -> False
-                                                                                                                            TResult env t pos -> if checkCompatibility exp1 exp2 then True else False
+                                                                                                                            TResult env t pos -> if checkCompatibility exp1 (TResult env (B_type Type_Integer) pos) && checkCompatibility exp2 (TResult env (B_type Type_Integer) pos) then True else False
                                                                                                                             _ -> False
                                                                                                         _ -> False 
-checkOrder exp1 exp2 env = if (checkCompatibility (checkTypeExpression exp1 env) (checkTypeExpression exp2 env)) then True else False
+checkOrder exp1 exp2 env = if checkCompatibility (checkTypeExpression exp1 env) (TResult env (B_type Type_Integer) (Pn 0 0 0)) && checkCompatibility (checkTypeExpression exp2 env) (TResult env (B_type Type_Integer) (Pn 0 0 0)) then True else False
 
 -- Check the superType in a given RangeExp
 checkSuperTypeRangeExp :: TCheckResult -> TCheckResult

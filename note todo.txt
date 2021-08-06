@@ -18,27 +18,18 @@ testare return funzioni (casi particolari array e puntatori) - done
 updateEnv refactor (lavora solo su statement?) (togliere err) - done
 SKEL FOR ARRAYINIT! - done
 cast for pointers - done
+RANGEXP:						-
+limitare a soli interi					] - done
+controllare che funzioni tutto su cicli for e array..?	-
+FOR STATEMENT:						-
+in corrispondenza di un indexvardec (for x in 1..10) 	] - done
+serve l'entry di x di tipo intero			-
 -----------
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 
 ------------
 
-typechecker:
-Variable y undeclared! Position: Row: 1 | Col: 13
- Cannot initialize variable of type int with values of type void! Position:Row: 0 | Col: 0
-
-var x:int = y;
-
-non dovrebbe propagare cannot init...
-
 short-cut flags
 
 -------------
-RANGEXP:
-limitare a soli interi
-controllare che funzioni tutto su cicli for e array..?
-
-FOR STATEMENT:
-in corrispondenza di un indexvardec (for x in 1..10) 
-serve l'entry di x di tipo intero
