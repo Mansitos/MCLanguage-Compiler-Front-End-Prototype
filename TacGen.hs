@@ -211,12 +211,12 @@ genTacStatements :: Abs.STATEMENTS TCheckResult -> Prelude.Integer -> Label -> P
 genTacStatements (Abs.ListStatements tres stat stats) n l k = case stats of
                                                                 Abs.ListStatements tres _ _ -> let statTac = genTacStatement stat n l k tres in
                                                                                                     let newC = sel2 statTac in
-                                                                                                        let newL = newLabel n in
+                                                                                                        let newL = newLabel (sel3 statTac) in
                                                                                                             let statsTac = genTacStatements stats newC newL (sel3 statTac) in
                                                                                                                 (Abs.ListStatements (merge2Tacs (statement_content (sel1 statTac)) (statements_content (sel1 statsTac))) (sel1 statTac) (sel1 statsTac),newC,sel3 statTac)
                                                                 Abs.EmptyStatement tres -> let statTac = genTacStatement stat n l k tres in
                                                                                                 let newC = sel2 statTac in
-                                                                                                    let newL = newLabel n in
+                                                                                                    let newL = newLabel (sel3 statTac) in
                                                                                                         (Abs.ListStatements (statement_content (sel1 statTac)) (sel1 statTac) (Abs.EmptyStatement (TAC [])),newC,sel3 statTac)
 genTacStatements (Abs.EmptyStatement tres) n l k = ((Abs.EmptyStatement (TAC [])),n,k)
 
@@ -244,11 +244,41 @@ genTacStatement (Abs.ConditionalStatement res condition) n l k tres  = let newL 
                                                                         let condStatementTac = genTacConditionalStatement condition n newL (k+1) in
                                                                             let newC = sel2 condStatementTac in
                                                                                 ((Abs.ConditionalStatement (conditionalstate_content (sel1 condStatementTac)) (sel1 condStatementTac)),newC,(sel3 condStatementTac),AddrAddress "")
-{-genTacStatement (Abs.WhileDoStatement tres whileStaement)           = 
-genTacStatement (Abs.DoWhileStatement tres doStatement)             = 
-genTacStatement (Abs.ForStatement tres forStatement)                = 
+genTacStatement (Abs.WhileDoStatement res while) n l k tres         = let newL = newLabel (k+1) in 
+                                                                        let whileStatement = (genTacWhileDoStatement while n newL (k+1)) in
+                                                                            let whileStatementTac = sel1 whileStatement in
+                                                                                let newC = sel2 whileStatement in
+                                                                                    let newK = sel3 whileStatement in
+                                                                                        ((Abs.WhileDoStatement (whilestatement_content whileStatementTac) whileStatementTac),newC,newK,AddrAddress "") -- null address? TODO
+genTacStatement (Abs.DoWhileStatement res doStat) n l k tres        = let newL = newLabel (k+1) in 
+                                                                        let doStatement = (genTacDoWhileStatement doStat n newL (k+1)) in
+                                                                            let doStatementTac = sel1 doStatement in
+                                                                                let newC = sel2 doStatement in
+                                                                                    let newK = sel3 doStatement in
+                                                                                        ((Abs.DoWhileStatement (dostatement_content doStatementTac) doStatementTac),newC,newK,AddrAddress "") -- null address? TODO
+{-genTacStatement (Abs.ForStatement tres forStatement)                = 
 genTacStatement (Abs.ProcedureStatement tres id param states)       =                                              
 genTacStatement (Abs.FunctionStatement tres id param tipo states)   =-}
+
+genTacWhileDoStatement :: Abs.WHILESTATEMENT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Abs.WHILESTATEMENT TAC, Prelude.Integer, Prelude.Integer)
+genTacWhileDoStatement (Abs.WhileStateSimpleDo res expr stat) n l k = let guardExpr = (genTacExpression expr n l k res) in 
+                                                                        let exprTac = sel1 guardExpr in
+                                                                            let statement = (genTacStatement stat (sel2 guardExpr) l ((sel3 guardExpr)+1) res) in 
+                                                                                let statTac = sel1 statement in 
+                                                                                    let exprAddr = sel4 guardExpr in
+                                                                                        let guardLab = newLabel ((sel3 guardExpr)+1) in
+                                                                                        ((Abs.WhileStateSimpleDo (mergeTacs [(TAC [TacJump guardLab,TacLabel l]),(statement_content statTac),(TAC [TacLabel guardLab]),(expression_content exprTac),(TAC [TacConditionalJump l True exprAddr])]) exprTac statTac),sel2 statement, sel3 statement)
+--genTacWhileDoStatement (Abs.WhileStateSimpleWDo res exp b) n l k    =
+--genTacWhileDoStatement (Abs.WhileStateCtrlDo res ctrl state) n l k  =
+--genTacWhileDoStatement (Abs.WhileStateCtrlWDo res ctrl b) n l k     =
+
+genTacDoWhileStatement :: Abs.DOSTATEMENT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Abs.DOSTATEMENT TAC, Prelude.Integer, Prelude.Integer)
+genTacDoWhileStatement (Abs.DoWhileState res stat expr) n l k = let statement = (genTacStatement stat n l k res) in
+                                                                    let statTac = sel1 statement in 
+                                                                        let guardExpr = (genTacExpression expr (sel2 statement) l (sel3 statement) res) in 
+                                                                            let exprTac = sel1 guardExpr in
+                                                                                let exprAddr = sel4 guardExpr in
+                                                                                    ((Abs.DoWhileState (mergeTacs [(TAC [TacLabel l]),(statement_content statTac),(expression_content exprTac),(TAC [TacConditionalJump l True exprAddr])]) statTac exprTac),sel2 guardExpr, sel3 guardExpr)
 
 genTacBlock :: Abs.B TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Abs.B TAC,Prelude.Integer,Prelude.Integer)
 genTacBlock (Abs.BlockStatement res statements) n l k = let statsTac = genTacStatements statements n l k in ((Abs.BlockStatement (statements_content (sel1 statsTac)) (sel1 statsTac)),(sel2 statsTac),(sel3 statsTac))
