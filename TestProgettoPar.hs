@@ -166,8 +166,8 @@ showContent (x:xs) = case x of
                         True ->  "\tif " ++ (showAddrContent addr) ++ " goto " ++ lab        ++"\n"++ showContent xs
                         False -> "\tif_false " ++ (showAddrContent addr) ++ " goto " ++ lab  ++"\n"++ showContent xs
                       TacRelConditionalJump (Label lab) flag relop laddr raddr -> case flag of
-                        True ->  "\tif " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (show raddr) ++ " goto " ++ lab              ++"\n"++ showContent xs
-                        False -> "\tif_false " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (show raddr) ++ " goto " ++ lab        ++"\n"++ showContent xs
+                        True ->  "\tif " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab              ++"\n"++ showContent xs
+                        False -> "\tif_false " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab        ++"\n"++ showContent xs
                       ExitTac                             -> "" ++"\n\n"
 
 genAssignEq:: Type -> String
