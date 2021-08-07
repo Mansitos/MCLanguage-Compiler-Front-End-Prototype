@@ -632,7 +632,7 @@ genTacExpression (Abs.ExpressionBinaryLess res@(TResult env t pos) expr1 expr2) 
                                                                                                         (Abs.ExpressionBinaryLess (merge2Tacs (merge2Tacs (expression_content (sel1 expr1Tac)) (expression_content (sel1 expr2Tac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromExpr expr1) (getTypeFromExpr expr2) "less") (sel4 expr1Tac) (sel4 expr2Tac) t] [])) (sel1 expr1Tac) (sel1 expr2Tac),(sel2 expr2Tac),(sel3 expr2Tac),temp)                                                                                                    
 
 genTacExpression (Abs.ExpressionIdent res ident@(Abs.Ident id resi@(TResult env t pos)) index) n l k (w,j) tres = case Data.Map.lookup id env of
-                                                                                                                  Just [Variable _ posv _ _] -> case index of -- gestire tutti icasi TODO -- posv è errato! TODO
+                                                                                                                  Just [Variable _ posv _ _] -> case index of -- gestire tutti icasi TODO 
                                                                                                                                                 (Abs.ArrayIndexElementEmpty _) -> ((Abs.ExpressionIdent (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,buildIDAddr posv id)
                                                                                                                                                 -- _ -> it is array
 --genTacExpression (Abs.ExpressionCall res id exps) = ident@(Abs.Ident id resi)) n l k (w,j) tres       = 

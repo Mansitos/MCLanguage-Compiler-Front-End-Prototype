@@ -25,6 +25,7 @@ FOR STATEMENT:						-
 in corrispondenza di un indexvardec (for x in 1..10) 	] - done
 serve l'entry di x di tipo intero			-
 aggiornare posizioni indici - done
+nel typechecker viene assegnata la pos sbagliata nel tcheckresult delle variabili? - done
 -----------
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
@@ -35,8 +36,6 @@ short-cut flags
 
 RICORDARSI DI ATTIVARE L'ENV DI PARTENZA CON LE FUNZZZZZZZZZZS
 
-nel typechecker viene assegnata la pos sbagliata nel tcheckresult delle variabili?
-
-
+aggiustare label e counter funzioni e procedure
 
 -------------
