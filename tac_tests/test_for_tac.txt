@@ -23,3 +23,42 @@ if true then {
 else var x : int = 1;
 if true then var x : int = 9;
 else var x : int = 6;
+-------------------------------------
+for 1 .. 2 do while true do break;
+for 1 .. 2 do while true do break;
+for 1..100 do while true do {while true && false do break; break;}
+-------------------------------------------------------------------------
+if 1+2+3+4+5+6*6 == 10 then var x:int;
+if 1+2+3+4+5+6*6 == 10 then var x:int;
+if 1+2+3+4+5+6*6 == 10 then var x:int;
+-----------------------------------------------------------------------
+do var x:int; while 1+2+3+4+5+6*6 == 10;
+do var x:int; while 1+2+3+4+5+6*6 == 10;
+do var x:int; while 1+2+3+4+5+6*6 == 10;
+-------------------------------------------------------------------
+while 1+2+3+4+5+6*6 == 10 do var x:int;
+while 1+2+3+4+5+6*6 == 10 do var x:int;
+while 1+2+3+4+5+6*6 == 10 do var x:int;
+-------------------------------------------------------------------
+for 1 .. 2 do while true do break;
+for 1 .. 2 do while true do break;
+for 1 .. 100 do {
+  if 1 + 2 + 3 + 4 + 5 + 6 * 6 == 10 then var x : int;
+  if 1 + 2 + 3 + 4 + 5 + 6 * 6 == 10 then var x : int;
+  if 1 + 2 + 3 + 4 + 5 + 6 * 6 == 10 then var x : int;
+  }
+-----------------------------------------------------------------------------
+if 1+2+3+4+5+6*6 == 10 then var x:int; else var x:char;
+if 1+2+3+4+5+6*6 == 10 then var x:int; else {if 1 + 2 + 3 + 4 + 5 + 6 * 6 == 10 then var x : int;
+  if 1 + 2 + 3 + 4 + 5 + 6 * 6 == 10 then var x : int;
+  if 1 + 2 + 3 + 4 + 5 + 6 * 6 == 10 then var x : int;}
+if 1+2+3+4+5+6*6 == 10 then var x:int; else { for 1 .. 2 do while true do break;
+for 1 .. 2 do while true do break;
+for 1 .. 100 do {
+  if 1 + 2 + 3 + 4 + 5 + 6 * 6 == 10 then var x : int;
+  if 1 + 2 + 3 + 4 + 5 + 6 * 6 == 10 then var x : int;
+  if 1 + 2 + 3 + 4 + 5 + 6 * 6 == 10 then var x : int;
+  while true && false do break;
+  }
+}
+while true do break;
