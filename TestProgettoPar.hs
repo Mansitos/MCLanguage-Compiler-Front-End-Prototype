@@ -59,7 +59,7 @@ run v p s =
             putStrLn (showTypeCheckResult typecheckRes True)
             putStrLn "\n\n[Compiler Errors]\n"        
             let compilerErrors = (showTypeCheckResult typecheckRes False) in
-              if compilerErrors == ""
+              if True --compilerErrors == ""
               then putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ (show tacgeneration) ++"\n\n[TAC in code]\n" ++ (showTac tacgeneration))
               else putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ " Cannot generate TAC with compiler errors!\n")
   where
@@ -162,6 +162,10 @@ showContent (x:xs) = case x of
                       TacAssignNullOp id fst ty           -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ showAddrContent fst                                ++ showContent xs
                       TacLabel (Label l)                  -> "\n" ++ l ++ ":" ++ showContent xs
                       TacJump  (Label l)                  -> "\n" ++ "\t  goto " ++ l ++ showContent xs
+                      TacProcCall id                      -> "\n" ++ "\t  " ++ "pcall " ++ showAddrContent id
+                      TacFuncCallLeft id                  -> "\n" ++ "\t  " ++ "fcall " ++ showAddrContent id
+                      TacFuncCall id retAddr ty           -> "\n" ++ "\t  " ++ showAddrContent retAddr ++ " " ++ genAssignEq ty ++ " fcall " ++ showAddrContent id ++ showContent xs
+                      TacParam addr ty                    -> "\n" ++ "\t  " ++ "param_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
                       TacConditionalJump (Label lab) flag addr -> case flag of
                           True ->  "\n" ++ "\t  if "       ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs
                           False -> "\n" ++ "\t  if_false " ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs

@@ -12,8 +12,10 @@ data TACEntry
     | TacAssignBinaryOp     {getAddr:: Address, binaryOp :: TacBinaryOp, first::Address, second :: Address, assignType::Type} --        x = y + z
     | TacAssignRelOp        {getAddr:: Address, relOp    :: TacRelOp,    first::Address, second :: Address, assignType::Type} --        x = y < z
     | TacAssignNullOp       {getAddr:: Address,                          first::Address,                    assignType::Type} --        x = y
-    | TacProcCall           -- todo
-    | TacFuncCall           -- todo
+    | TacProcCall           {getAddr:: Address}
+    | TacFuncCall           {getAddr:: Address, first::Address,retType::Type}-- todo
+    | TacFuncCallLeft       {getAddr:: Address}
+    | TacParam              {first::Address, paramType::Type}
     | TacJump               Label
     | TacLabel              Label
     | TacConditionalJump    {destination::Label, flag::Prelude.Bool, first::Address}                                        -- if first goto lab
