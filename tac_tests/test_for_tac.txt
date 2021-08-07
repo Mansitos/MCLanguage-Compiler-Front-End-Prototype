@@ -62,3 +62,16 @@ for 1 .. 100 do {
   }
 }
 while true do break;
+-----------------------------------------------------------------------------
+proc foo () : void {
+var f1, f2, f3 : int;
+    proc miao () : void {
+        var m1 : int;
+        var m2 : int;
+        proc kkkk():void{
+            var k1:char;
+        }
+        var m3:int;
+    }
+var f4:int;
+}

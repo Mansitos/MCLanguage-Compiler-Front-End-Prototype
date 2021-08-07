@@ -36,6 +36,8 @@ aggiornare posizioni indici
 
 RICORDARSI DI ATTIVARE L'ENV DI PARTENZA CON LE FUNZZZZZZZZZZS
 
+nel typechecker viene assegnata la pos sbagliata nel tcheckresult delle variabili?
+
 
 
 -------------
