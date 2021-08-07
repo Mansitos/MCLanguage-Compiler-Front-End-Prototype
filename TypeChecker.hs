@@ -147,9 +147,10 @@ updateEnv node@(Abs.ListStatements pos stat stats) env = case stat of
                                                                 Abs.VariableDeclarationStatement pos varType vardec -> let ty = getVarType vardec in -- getting variable type (int etc.)
                                                                                                                          (let varMode = getVarMode varType in -- getting variable mode (const etc.)
                                                                                                                             (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
+                                                                                                                                (let posns = getVariableDeclStatPos vardec in
                                                                                                                                 if (checkIfCanOverride ids env "var") -- check if vars can be overrided (yes if inside a new block)
-                                                                                                                                then updateEnvFromListOfVarIds ids env pos varMode ty -- updating env for each declared var.
-                                                                                                                                else updateEnvFromListOfVarIds ids env pos varMode ty))
+                                                                                                                                then updateEnvFromListOfVarIds ids env posns varMode ty -- updating env for each declared var.
+                                                                                                                                else updateEnvFromListOfVarIds ids env posns varMode ty)))
                                                                 -- Functions and Procedures
                                                                 Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
@@ -201,17 +202,17 @@ createEnvEntryForParams ((TypeChecker.Parameter ty pos mode id):xs) env = create
 createEnvEntryForParams [] env = env
 
 -- Given a list of var IDS and an Env, it update that env adding the variable enventries for each var id.
-updateEnvFromListOfVarIds :: [Prelude.String] -> Env -> Posn -> Prelude.String -> Type -> Env
-updateEnvFromListOfVarIds [] env pos varMode ty = env
-updateEnvFromListOfVarIds (x:xs) env pos varMode ty = case Data.Map.lookup x env of
+updateEnvFromListOfVarIds :: [Prelude.String] -> Env -> [Posn] -> Prelude.String -> Type -> Env
+updateEnvFromListOfVarIds [] env [] varMode ty = env
+updateEnvFromListOfVarIds (x:xs) env (p:ps) varMode ty = case Data.Map.lookup x env of
                                                        Just [Variable typ posv varMv override] -> if override 
-                                                                                                    then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty pos varMode False] env) pos varMode ty 
-                                                                                                    else updateEnvFromListOfVarIds xs env pos varMode ty
+                                                                                                    then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty 
+                                                                                                    else updateEnvFromListOfVarIds xs env ps varMode ty
                                                        Just ((Variable typ posv varMv override):xenv) -> if override 
-                                                                                                    then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty pos varMode False] env) pos varMode ty 
-                                                                                                    else updateEnvFromListOfVarIds xs env pos varMode ty
-                                                       Just _ -> updateEnvFromListOfVarIds xs env pos varMode ty                                                                              
-                                                       Nothing -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty pos varMode False] env) pos varMode ty
+                                                                                                    then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty 
+                                                                                                    else updateEnvFromListOfVarIds xs env ps varMode ty
+                                                       Just _ -> updateEnvFromListOfVarIds xs env ps varMode ty                                                                              
+                                                       Nothing -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty
 
 -- Given an Env set to TRUE in CanOverride for each variable and func!
 -- Used at the beginning of a new block (for example, after declaring a function, inside it is possible to override previous variable declaration (those outside))
@@ -261,8 +262,7 @@ getParamList (Abs.ParameterListEmpty pos)         = []
 
 -- Given a Parameter node of the ABS, return a single built Parameter data type (constructor for the ENV)
 buildParam :: Abs.PARAMETER Posn -> Parameter
-buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromPrimitive ty) pos "_mode_" (getIdFromIdent id)) 
-buildParam (Abs.ParameterPointer pos id ty po) = (TypeChecker.Parameter (buildPointerOfType (getTypeFromPrimitive ty) (countPointers po)) pos "_mode_" (getIdFromIdent id)) 
+buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromTypeExpF ty) pos "_mode_" (getIdFromIdent id)) 
 
 -- Given a list of parameters (from a func env entry) returns the list of types of each parameter
 getTypeListFromFuncParams :: [Parameter] -> [Type]
@@ -324,6 +324,40 @@ getTypeCast _ = Abs.PrimitiveTypeVoid (Pn 0 0 0)
 -------------------------------------------------------------------------------------------------------
 --- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY -----------------------------------
 -------------------------------------------------------------------------------------------------------
+
+isVoid :: Abs.TYPEPART Posn -> Prelude.Bool
+isVoid typepart = isVoid_ (getTypePart typepart)
+
+isVoid_ :: Type -> Prelude.Bool
+isVoid_ (B_type Type_Void) = True
+isVoid_ (Array t _) = isVoid_ t
+isVoid_ (Pointer t _) = isVoid_ t
+isVoid_ _ = False
+
+isVoidF :: Abs.TYPEEXPRESSIONFUNC Posn -> Prelude.Bool
+isVoidF (Abs.TypeExpressionArrayOfPointer _ ty) = isArrayDef ty
+isVoidF (Abs.TypeExpressionFunction _ ty) = isArrayDef_ ty
+
+isVoidF_ :: Abs.TYPEEXPRESSION Posn -> Prelude.Bool
+isVoidF_ (Abs.TypeExpressionArraySimple _ _ ty) = isVoidF ty
+isVoidF_ (Abs.TypeExpressionArray _ _ ty) = isVoidF ty
+isVoidF_ (Abs.TypeExpressionPointerOfArray _ ty _) = isVoidF ty
+isVoidF_ (Abs.TypeExpressionPointer _ ty _) = isVoidF__ ty
+isVoidF_ (Abs.TypeExpression _ ty) = isVoidF__ ty
+
+isVoidF__ :: Abs.PRIMITIVETYPE Posn -> Prelude.Bool
+isVoidF__ (Abs.PrimitiveTypeVoid _) = True
+isVoidF__ _ = False
+
+isArrayDef :: Abs.TYPEEXPRESSIONFUNC Posn -> Prelude.Bool
+isArrayDef (Abs.TypeExpressionArrayOfPointer _ ty) = isArrayDef ty
+isArrayDef (Abs.TypeExpressionFunction _ ty) = isArrayDef_ ty
+
+isArrayDef_ :: Abs.TYPEEXPRESSION Posn -> Prelude.Bool
+isArrayDef_ (Abs.TypeExpressionArraySimple _ _ ty) = True
+isArrayDef_ (Abs.TypeExpressionArray _ _ ty) = True
+isArrayDef_ (Abs.TypeExpressionPointerOfArray _ ty _) = isArrayDef ty
+isArrayDef_ _ = False
 
 getRealType :: TCheckResult -> TCheckResult
 getRealType tcheck = case tcheck of
@@ -409,10 +443,19 @@ getArrayPrimitiveType (Abs.TypeArray _ prim) =  getArrayPrimitiveType prim
 getVariableDeclStatNames :: Abs.VARDECLIST Posn -> [Prelude.String]
 getVariableDeclStatNames (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ id _ _)) = getIdList id
 
+-- Get a VarDecList (list of vars declarations) of the ABS, returns a list of Posn, where each element is the posn of the vars
+getVariableDeclStatPos :: Abs.VARDECLIST Posn -> [Posn]
+getVariableDeclStatPos (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ id _ _)) = getPosList id
+
 -- Given an IdentList node, return a list of string containing all the ids
 getIdList :: Abs.IDENTLIST Posn -> [Prelude.String]
 getIdList (Abs.IdentifierList _ (Abs.Ident s _) identlist) = [s] ++ getIdList identlist
 getIdList (Abs.IdentifierSingle _ (Abs.Ident s _)) = [s] 
+
+-- Given an IdentList node, return a list of posn containing all the posns
+getPosList :: Abs.IDENTLIST Posn -> [Posn]
+getPosList (Abs.IdentifierList _ (Abs.Ident s pos) identlist) = [pos] ++ getPosList identlist
+getPosList (Abs.IdentifierSingle _ (Abs.Ident s pos)) = [pos] 
 
 -- counts number of indexed dimension on a indexed array call
 countIndex :: Abs.ARRAYINDEXELEMENT Posn -> Prelude.Integer 
@@ -532,8 +575,7 @@ executeParam node@(Abs.ParameterListSingle pos param) env = Abs.ParameterListSin
 executeParam node@(Abs.ParameterListEmpty pos) env = Abs.ParameterListEmpty (checkTypeExecuteParameter node env) 
 
 executeParameter :: Abs.PARAMETER Posn -> Env -> Abs.PARAMETER TCheckResult
-executeParameter node@(Abs.Parameter pos id ty) env = Abs.Parameter (checkTypeParameter node env) (executeIdentVar id env) (executePrimitiveType ty env)
-executeParameter node@(Abs.ParameterPointer pos id ty po) env = Abs.ParameterPointer (checkTypeParameter node env) (executeIdentVar id env) (executePrimitiveType ty env) (executeTypeExpressionPointer po env)
+executeParameter node@(Abs.Parameter pos id ty) env = Abs.Parameter (checkTypeParameter node env) (executeIdentVar id env) (executeTypeExpressionFunc ty env)
 
 executeConditionalState :: Abs.CONDITIONALSTATE Posn -> Env -> Abs.CONDITIONALSTATE TCheckResult
 executeConditionalState node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = Abs.ConditionalStatementSimpleThen (checkTypeCondition node env) (executeExpression exp env) (executeStatement state env) (executeElseStatement elseState env)
@@ -1018,13 +1060,9 @@ checkTypeStatement node@(Abs.WhileDoStatement pos whileState) env = checkTypeWhi
 checkTypeStatement node@(Abs.DoWhileStatement pos doState) env = checkTypeDo doState env
 checkTypeStatement node@(Abs.ForStatement pos forState) env = checkTypeForState forState env
 checkTypeStatement node@(Abs.ProcedureStatement pos id param states) env = checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env)
-checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env = case tipo of
-                                                                                Abs.TypeExpressionFunction posf tipof ->
-                                                                                    case tipof of
-                                                                                        Abs.TypeExpressionArraySimple {} -> mergeErrors (mergeErrors (TError ["Warning: range expression not allowed here at position: "++show pos++" it will be ignored"]) (checkTypeExecuteParameter param env)) (checkFuncOverride id env)
-                                                                                        Abs.TypeExpressionArray {} -> mergeErrors (mergeErrors (TError ["Warning: range expression not allowed here at position: "++show pos++" it will be ignored"]) (checkTypeExecuteParameter param env)) (checkFuncOverride id env)
-                                                                                        _->checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env)
-                                                                                _->checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env)
+checkTypeStatement node@(Abs.FunctionStatement pos id param tipo states) env =  case isArrayDef tipo of
+                                                                                    True -> TError ["Warning: range expression not allowed here at position: "++show pos++" it will be ignored"]
+                                                                                    False -> checkErrors (checkFuncOverride id env) (checkTypeExecuteParameter param env)
 
 checkTypeCondition :: Abs.CONDITIONALSTATE Posn -> Env -> TCheckResult
 checkTypeCondition node@(Abs.ConditionalStatementSimpleThen pos exp state elseState) env = let expTCheck = checkTypeExpression exp env in 
@@ -1043,8 +1081,12 @@ checkTypeElseState node@(Abs.ElseState pos state) env = TResult env (B_type Type
 checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TResult env (B_type Type_Void) pos
 
 checkTypeCtrlState :: Abs.CTRLDECSTATEMENT Posn -> Env -> TCheckResult
-checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env = TResult env (B_type Type_Void) pos 
-checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env = TResult env (B_type Type_Void) pos
+checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env = case isVoid typepart of
+                                                                            True -> TError ["Type void is not allowed as type for variable declaration! Position: "++show pos]
+                                                                            False -> TResult env (B_type Type_Void) pos 
+checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env = case isVoid typepart of
+                                                                            True -> TError ["Type void is not allowed as type for variable declaration! Position: "++show pos]
+                                                                            False -> TResult env (B_type Type_Void) pos 
 
 checkTypeWhile :: Abs.WHILESTATEMENT Posn -> Env -> TCheckResult
 checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = let expTCheck = checkTypeExpression exp env in 
@@ -1525,7 +1567,9 @@ checkTypeVardec node@(Abs.VariableDeclarationSingle pos vardecid) env = checkTyp
 checkTypeVariableDec :: Abs.VARDECID Posn -> Env -> TCheckResult
 checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpart) env = let identTCheck = checkIdentifierList identlist env in
                                                                                     (case initpart of
-                                                                                        Abs.InitializzationPartEmpty _ -> checkErrors identTCheck (checkTypeTypePart typepart env)
+                                                                                        Abs.InitializzationPartEmpty _ -> case isVoid typepart of
+                                                                                                                            True -> TError ["Type void is not allowed as type for variable declaration! Position: "++show pos]
+                                                                                                                            False -> checkErrors identTCheck (checkTypeTypePart typepart env)
                                                                                         _ -> let typeCheck = checkTypeTypePart typepart env in
                                                                                                 let initCheck = checkTypeInitializzationPart initpart env in
                                                                                                     case typeCheck of
@@ -1996,14 +2040,17 @@ checkTypeNamedExpression node@(Abs.NamedExpression pos expr) env = checkTypeExpr
 checkTypeExecuteParameter :: Abs.PARAMETERS Posn -> Env -> TCheckResult
 checkTypeExecuteParameter node@(Abs.ParameterList pos param params) env = let pamList = (getParamList node) in
                                                                                 (if  checkDuplicatedParametersInFunDecl (getListOfIdsFromParamList pamList) -- check if params ids are not dups
-                                                                                then TError ["Duplicated parameter identifiers in function declaration! Position:" ++ show pos] -- dups in params 
-                                                                                else TResult env (B_type Type_Integer) pos) -- no dups: decl ok
-checkTypeExecuteParameter node@(Abs.ParameterListSingle pos param) env = TResult env (B_type Type_Integer) pos -- single can't have dups in ids
+                                                                                then mergeErrors (checkTypeParameter param env) (TError ["Duplicated parameter identifiers in function declaration! Position:" ++ show pos]) -- dups in params 
+                                                                                else checkErrors (checkTypeParameter param env) (TResult env (B_type Type_Integer) pos)) -- no dups: decl ok
+checkTypeExecuteParameter node@(Abs.ParameterListSingle pos param) env = checkErrors (checkTypeParameter param env) (TResult env (B_type Type_Integer) pos) -- single can't have dups in ids
 checkTypeExecuteParameter node@(Abs.ParameterListEmpty pos) env = TResult env (B_type Type_Void) pos -- empty can't have dups in ids
 
 checkTypeParameter:: Abs.PARAMETER Posn -> Env -> TCheckResult
-checkTypeParameter node@(Abs.Parameter pos id ty) env = TResult env (B_type Type_Void) pos
-checkTypeParameter node@(Abs.ParameterPointer pos id primitivetype pointer) env = TResult env (B_type Type_Void) pos
+checkTypeParameter node@(Abs.Parameter pos id ty) env = case isArrayDef ty of
+                                                            True -> TError ["Warning: range expression not allowed here at position: "++show pos++" it will be ignored"]
+                                                            False -> case isVoidF ty of
+                                                                        True -> TError ["Type void is not allowed as type for variable declaration! Position: "++show pos]
+                                                                        False -> TResult env (B_type Type_Void) pos 
 
 checkTypeArrayInit :: Abs.ARRAYINIT Posn -> Env -> TCheckResult
 checkTypeArrayInit node@(Abs.ArrayInitSingle pos arrayInit) env = TResult env (Array (getType (checkTypeArrayInit arrayInit env)) 1) pos
