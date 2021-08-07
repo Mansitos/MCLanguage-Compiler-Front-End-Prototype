@@ -4,7 +4,7 @@ module AbsTac where
 import AbsProgettoPar as Abs
 import Type
 
-data TAC = TAC {content::[TACEntry]}
+data TAC = TAC {code::[TACEntry],funcs::[TACEntry]}
     deriving (Eq, Ord, Show, Read)
 
 data TACEntry

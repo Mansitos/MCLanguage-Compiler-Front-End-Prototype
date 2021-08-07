@@ -152,7 +152,8 @@ showTypeCheckResultStatement (Abs.ReturnStatement res _) spacer flag            
 ---------------------------------------------------------------------------------------------------- 
 
 showTac :: S TAC -> String
-showTac (Abs.StartCode tac@(TAC x) _) = showContent x
+showTac (Abs.StartCode tac@(TAC code funcs) _) = "\n----------- Functions declarations ----------- \n" ++ showContent funcs ++ "\n\n-------------------- Code -------------------- \n" ++ showContent code 
+                                                 
 
 showContent :: [TACEntry] -> String
 showContent (x:xs) = case x of
@@ -174,6 +175,7 @@ showContent (x:xs) = case x of
                           False -> "\n" ++ "\t  if_false " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab ++ showContent xs
                       TacComment comment -> "\t  \t # "   ++ comment ++ showContent xs 
                       ExitTac -> "" ++"\n\n"
+showContent [] = ""
 
 genAssignEq:: Type -> String
 genAssignEq ty = case ty of
