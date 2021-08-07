@@ -24,6 +24,7 @@ controllare che funzioni tutto su cicli for e array..?	-
 FOR STATEMENT:						-
 in corrispondenza di un indexvardec (for x in 1..10) 	] - done
 serve l'entry di x di tipo intero			-
+aggiornare posizioni indici - done
 -----------
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
@@ -31,8 +32,6 @@ Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 ------------
 
 short-cut flags
-
-aggiornare posizioni indici
 
 RICORDARSI DI ATTIVARE L'ENV DI PARTENZA CON LE FUNZZZZZZZZZZS
 
