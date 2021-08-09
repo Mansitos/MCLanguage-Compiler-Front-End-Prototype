@@ -163,8 +163,8 @@ showContent (x:xs) = case x of
                       TacAssignNullOp id fst ty           -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ showAddrContent fst                                ++ showContent xs
                       TacLabel (Label l)                  -> "\n" ++ l ++ ":" ++ showContent xs
                       TacJump  (Label l)                  -> "\n" ++ "\t  goto " ++ l ++ showContent xs
-                      TacProcCall id                      -> "\n" ++ "\t  " ++ "pcall " ++ showAddrContent id
-                      TacFuncCallLeft id                  -> "\n" ++ "\t  " ++ "fcall " ++ showAddrContent id
+                      TacProcCall id                      -> "\n" ++ "\t  " ++ "pcall " ++ showAddrContent id ++ showContent xs
+                      TacFuncCallLeft id                  -> "\n" ++ "\t  " ++ "fcall " ++ showAddrContent id ++ showContent xs
                       TacFuncCall id retAddr ty           -> "\n" ++ "\t  " ++ showAddrContent retAddr ++ " " ++ genAssignEq ty ++ " fcall " ++ showAddrContent id ++ showContent xs
                       TacParam addr ty                    -> "\n" ++ "\t  " ++ "param_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
                       TacConditionalJump (Label lab) flag addr -> case flag of
