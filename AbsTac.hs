@@ -16,6 +16,8 @@ data TACEntry
     | TacFuncCall           {getAddr:: Address, first::Address,retType::Type}-- todo
     | TacFuncCallLeft       {getAddr:: Address}
     | TacParam              {first::Address, paramType::Type}
+    | TacReturnVoid         {}
+    | TacReturn             {first:: Address, returnType::Type}
     | TacJump               Label
     | TacLabel              Label
     | TacConditionalJump    {destination::Label, flag::Prelude.Bool, first::Address}                                        -- if first goto lab
