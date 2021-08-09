@@ -38,4 +38,6 @@ RICORDARSI DI ATTIVARE L'ENV DI PARTENZA CON LE FUNZZZZZZZZZZS
 
 aggiustare label e counter funzioni e procedure
 
+controllare messaggi errore dei return (unexepected dove il tipo è errato)
+
 -------------

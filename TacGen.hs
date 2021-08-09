@@ -306,22 +306,33 @@ genTacStatement (Abs.ForStatement res forStat) n l k (w,j) tres   = let newL = n
                                                                             let newC = sel2 forStatement in
                                                                                 let newK = sel3 forStatement in
                                                                                     ((Abs.ForStatement (forstatement_content (sel1 forStatement)) (sel1 forStatement)),newC,newK,AddrNULL)
-genTacStatement (Abs.ProcedureStatement res ident@(Abs.Ident id _) param states) n l k (w,j) tres = let newL = newLabel ("p_" ++ id) k in
-                                                                                                        let endL = newLabel ("end_p_" ++ id) (k+1) in
-                                                                                                            let statements = (genTacStatements states n newL (k+2) (w,j)) in
-                                                                                                                let newC = sel2 statements in
-                                                                                                                    let newK = sel3 statements in
-                                                                                                                        ((Abs.ProcedureStatement (mergeTacs [(TAC [] [TacLabel newL]),  -- start func code label
-                                                                                                                                                             (TAC [] (code (statements_content (sel1 statements)))), -- tac of statements inside the body (no funcs. decl. tacs.)
-                                                                                                                                                             (TAC [] [TacLabel endL]),  -- end func code label   
-                                                                                                                                                             (TAC [] (funcs (statements_content (sel1 statements)))) -- functions declared inside
-                                                                                                                                                             ]) (Abs.Ident id (TAC [] [])) (Abs.ParameterListEmpty (TAC [] [])) (Abs.EmptyStatement (TAC [] []))),(sel2 statements),(sel3 statements),AddrNULL)                                           
-genTacStatement (Abs.FunctionStatement res ident@(Abs.Ident id _) param tipo states) n l k (w,j) tres = ((Abs.FunctionStatement (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ParameterListEmpty (TAC [] [])) (Abs.TypeExpressionFunction (TAC [] []) (Abs.TypeExpression (TAC [] []) (Abs.PrimitiveTypeVoid (TAC [] [])))) (Abs.EmptyStatement (TAC [] []))),n,k,AddrNULL)                                           
+
+                                                                                    
+genTacStatement (Abs.ProcedureStatement res@(TResult _ _ (Pn a r c)) ident@(Abs.Ident id _) param states) n l k (w,j) tres = let newL = Label (id ++ "@" ++show r++","++show c) in -- TODO FIX POS -- PARAM TAC?
+                                                                                                                                let endL = Label ("endProc_" ++ id ++ "@" ++show r++","++show c) in
+                                                                                                                                    let statements = (genTacStatements states n newL k (w,j)) in
+                                                                                                                                        let newC = sel2 statements in
+                                                                                                                                            let newK = sel3 statements in
+                                                                                                                                                ((Abs.ProcedureStatement (mergeTacs [(TAC [] [TacLabel newL]),  -- start func code label
+                                                                                                                                                                                     (TAC [] (code (statements_content (sel1 statements)))), -- tac of statements inside the body (no funcs. decl. tacs.)
+                                                                                                                                                                                     (TAC [] [TacLabel endL]),  -- end func code label   
+                                                                                                                                                                                     (TAC [] (funcs (statements_content (sel1 statements)))) -- functions declared inside
+                                                                                                                                                                                     ]) (Abs.Ident id (TAC [] [])) (Abs.ParameterListEmpty (TAC [] [])) (Abs.EmptyStatement (TAC [] []))),(sel2 statements),(sel3 statements),AddrNULL)                                           
+genTacStatement (Abs.FunctionStatement res@(TResult _ _ (Pn a r c)) ident@(Abs.Ident id _) param tipo states) n l k (w,j) tres = let newL = Label (id ++ "@" ++show r++","++show c) in -- TODO FIX POS -- PARAM TAC?
+                                                                                                                                    let endL = Label ("endFun_" ++ id ++ "@" ++show r++","++show c) in
+                                                                                                                                        let statements = (genTacStatements states n newL k (w,j)) in
+                                                                                                                                            let newC = sel2 statements in
+                                                                                                                                                let newK = sel3 statements in
+                                                                                                                                                    ((Abs.FunctionStatement (mergeTacs [(TAC [] [TacLabel newL]),  -- start func code label
+                                                                                                                                                                                        (TAC [] (code (statements_content (sel1 statements)))), -- tac of statements inside the body (no funcs. decl. tacs.)
+                                                                                                                                                                                        (TAC [] [TacLabel endL]),  -- end func code label   
+                                                                                                                                                                                        (TAC [] (funcs (statements_content (sel1 statements)))) -- functions declared inside
+                                                                                                                                                                                        ]) (Abs.Ident id (TAC [] [])) (Abs.ParameterListEmpty (TAC [] [])) (Abs.TypeExpressionFunction (TAC [] []) (Abs.TypeExpression (TAC [] []) (Abs.PrimitiveTypeVoid (TAC [] [])))) (Abs.EmptyStatement (TAC [] []))),n,k,AddrNULL)                                           
 
 genTacAssignOp :: Abs.ASSIGNOP TCheckResult -> Abs.ASSIGNOP TAC
 genTacAssignOp (Abs.AssignOperationEq _ )        = (Abs.AssignOperationEq (TAC [] []))       
 genTacAssignOp (Abs.AssignOperationEqPlus _ )    = (Abs.AssignOperationEqPlus (TAC [] []))   
-genTacAssignOp (Abs.AssignOperationEqMinus _ )    = (Abs.AssignOperationEqMinus(TAC [] []))   
+genTacAssignOp (Abs.AssignOperationEqMinus _ )   = (Abs.AssignOperationEqMinus(TAC [] []))   
 genTacAssignOp (Abs.AssignOperationEqProd _ )    = (Abs.AssignOperationEqProd (TAC [] []))   
 genTacAssignOp (Abs.AssignOperationEqFract _ )   = (Abs.AssignOperationEqFract (TAC [] [])) 
 genTacAssignOp (Abs.AssignOperationEqPercent _ ) = (Abs.AssignOperationEqPercent (TAC [] []))
