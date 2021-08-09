@@ -259,11 +259,20 @@ genTacStatement (Abs.ExpressionStatement res expstat) n l k (w,j) tres = let new
                                                                                 let newC = sel2 expressionstat in
                                                                                     let exprAddr = sel4 expressionstat in
                                                                                         ((Abs.ExpressionStatement (expressionstatement_content (sel1 expressionstat)) (sel1 expressionstat)),newC,(sel3 expressionstat),exprAddr)
---genTacStatement (Abs.AssignmentStatement res lval assignOp exp)    =
+genTacStatement (Abs.AssignmentStatement resres@(TResult _ t _) lval assignOp exp) n l k (w,j) tres = let newL = newLabel "" k in
+                                                                                    let leftVal = (genTacLeftVal lval n newL k (w,j)) in
+                                                                                        let rightVal = (genTacExpression exp n newL k (w,j) tres) in
+                                                                                            let newC = sel2 rightVal in
+                                                                                                let exprAddr = sel4 rightVal in
+                                                                                                    let leftValAddr = sel4 leftVal in
+                                                                                                        let assignTac = (buildAssignTac assignOp leftValAddr exprAddr t) in
+                                                                                                        ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++ -- expression (rval) evaluation tac code
+                                                                                                                                        [assignTac])                            -- assign tac
+                                                                                                                                        []) (sel1 leftVal) (genTacAssignOp assignOp) (sel1 rightVal)),newC,(sel3 rightVal),AddrNULL)
 genTacStatement (Abs.ConditionalStatement res condition) n l k (w,j) tres = let newL = newLabel "else" k in 
-                                                                        let condStatementTac = (genTacConditionalStatement condition n newL (k+1) (w,j)) in
-                                                                            let newC = sel2 condStatementTac in
-                                                                                ((Abs.ConditionalStatement (conditionalstate_content (sel1 condStatementTac)) (sel1 condStatementTac)),newC,(sel3 condStatementTac),AddrNULL)
+                                                                                let condStatementTac = (genTacConditionalStatement condition n newL (k+1) (w,j)) in
+                                                                                    let newC = sel2 condStatementTac in
+                                                                                        ((Abs.ConditionalStatement (conditionalstate_content (sel1 condStatementTac)) (sel1 condStatementTac)),newC,(sel3 condStatementTac),AddrNULL)
 genTacStatement (Abs.WhileDoStatement res while) n l k (w,j) tres = let newL = newLabel "body" k in 
                                                                         let whileStatement = (genTacWhileDoStatement while n newL (k+1) (w,j)) in
                                                                             let whileStatementTac = sel1 whileStatement in
@@ -293,7 +302,34 @@ genTacStatement (Abs.ProcedureStatement res ident@(Abs.Ident id _) param states)
                                                                                                                                                              (TAC [] (funcs (statements_content (sel1 statements)))) -- functions declared inside
                                                                                                                                                              ]) (Abs.Ident id (TAC [] [])) (Abs.ParameterListEmpty (TAC [] [])) (Abs.EmptyStatement (TAC [] []))),n,k,AddrNULL)                                           
 genTacStatement (Abs.FunctionStatement res ident@(Abs.Ident id _) param tipo states) n l k (w,j) tres = ((Abs.FunctionStatement (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ParameterListEmpty (TAC [] [])) (Abs.TypeExpressionFunction (TAC [] []) (Abs.TypeExpression (TAC [] []) (Abs.PrimitiveTypeVoid (TAC [] [])))) (Abs.EmptyStatement (TAC [] []))),n,k,AddrNULL)                                           
-                                                                                    
+
+buildAssignTac :: Abs.ASSIGNOP TCheckResult -> Address -> Address -> Type -> TACEntry
+buildAssignTac assignOp leftAddr rightAddr t = case assignOp of
+                                                (Abs.AssignOperationEq _ )         -> TacAssignNullOp   leftAddr rightAddr t
+                                                (Abs.AssignOperationEqPlus _ )     -> TacAssignBinaryOp leftAddr (buildOp t "plus") leftAddr rightAddr t
+                                                (Abs.AssignOperationEqMinus _ )    -> TacAssignBinaryOp leftAddr (buildOp t "minus") leftAddr rightAddr t
+                                                (Abs.AssignOperationEqProd _ )     -> TacAssignBinaryOp leftAddr (buildOp t "product") leftAddr rightAddr t
+                                                (Abs.AssignOperationEqFract _ )    -> TacAssignBinaryOp leftAddr (buildOp t "division") leftAddr rightAddr t
+                                                (Abs.AssignOperationEqPercent _ )  -> TacAssignBinaryOp leftAddr (buildOp t "module") leftAddr rightAddr t
+                                                (Abs.AssignOperationEqPower _ )    -> TacAssignBinaryOp leftAddr (buildOp t "power") leftAddr rightAddr t
+
+genTacAssignOp :: Abs.ASSIGNOP TCheckResult -> Abs.ASSIGNOP TAC
+genTacAssignOp (Abs.AssignOperationEq _ )        = (Abs.AssignOperationEq (TAC [] []))       
+genTacAssignOp (Abs.AssignOperationEqPlus _ )    = (Abs.AssignOperationEqPlus (TAC [] []))   
+genTacAssignOp (Abs.AssignOperationEqMinus _ )    = (Abs.AssignOperationEqMinus(TAC [] []))   
+genTacAssignOp (Abs.AssignOperationEqProd _ )    = (Abs.AssignOperationEqProd (TAC [] []))   
+genTacAssignOp (Abs.AssignOperationEqFract _ )   = (Abs.AssignOperationEqFract (TAC [] [])) 
+genTacAssignOp (Abs.AssignOperationEqPercent _ ) = (Abs.AssignOperationEqPercent (TAC [] []))
+genTacAssignOp (Abs.AssignOperationEqPower _ )   = (Abs.AssignOperationEqPower (TAC [] []))  
+
+genTacLeftVal :: Abs.LVALUEEXPRESSION  TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.LVALUEEXPRESSION  TAC, Prelude.Integer, Prelude.Integer, Address)
+--genTAcLeftVal (Abs.LvalueExpressions res ident arrayindex lval) n l k (w,j) =
+genTacLeftVal (Abs.LvalueExpression res@(TResult env _ _) ident@(Abs.Ident id resi) arrayindex     ) n l k (w,j) = case arrayindex of 
+                                                                                                    (Abs.ArrayIndexElementEmpty _) -> case Data.Map.lookup id env of
+                                                                                                        Just [Variable _ posv _ _] ->  let leftAddr = buildIDAddr posv id in -- gestire tutti icasi TODO
+                                                                                                                                            ((Abs.LvalueExpression (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,leftAddr)
+                                                                                                    -- _ -> -- is array
+
 genTacExpressionStatement :: Abs.EXPRESSIONSTATEMENT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.EXPRESSIONSTATEMENT TAC, Prelude.Integer, Prelude.Integer, Address)
 genTacExpressionStatement (Abs.VariableExpression res@(TResult _ _ pos) ident@(Abs.Ident id resi)) n l k (w,j) = ((Abs.VariableExpression (TAC [] []) (Abs.Ident id (TAC [] []))),n,k,buildIDAddr pos id)
 genTacExpressionStatement (Abs.CallExpression res@(TResult _ ty pos) call) n l k (w,j)   = let callexpression = (genTacCallExpression call n l k (w,j)) in
@@ -439,9 +475,9 @@ genTacWhileDoStatement (Abs.WhileStateSimpleDo res expr stat) n l k (w,j) = let 
                                                                                             let statement = (genTacStatement stat (sel2 guardExpr) l ((sel3 guardExpr)+2) (nextLab,guardLab) res) in 
                                                                                                 let statTac = sel1 statement in 
                                                                                                     let exprAddr = sel4 guardExpr in
-                                                                                                        ((Abs.WhileStateSimpleDo (mergeTacs [(TAC [TacJump guardLab,TacLabel l] []),           -- jump to guard label + body label
+                                                                                                        ((Abs.WhileStateSimpleDo (mergeTacs [(TAC [TacJump guardLab,TacLabel l] []),        -- jump to guard label + body label
                                                                                                                                              (statement_content statTac),                   -- body code tac
-                                                                                                                                             (TAC [TacLabel guardLab] []),                     -- guard label
+                                                                                                                                             (TAC [TacLabel guardLab] []),                  -- guard label
                                                                                                                                              (expression_content exprTac),                  -- code for guard expression eval.
                                                                                                                                              (TAC [TacConditionalJump l True exprAddr] []),    -- conditional jump on guard tac
                                                                                                                                              (TAC [TacLabel nextLab] [])])                     -- next (end of while block) label
