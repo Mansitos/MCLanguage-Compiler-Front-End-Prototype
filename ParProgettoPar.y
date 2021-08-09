@@ -147,8 +147,7 @@ PARAMETERS : PARAMETER ',' PARAMETERS { Abs.ParameterList (Abs.parameter_content
            | {- empty -} { Abs.ParameterListEmpty (Pn 0 0 0)}
 
 PARAMETER :: { Abs.PARAMETER Posn }
-PARAMETER : Ident ':' PRIMITIVETYPE { Abs.Parameter (Abs.contentId $1) $1 $3 }
-PARAMETER : Ident ':' PRIMITIVETYPE POINTER { Abs.ParameterPointer (Abs.contentId $1) $1 $3 $4 }
+PARAMETER : Ident ':' TYPEEXPRESSIONFUNC { Abs.Parameter (Abs.contentId $1) $1 $3 }
 
 ASSIGNOP :: { Abs.ASSIGNOP Posn }
 ASSIGNOP : '=' { Abs.AssignOperationEq (tokenPosn $1)}

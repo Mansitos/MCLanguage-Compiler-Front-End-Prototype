@@ -62,8 +62,7 @@ transPARAMETERS x = case x of
 
 transPARAMETER :: Show attr => (AbsProgettoPar.PARAMETER attr) -> Result
 transPARAMETER x = case x of
-  AbsProgettoPar.Parameter _ ident primitivetype -> failure x
-  AbsProgettoPar.ParameterPointer _ id_ primitivetype pointer -> failure x
+  AbsProgettoPar.Parameter _ ident ty -> failure x
 
 transASSIGNOP :: Show attr => (AbsProgettoPar.ASSIGNOP attr) -> Result
 transASSIGNOP x = case x of

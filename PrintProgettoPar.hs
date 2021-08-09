@@ -157,8 +157,7 @@ instance Print (AbsProgettoPar.PARAMETERS attr) where
 
 instance Print (AbsProgettoPar.PARAMETER attr) where
   prt i = \case
-    AbsProgettoPar.Parameter _ id_ primitivetype -> prPrec i 0 (concatD [prt 0 id_, doc (showString ":"), prt 0 primitivetype])
-    AbsProgettoPar.ParameterPointer _ id_ primitivetype pointer -> prPrec i 0 (concatD [prt 0 id_, doc (showString ":"), prt 0 primitivetype, prt 0 pointer])
+    AbsProgettoPar.Parameter _ id_ ty -> prPrec i 0 (concatD [prt 0 id_, doc (showString ":"), prt 0 ty])
 
 instance Print (AbsProgettoPar.ASSIGNOP attr) where
   prt i = \case

@@ -49,8 +49,7 @@ data PARAMETERS a
     | ParameterListEmpty{parameters_content::a}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data PARAMETER a = Parameter {parameter_content::a, parameter_ident::(Ident a), parameter_primitivetype::(PRIMITIVETYPE a)}
-                 | ParameterPointer {parameter_content::a, parameter_ident::(Ident a), parameter_primitivetype::(PRIMITIVETYPE a), parameter_pointer::(POINTER a)}
+data PARAMETER a = Parameter {parameter_content::a, parameter_ident::(Ident a), parameter_typeexpression::(TYPEEXPRESSIONFUNC a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data ASSIGNOP a
