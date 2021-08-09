@@ -731,22 +731,6 @@ executeUnaryOp node@(Abs.UnaryOperationNegative pos) env = Abs.UnaryOperationNeg
 executeUnaryOp node@(Abs.UnaryOperationNot pos) env = Abs.UnaryOperationNot (checkTypeUnaryOp node env)
 executeUnaryOp node@(Abs.UnaryOperationPointer pos) env = Abs.UnaryOperationPointer (checkTypeUnaryOp node env)
 
-{-executeBinaryOp :: Abs.BINARYOP Posn -> Env -> Abs.BINARYOP TCheckResult
-executeBinaryOp node@(Abs.BinaryOperationPlus pos) env = Abs.BinaryOperationPlus (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationMinus pos) env = Abs.BinaryOperationMinus (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationProduct pos) env = Abs.BinaryOperationProduct (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationDivision pos) env = Abs.BinaryOperationDivision (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationModule pos) env = Abs.BinaryOperationModule (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationPower pos) env = Abs.BinaryOperationPower (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationAnd pos) env = Abs.BinaryOperationAnd (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationOr pos) env = Abs.BinaryOperationOr (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationEq pos) env = Abs.BinaryOperationEq (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationNotEq pos) env = Abs.BinaryOperationNotEq (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationGratherEq pos) env = Abs.BinaryOperationGratherEq (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationGrather pos) env = Abs.BinaryOperationGrather (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationLessEq pos) env = Abs.BinaryOperationLessEq (checkTypeBinaryOp node env)
-executeBinaryOp node@(Abs.BinaryOperationLess pos) env = Abs.BinaryOperationLess (checkTypeBinaryOp node env)-}
-
 executeDefault :: Abs.DEFAULT Posn -> Env -> Abs.DEFAULT TCheckResult
 executeDefault node@(Abs.ExpressionIntegerD pos value) env = Abs.ExpressionIntegerD (checkTypeDefault 0 node env) (executeInteger value env)
 executeDefault node@(Abs.ExpressionBooleanD pos value) env = Abs.ExpressionBooleanD (checkTypeDefault 0 node env) (executeBoolean value env)
@@ -1073,8 +1057,12 @@ checkTypeCondition node@(Abs.ConditionalStatementSimpleWThen pos exp b elseState
                                                                                         case expTCheck of 
                                                                                             TResult _ _ _ -> if (checkCompatibility (TResult env (B_type Type_Boolean) pos) expTCheck) then TResult env (B_type Type_Void) pos else TError ["Conditional expression for if-then-else is not boolean! Position: "++ show pos]
                                                                                             TError e -> expTCheck
-checkTypeCondition node@(Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env = checkTypeCtrlState ctrlState env
-checkTypeCondition node@(Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env = checkTypeCtrlState ctrlState env
+checkTypeCondition node@(Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env = case checkTypeCtrlState ctrlState env of
+                                                                                                res@(TResult _ _ _) -> TResult env (B_type Type_Void) pos
+                                                                                                TError e -> TError e
+checkTypeCondition node@(Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env = case checkTypeCtrlState ctrlState env of
+                                                                                                res@(TResult _ _ _) -> TResult env (B_type Type_Void) pos
+                                                                                                TError e -> TError e
 
 checkTypeElseState :: Abs.ELSESTATEMENT Posn -> Env -> TCheckResult
 checkTypeElseState node@(Abs.ElseState pos state) env = TResult env (B_type Type_Void) pos
@@ -1083,10 +1071,10 @@ checkTypeElseState node@(Abs.ElseStateEmpty pos) env = TResult env (B_type Type_
 checkTypeCtrlState :: Abs.CTRLDECSTATEMENT Posn -> Env -> TCheckResult
 checkTypeCtrlState node@(Abs.CtrlDecStateConst pos id typepart exp) env = case isVoid typepart of
                                                                             True -> TError ["Type void is not allowed as type for variable declaration! Position: "++show pos]
-                                                                            False -> TResult env (B_type Type_Void) pos 
+                                                                            False -> if checkCompatibility (checkTypeExpression exp env) (checkTypeTypePart typepart env) then TResult env (getTypePart typepart) pos else TResult env (B_type Type_Void) pos 
 checkTypeCtrlState node@(Abs.CtrlDecStateVar pos id typepart exp) env = case isVoid typepart of
                                                                             True -> TError ["Type void is not allowed as type for variable declaration! Position: "++show pos]
-                                                                            False -> TResult env (B_type Type_Void) pos 
+                                                                            False -> if checkCompatibility (checkTypeExpression exp env) (checkTypeTypePart typepart env) then TResult env (getTypePart typepart) pos else TResult env (B_type Type_Void) pos
 
 checkTypeWhile :: Abs.WHILESTATEMENT Posn -> Env -> TCheckResult
 checkTypeWhile node@(Abs.WhileStateSimpleDo pos exp state) env = let expTCheck = checkTypeExpression exp env in 
@@ -1098,8 +1086,12 @@ checkTypeWhile node@(Abs.WhileStateSimpleWDo pos exp b) env = let expTCheck = ch
                                                                         TResult _ _ _ -> if (checkCompatibility (TResult env (B_type Type_Boolean) pos) expTCheck) then TResult env (B_type Type_Void) pos else TError ["Guard expression for while loop is not boolean! Position: "++ show pos]
                                                                         TError e -> expTCheck 
 
-checkTypeWhile node@(Abs.WhileStateCtrlDo pos ctrl state) env = checkTypeCtrlState ctrl env
-checkTypeWhile node@(Abs.WhileStateCtrlWDo pos ctrl b) env = checkTypeCtrlState ctrl env
+checkTypeWhile node@(Abs.WhileStateCtrlDo pos ctrl state) env = case checkTypeCtrlState ctrl env of
+                                                                    res@(TResult _ _ _) -> TResult env (B_type Type_Void) pos
+                                                                    TError e -> TError e
+checkTypeWhile node@(Abs.WhileStateCtrlWDo pos ctrl b) env = case checkTypeCtrlState ctrl env of
+                                                                    res@(TResult _ _ _) -> TResult env (B_type Type_Void) pos
+                                                                    TError e -> TError e
 
 checkTypeDo :: Abs.DOSTATEMENT Posn -> Env -> TCheckResult
 checkTypeDo node@(Abs.DoWhileState pos state exp) env = let expTCheck = checkTypeExpression exp env in 
