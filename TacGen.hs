@@ -500,8 +500,8 @@ genTacWhileDoStatement (Abs.WhileStateSimpleWDo res expr b@(Abs.BlockStatement _
                                                                                                                                                                               exprTac (Abs.BlockStatement (TAC [] []) statsTac)),sel2 stats, sel3 stats)
 genTacWhileDoStatement (Abs.WhileStateCtrlDo res ctrlState state) n l k (w,j)  = let ctrlStatement = genTacControlStatement ctrlState n l k (w,j) in
                                                                                     let guardLab = l in -- continue will jump directly to code label because guard is not present (it's true or while is ignored (when ctrl decl is false no tac is generated))
-                                                                                        let nextLab = newLabel "next" ((sel3 ctrlStatement)+1) in 
-                                                                                            let statTac = genTacStatement state n l k (nextLab,guardLab) res in
+                                                                                        let nextLab = newLabel "next" (sel3 ctrlStatement) in 
+                                                                                            let statTac = genTacStatement state (sel2 ctrlStatement) l ((sel3 ctrlStatement)+1) (nextLab,guardLab) res in
                                                                                                 let flagValue = checkControlDeclarationStatement ctrlState in -- parte di funzioni tac da propagare
                                                                                                     let tac = case flagValue of
                                                                                                                 False -> (TAC [] [])
@@ -510,11 +510,11 @@ genTacWhileDoStatement (Abs.WhileStateCtrlDo res ctrlState state) n l k (w,j)  =
                                                                                                                                      (statement_content (sel1 statTac)),   -- Tac of body code (if no break: DEADLOCK)
                                                                                                                                      (TAC [TacJump l,TacComment "Guard is set to True, there are no exit conditions to be evaluated!"] []), -- jump to code: loop
                                                                                                                                      (TAC [TacLabel nextLab] [])])          -- next lab (for break jumps)
-                                                                                                                    in ((Abs.WhileStateCtrlDo tac (sel1 ctrlStatement) (sel1 statTac)),n,k) -- TODO COUNTERS TO CHECK
+                                                                                                                    in ((Abs.WhileStateCtrlDo tac (sel1 ctrlStatement) (sel1 statTac)),if flagValue then (sel2 statTac) else n, if flagValue then (sel3 statTac) else k) -- TODO COUNTERS TO CHECK
 genTacWhileDoStatement (Abs.WhileStateCtrlWDo res ctrlState b@(Abs.BlockStatement _ statements)) n l k (w,j) = let ctrlStatement = genTacControlStatement ctrlState n l k (w,j) in
                                                                                                                 let guardLab = l in -- continue will jump directly to code label because guard is not present (it's true or while is ignored (when ctrl decl is false no tac is generated))
-                                                                                                                    let nextLab = newLabel "next" ((sel3 ctrlStatement)+1) in 
-                                                                                                                        let statsTac = genTacStatements statements n l k (nextLab,guardLab) in
+                                                                                                                    let nextLab = newLabel "next" (sel3 ctrlStatement) in 
+                                                                                                                        let statsTac = genTacStatements statements (sel2 ctrlStatement) l ((sel3 ctrlStatement)+1) (nextLab,guardLab) in
                                                                                                                             let flagValue = checkControlDeclarationStatement ctrlState in -- parte di funzioni tac da propagare
                                                                                                                                 let tac = case flagValue of
                                                                                                                                             False -> (TAC [] [])
@@ -523,7 +523,7 @@ genTacWhileDoStatement (Abs.WhileStateCtrlWDo res ctrlState b@(Abs.BlockStatemen
                                                                                                                                                                  (statements_content (sel1 statsTac)),   -- Tac of body code (if no break: DEADLOCK)
                                                                                                                                                                  (TAC [TacJump l,TacComment "Guard is set to True, there are no exit conditions to be evaluated!"] []), -- jump to code: loop
                                                                                                                                                                  (TAC [TacLabel nextLab] [])])           -- next lab (for break jumps)
-                                                                                                                                                in ((Abs.WhileStateCtrlWDo tac (sel1 ctrlStatement) (Abs.BlockStatement (TAC [] []) (sel1 statsTac))),n,k) -- TODO COUNTERS TO CHECK
+                                                                                                                                                in ((Abs.WhileStateCtrlWDo tac (sel1 ctrlStatement) (Abs.BlockStatement (TAC [] []) (sel1 statsTac))),if flagValue then (sel2 statsTac) else n, if flagValue then (sel3 statsTac) else k) -- TODO COUNTERS TO CHECK
 
 genTacDoWhileStatement :: Abs.DOSTATEMENT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.DOSTATEMENT TAC, Prelude.Integer, Prelude.Integer)
 genTacDoWhileStatement (Abs.DoWhileState res stat expr) n l k (w,j) = let guardLab = newLabel "guard" k in
