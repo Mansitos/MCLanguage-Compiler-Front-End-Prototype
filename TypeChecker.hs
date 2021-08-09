@@ -205,13 +205,11 @@ createEnvEntryForParams [] env = env
 updateEnvFromListOfVarIds :: [Prelude.String] -> Env -> [Posn] -> Prelude.String -> Type -> Env
 updateEnvFromListOfVarIds [] env [] varMode ty = env
 updateEnvFromListOfVarIds (x:xs) env (p:ps) varMode ty = case Data.Map.lookup x env of
-                                                       Just [Variable typ posv varMv override] -> if override 
-                                                                                                    then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty 
-                                                                                                    else updateEnvFromListOfVarIds xs env ps varMode ty
-                                                       Just ((Variable typ posv varMv override):xenv) -> if override 
-                                                                                                    then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty 
-                                                                                                    else updateEnvFromListOfVarIds xs env ps varMode ty
-                                                       Just _ -> updateEnvFromListOfVarIds xs env ps varMode ty                                                                              
+                                                       Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
+                                                                                [] -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty
+                                                                                ((Variable typ posv varMv override):ys) -> if override 
+                                                                                                                            then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty 
+                                                                                                                            else updateEnvFromListOfVarIds xs env ps varMode ty                                                                   
                                                        Nothing -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty
 
 -- Given an Env set to TRUE in CanOverride for each variable and func!
@@ -229,16 +227,12 @@ updateIfCanOverride_ [] = []
 
 -- Given a list of variable ids, returns true if they can be overrided (false if at least one of them CANNOT be overrided)
 checkIfCanOverride :: [Prelude.String] -> Env -> Prelude.String -> Bool
-checkIfCanOverride (x:xs) env "var" = case Data.Map.lookup x env of
-    Just (entry:entries) -> case entry of
-        Variable ty pos varMode canOverride -> canOverride && (checkIfCanOverride xs env "var")
-        _ -> True && (checkIfCanOverride xs env "var")
-    Nothing -> True && (checkIfCanOverride xs env "var")
-checkIfCanOverride (x:xs) env "func" = case Data.Map.lookup x env of
-    Just (entry:entries) -> case entry of
-        Function ty pos param canOverride -> canOverride
-        _ -> True
-    Nothing -> True
+checkIfCanOverride (x:xs) env t = case Data.Map.lookup x env of
+    Just (entry:entries) -> case findEntryOfType (entry:entries) t of
+                            [] -> True && checkIfCanOverride xs env t
+                            ((Variable _ _ _ override):ys) -> override && checkIfCanOverride xs env t
+                            ((Function _ _ _ override):ys) -> override && checkIfCanOverride xs env t
+    Nothing -> True && (checkIfCanOverride xs env t)
 checkIfCanOverride [] env _ = True
 
 ------------------------------------------------------------------------------------------------------
@@ -563,12 +557,12 @@ executeStatement node@(Abs.ConditionalStatement pos condition) env = let newEnv 
 executeStatement node@(Abs.WhileDoStatement pos whileStatement) env = let newEnv = updateEnvWhileStat whileStatement (updateIfCanOverride env)  in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStatement newEnv)
 executeStatement node@(Abs.DoWhileStatement pos doStatement) env = let newEnv = updateEnvDoWhileStat doStatement  (updateIfCanOverride env) in Abs.DoWhileStatement (checkTypeStatement node env) (executeDoState doStatement newEnv)
 executeStatement node@(Abs.ForStatement pos forStatement) env = let newEnv = updateEnvForStat forStatement (updateIfCanOverride env) in Abs.ForStatement (checkTypeStatement node env) (executeForState forStatement newEnv)
-executeStatement node@(Abs.ProcedureStatement pos id param states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env )) in
+executeStatement node@(Abs.ProcedureStatement pos ident@(Abs.Ident id posI) param states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env )) in
                                                                             let newEnv2 = Data.Map.delete "while" (insertWith (++) "return_void" [] newEnv) in  
-                                                                                Abs.ProcedureStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeStatements states newEnv2)
-executeStatement node@(Abs.FunctionStatement pos id param tipo states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env )) in
+                                                                                Abs.ProcedureStatement (checkTypeStatement node env) (Abs.Ident id (TResult env (B_type Type_Void) posI)) (executeParam param env) (executeStatements states newEnv2)
+executeStatement node@(Abs.FunctionStatement pos ident@(Abs.Ident id posI) param tipo states) env = let newEnv = createEnvEntryForParams (getParamList param) (updateIfCanOverride (updateEnv (Abs.ListStatements pos node (Abs.EmptyStatement pos)) env )) in
                                                                                 let newEnv2 = Data.Map.delete "while" (insertWith (++) ("return_"++(showTypeExpComplete tipo)) [] newEnv) in  
-                                                                                    Abs.FunctionStatement (checkTypeStatement node env) (executeIdentFunc id env) (executeParam param env) (executeTypeExpressionFunc tipo env) (executeStatements states newEnv2)
+                                                                                    Abs.FunctionStatement (checkTypeStatement node env) (Abs.Ident id (TResult env (B_type Type_Void) posI)) (executeParam param env) (executeTypeExpressionFunc tipo env) (executeStatements states newEnv2)
 executeParam :: Abs.PARAMETERS Posn -> Env -> Abs.PARAMETERS TCheckResult
 executeParam node@(Abs.ParameterList pos param params) env = Abs.ParameterList (checkTypeExecuteParameter node env) (executeParameter param env) (executeParam params env)
 executeParam node@(Abs.ParameterListSingle pos param) env = Abs.ParameterListSingle (checkTypeExecuteParameter node env) (executeParameter param env)

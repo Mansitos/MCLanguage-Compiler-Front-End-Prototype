@@ -308,7 +308,7 @@ genTacStatement (Abs.ForStatement res forStat) n l k (w,j) tres   = let newL = n
                                                                                     ((Abs.ForStatement (forstatement_content (sel1 forStatement)) (sel1 forStatement)),newC,newK,AddrNULL)
 
                                                                                     
-genTacStatement (Abs.ProcedureStatement res@(TResult _ _ (Pn a r c)) ident@(Abs.Ident id _) param states) n l k (w,j) tres = let newL = Label (id ++ "@" ++show r++","++show c) in -- TODO FIX POS -- PARAM TAC?
+genTacStatement (Abs.ProcedureStatement res ident@(Abs.Ident id resI@(TResult _ _ (Pn a r c))) param states) n l k (w,j) tres = let newL = Label (id ++ "@" ++show r++","++show c) in -- TODO FIX POS -- PARAM TAC?
                                                                                                                                 let endL = Label ("endProc_" ++ id ++ "@" ++show r++","++show c) in
                                                                                                                                     let statements = (genTacStatements states n newL k (w,j)) in
                                                                                                                                         let newC = sel2 statements in
