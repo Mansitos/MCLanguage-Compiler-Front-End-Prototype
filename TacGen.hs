@@ -801,7 +801,7 @@ genTacDefault (Abs.ExpressionCallD res id exps) = -}
 
 
 genTacIdentifierList :: Abs.IDENTLIST TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> TCheckResult -> (Abs.IDENTLIST TAC,Prelude.Integer,Prelude.Integer,[Address])
-genTacIdentifierList (Abs.IdentifierSingle res@(TResult _ _ pos) ident@(Abs.Ident id resi)) n l k (w,j) tres       = (Abs.IdentifierSingle (TAC [] []) (Abs.Ident id (TAC [] [])),n,k,[buildIDAddr pos id])
-genTacIdentifierList (Abs.IdentifierList res@(TResult _ _ pos) ident@(Abs.Ident id resi) idlist) n l k (w,j) tres  = let idlistTac = (genTacIdentifierList idlist n l k (w,j) tres) in
+genTacIdentifierList (Abs.IdentifierSingle res ident@(Abs.Ident id resi@(TResult _ _ pos))) n l k (w,j) tres       = (Abs.IdentifierSingle (TAC [] []) (Abs.Ident id (TAC [] [])),n,k,[buildIDAddr pos id])
+genTacIdentifierList (Abs.IdentifierList res ident@(Abs.Ident id resi@(TResult _ _ pos)) idlist) n l k (w,j) tres  = let idlistTac = (genTacIdentifierList idlist n l k (w,j) tres) in
                                                                                                                     let idlistAddr = sel4 idlistTac in
                                                                                                                         (Abs.IdentifierList (TAC [] []) (Abs.Ident id (TAC [] [])) (sel1 idlistTac),(sel2 idlistTac),(sel3 idlistTac),[buildIDAddr pos id] ++ idlistAddr)

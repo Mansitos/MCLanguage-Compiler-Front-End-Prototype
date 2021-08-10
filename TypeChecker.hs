@@ -617,8 +617,8 @@ executeVardecID :: Abs.VARDECID Posn -> Env -> Abs.VARDECID TCheckResult
 executeVardecID node@(Abs.VariableDeclaration pos idlist tipo init) env = Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) (executeTypePart tipo env) (executeInitPart init env)
 
 executeIDList :: Abs.IDENTLIST Posn -> Env -> Abs.IDENTLIST TCheckResult
-executeIDList node@(Abs.IdentifierList pos id next) env = Abs.IdentifierList (checkIdentifierList node env) (executeIdentVar id env) (executeIDList next env)
-executeIDList node@(Abs.IdentifierSingle pos id) env = Abs.IdentifierSingle (checkIdentifierList node env) (executeIdentVar id env)
+executeIDList node@(Abs.IdentifierList pos ident@(Abs.Ident id posI) next) env = Abs.IdentifierList (checkIdentifierList node env) (Abs.Ident id (TResult env (B_type Type_Void) posI)) (executeIDList next env)
+executeIDList node@(Abs.IdentifierSingle pos ident@(Abs.Ident id posI)) env = Abs.IdentifierSingle (checkIdentifierList node env) (Abs.Ident id (TResult env (B_type Type_Void) posI))
 
 executeTypePart :: Abs.TYPEPART Posn -> Env -> Abs.TYPEPART TCheckResult
 executeTypePart node@(Abs.TypePart pos tipo) env = Abs.TypePart (checkTypeTypePart node env) (executeTypeExpression tipo env)
