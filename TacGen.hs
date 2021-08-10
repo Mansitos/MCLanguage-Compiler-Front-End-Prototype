@@ -21,24 +21,32 @@ instance Sel1 (a1,a2) a1 where sel1 (x,_) = x
 instance Sel1 (a1,a2,a3) a1 where sel1 (x,_,_) = x
 instance Sel1 (a1,a2,a3,a4) a1 where sel1 (x,_,_,_) = x
 instance Sel1 (a1,a2,a3,a4,a5) a1 where sel1 (x,_,_,_,_) = x
+instance Sel1 (a1,a2,a3,a4,a5,a6) a1 where sel1 (x,_,_,_,_,_) = x
 
 class Sel2 a b | a -> b where sel2 :: a -> b
 instance Sel2 (a1,a2) a2 where sel2 (_,x) = x
 instance Sel2 (a1,a2,a3) a2 where sel2 (_,x,_) = x
 instance Sel2 (a1,a2,a3,a4) a2 where sel2 (_,x,_,_) = x
 instance Sel2 (a1,a2,a3,a4,a5) a2 where sel2 (_,x,_,_,_) = x
+instance Sel2 (a1,a2,a3,a4,a5,a6) a2 where sel2 (_,x,_,_,_,_) = x
 
 class Sel3 a b | a -> b where sel3 :: a -> b
 instance Sel3 (a1,a2,a3) a3 where sel3 (_,_,x) = x
 instance Sel3 (a1,a2,a3,a4) a3 where sel3 (_,_,x,_) = x
 instance Sel3 (a1,a2,a3,a4,a5) a3 where sel3 (_,_,x,_,_) = x
+instance Sel3 (a1,a2,a3,a4,a5,a6) a3 where sel3 (_,_,x,_,_,_) = x
 
 class Sel4 a b | a -> b where sel4 :: a -> b
 instance Sel4 (a1,a2,a3,a4) a4 where sel4 (_,_,_,x) = x
 instance Sel4 (a1,a2,a3,a4,a5) a4 where sel4 (_,_,_,x,_) = x
+instance Sel4 (a1,a2,a3,a4,a5,a6) a4 where sel4 (_,_,_,x,_,_) = x
 
 class Sel5 a b | a -> b where sel5 :: a -> b
 instance Sel5 (a1,a2,a3,a4,a5) a5 where sel5 (_,_,_,_,x) = x
+instance Sel5 (a1,a2,a3,a4,a5,a6) a5 where sel5 (_,_,_,_,x,_) = x
+
+class Sel6 a b | a -> b where sel6 :: a -> b
+instance Sel6 (a1,a2,a3,a4,a5,a6) a6 where sel6 (_,_,_,_,_,x) = x
 
 ------------------------------------------------------------------------------------------------
 -- GENERIC FUNCTIONS ---------------------------------------------------------------------------
@@ -92,13 +100,22 @@ showAddrContent (AddrNULL) = "NULL"
 --      the list of address are the address for x,y,z
 --      the address for rExpr is the address of 5
 --      returns a list of 3 tac entries (one for each variable initialized at addr. of 5)
-buildTacEntriesForVarsDecl :: [Address] -> Address -> Type -> [TACEntry]
-buildTacEntriesForVarsDecl [x] rAddr ty = case rAddr of
-    AddrNULL -> [TacAssignNullOp x (genDefaultInitAddr ty) ty]
-    _ -> [TacAssignNullOp x rAddr ty]
-buildTacEntriesForVarsDecl (x:xs) rAddr ty = case rAddr of 
-    AddrNULL -> [TacAssignNullOp x (genDefaultInitAddr ty)  ty] ++ buildTacEntriesForVarsDecl xs rAddr ty 
-    _ -> [TacAssignNullOp x rAddr ty] ++ buildTacEntriesForVarsDecl xs rAddr ty 
+buildTacEntriesForVarsDecl :: [Address] -> [Address] -> Type -> Prelude.Integer -> Prelude.Integer -> [TACEntry]
+buildTacEntriesForVarsDecl [x] [r] ty dim n = case r of
+    AddrNULL -> [TacAssignNullOp (buildArrayId x n) (genDefaultInitAddr ty) ty]
+    _ -> [TacAssignNullOp (buildArrayId x n) r ty]
+buildTacEntriesForVarsDecl [x] (r:rs) ty dim n = case r of
+    AddrNULL -> [TacAssignNullOp (buildArrayId x n) (genDefaultInitAddr ty) ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
+    _ -> [TacAssignNullOp (buildArrayId x n) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
+buildTacEntriesForVarsDecl (x:xs) [r] ty dim n = case r of 
+    AddrNULL -> [TacAssignNullOp (buildArrayId x n) (genDefaultInitAddr ty)  ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
+    _ -> [TacAssignNullOp (buildArrayId x n) r ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
+buildTacEntriesForVarsDecl (x:xs) (r:rs) ty dim n =  [TacAssignNullOp (buildArrayId x n) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) ty dim 0
+
+buildArrayId :: Address -> Prelude.Integer -> Address
+buildArrayId (AddrAddress str) dim = case dim of
+                                        -1 -> AddrAddress str
+                                        _ -> AddrAddress (str++"["++show dim++"]")
 
 -- Generate a default address for default values
 -- Example: declaring a variable of time int without initialization: the default init. value is 0; so a int address of val. 0 must be generated.
@@ -109,6 +126,7 @@ genDefaultInitAddr ty = case ty of
     B_type Type_Char     -> AddrChar ' '
     B_type Type_String   -> AddrString ""   
     B_type Type_Real     -> AddrReal  0.0
+    Array t _            -> genDefaultInitAddr t
 
 -- Given a EXPRESSION node, return it's type
 getTypeFromExpr :: Abs.EXPRESSION TCheckResult -> Type
@@ -161,6 +179,7 @@ getTypeFromDefault (Abs.ExpressionBracketD res@(TResult _ ty _) exp)   = ty
 getTypeFromDefault (Abs.ExpressionCastD    res@(TResult _ ty _) def tipo)   = ty
 getTypeFromDefault (Abs.ExpressionUnaryD   res@(TResult _ ty _) unary def)  = ty
 getTypeFromDefault (Abs.ExpressionCallD    res@(TResult _ ty _) ident exps) = ty
+getTypeFromDefault (Abs.ExpressionIdentD   res@(TResult _ ty _) ident arrayIndex) = ty
 
 -- Given a type and a string (indicating the operator) builds the right operator
 -- Example: INT, plus -> IntAdd operator is builded/returned
@@ -249,6 +268,21 @@ buildAssignTac assignOp (leftAddr:xs) rightAddr t = case assignOp of
                                                 (Abs.AssignOperationEqPower _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "power") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
 buildAssignTac _ [] _ _ = []
 
+generateDimForArray_ :: Abs.TYPEEXPRESSIONFUNC TCheckResult -> Prelude.Integer
+generateDimForArray_ (Abs.TypeExpressionFunction _ typeexp) = generateDimForArray typeexp
+
+generateDimForArray :: Abs.TYPEEXPRESSION TCheckResult -> Prelude.Integer
+generateDimForArray (Abs.TypeExpression _ prim) = generateDimForArrayPrim prim
+generateDimForArray (Abs.TypeExpressionArraySimple _ _ typeexp) = generateDimForArray_ typeexp
+
+generateDimForArrayPrim :: Abs.PRIMITIVETYPE TCheckResult -> Prelude.Integer
+generateDimForArrayPrim (Abs.PrimitiveTypeVoid _ ) = 0
+generateDimForArrayPrim (Abs.PrimitiveTypeBool _ ) = 1
+generateDimForArrayPrim (Abs.PrimitiveTypeInt  _ ) = 4
+generateDimForArrayPrim (Abs.PrimitiveTypeReal _ ) = 8
+generateDimForArrayPrim (Abs.PrimitiveTypeString _ ) = 8
+generateDimForArrayPrim (Abs.PrimitiveTypeChar _ ) = 1
+
 ------------------------------------------------------------------------------------------------
 -- TAC GENERATION FUNCTIONS --------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
@@ -278,10 +312,11 @@ genTacStatement (Abs.VariableDeclarationStatement res@(TResult _ ty _) tipo vard
                                                                                                     let tipoContent = variabletype_content (sel1 tipoTac) in
                                                                                                         let vardecTac = genTacVarDecList vardec n l k (w,j) tres in
                                                                                                             let vardecContent = vardeclist_content (sel1 vardecTac) in
-                                                                                                                let vardecAddrs = sel4 vardecTac in -- variable addresses # >1
-                                                                                                                    let initAddr = sel5 vardecTac in
-                                                                                                                        (Abs.VariableDeclarationStatement (merge2Tacs (merge2Tacs vardecContent (TAC (buildTacEntriesForVarsDecl vardecAddrs initAddr ty) []))
-                                                                                                                                                             tipoContent) (sel1 tipoTac) (sel1 vardecTac) ,(sel2 vardecTac),(sel3 vardecTac),AddrNULL)
+                                                                                                                let vardecAddrs = sel5 vardecTac in -- variable addresses # >1
+                                                                                                                    let initAddr = sel6 vardecTac in
+                                                                                                                        let dim = sel4 vardecTac in
+                                                                                                                            (Abs.VariableDeclarationStatement (merge2Tacs (merge2Tacs vardecContent (TAC (buildTacEntriesForVarsDecl vardecAddrs initAddr ty dim 0) []))
+                                                                                                                                                                 tipoContent) (sel1 tipoTac) (sel1 vardecTac) ,(sel2 vardecTac),(sel3 vardecTac),AddrNULL)
 genTacStatement (Abs.BreakStatement res) n l k (w,j) tres    = ((Abs.BreakStatement (TAC [TacJump w,TacComment "break jump"] [])),n,k,AddrNULL)
 genTacStatement (Abs.ContinueStatement res) n l k (w,j) tres = ((Abs.ContinueStatement (TAC [TacJump j,TacComment "continue jump"] [])),n,k,AddrNULL)
 genTacStatement (Abs.ReturnStatement res ret) n l k (w,j) tres = case ret of 
@@ -350,7 +385,7 @@ genTacStatement (Abs.FunctionStatement res ident@(Abs.Ident id resI@(TResult _ _
                                                                                                                                                                                         (TAC [] (code (statements_content (sel1 statements)))), -- tac of statements inside the body (no funcs. decl. tacs.)
                                                                                                                                                                                         (TAC [] [TacLabel endL]),  -- end func code label   
                                                                                                                                                                                         (TAC [] (funcs (statements_content (sel1 statements)))) -- functions declared inside
-                                                                                                                                                                                        ]) (Abs.Ident id (TAC [] [])) (Abs.ParameterListEmpty (TAC [] [])) (Abs.TypeExpressionFunction (TAC [] []) (Abs.TypeExpression (TAC [] []) (Abs.PrimitiveTypeVoid (TAC [] [])))) (Abs.EmptyStatement (TAC [] []))),n,k,AddrNULL)                                           
+                                                                                                                                                                                        ]) (Abs.Ident id (TAC [] [])) (Abs.ParameterListEmpty (TAC [] [])) (Abs.TypeExpressionFunction (TAC [] []) (Abs.TypeExpression (TAC [] []) (Abs.PrimitiveTypeVoid (TAC [] [])))) (Abs.EmptyStatement (TAC [] []))),(sel2 statements),(sel3 statements),AddrNULL)                                           
 
 genTacAssignOp :: Abs.ASSIGNOP TCheckResult -> Abs.ASSIGNOP TAC
 genTacAssignOp (Abs.AssignOperationEq _ )        = (Abs.AssignOperationEq (TAC [] []))       
@@ -694,27 +729,48 @@ genTacVariableType (Abs.VariableTypeVar res) n l k (w,j)        = (Abs.VariableT
 genTacVariableType (Abs.VariableTypeRef res) n l k (w,j)        = (Abs.VariableTypeRef      (TAC [] []),n,k,AddrNULL)
 genTacVariableType (Abs.VariableTypeConstRef res) n l k (w,j)   = (Abs.VariableTypeConstRef (TAC [] []),n,k,AddrNULL)
 
-genTacVarDecList :: Abs.VARDECLIST TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> TCheckResult -> (Abs.VARDECLIST TAC,Prelude.Integer,Prelude.Integer,[Address],Address)
+genTacVarDecList :: Abs.VARDECLIST TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> TCheckResult -> (Abs.VARDECLIST TAC,Prelude.Integer,Prelude.Integer,Prelude.Integer,[Address],[Address])
 genTacVarDecList (Abs.VariableDeclarationSingle res vardecId) n l k (w,j) tres = let vardecIdTac = genTacVarDecId vardecId n l k (w,j) tres in
-                                                                            let vardecIdAddr = sel4 vardecIdTac in
-                                                                                let initAddr = sel5 vardecIdTac in
-                                                                                (Abs.VariableDeclarationSingle (vardecid_content (sel1 vardecIdTac)) (sel1 vardecIdTac),(sel2 vardecIdTac),(sel3 vardecIdTac),vardecIdAddr,initAddr)
+                                                                            let vardecIdAddr = sel5 vardecIdTac in
+                                                                                let initAddr = sel6 vardecIdTac in
+                                                                                (Abs.VariableDeclarationSingle (vardecid_content (sel1 vardecIdTac)) (sel1 vardecIdTac),(sel2 vardecIdTac),(sel3 vardecIdTac),sel4 vardecIdTac,vardecIdAddr,initAddr)
 
-genTacVarDecId :: Abs.VARDECID TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> TCheckResult -> (Abs.VARDECID TAC,Prelude.Integer,Prelude.Integer,[Address],Address)
-genTacVarDecId (Abs.VariableDeclaration res@(TResult _ ty _) idlist typepart initpart) n l k (w,j) tres = case initpart of
+genTacVarDecId :: Abs.VARDECID TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> TCheckResult -> (Abs.VARDECID TAC,Prelude.Integer,Prelude.Integer,Prelude.Integer,[Address],[Address])
+genTacVarDecId (Abs.VariableDeclaration res@(TResult _ ty _) idlist typepart@(Abs.TypePart _ typeExp) initpart) n l k (w,j) tres = case initpart of
                                                                             Abs.InitializzationPartEmpty resi -> let idlistTac = genTacIdentifierList idlist n l k (w,j) tres in
                                                                                                                     let tacId = identlist_content (sel1 idlistTac) in
                                                                                                                         let addrIdList = sel4 idlistTac in
                                                                                                                             let initAddr = AddrNULL in
-                                                                                                                                (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),addrIdList,initAddr)
+                                                                                                                                let dim = generateDimForArray typeExp in
+                                                                                                                                    case typeExp of
+                                                                                                                                        Abs.TypeExpressionArraySimple _ _ _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),dim,addrIdList,[initAddr])
+                                                                                                                                        Abs.TypeExpressionArray _ _ _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),dim,addrIdList,[initAddr])
+                                                                                                                                        _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),-1,addrIdList,[initAddr])
                                                                             Abs.InitializzationPart resi expr -> let idlistTac = genTacIdentifierList idlist n l k (w,j) tres in
                                                                                                                     let tacId = identlist_content (sel1 idlistTac) in
                                                                                                                         let addrIdList = sel4 idlistTac in
                                                                                                                             let exprTac = (genTacExpression expr (sel2 idlistTac) l (sel3 idlistTac) (w,j) tres) in
                                                                                                                                 let initTac = (Abs.InitializzationPart (expression_content (sel1 exprTac)) (sel1 exprTac)) in
                                                                                                                                     let initAddr = sel4 exprTac in
-                                                                                                                                        (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),addrIdList,initAddr)
-                                                                            --InitializzationPartArray resi array -> 
+                                                                                                                                        (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),-1,addrIdList,[initAddr])
+                                                                            InitializzationPartArray resi array -> let idlistTac = genTacIdentifierList idlist n l k (w,j) tres in
+                                                                                                                    let tacId = identlist_content (sel1 idlistTac) in
+                                                                                                                        let addrIdList = sel4 idlistTac in
+                                                                                                                            let dim = generateDimForArray typeExp in
+                                                                                                                                let arrayInitTac = (genTacArrayInit array (sel2 idlistTac) l (sel3 idlistTac) (w,j)) in
+                                                                                                                                    let initTac = (Abs.InitializzationPartArray (arrayinit_content (sel1 arrayInitTac)) (sel1 arrayInitTac)) in
+                                                                                                                                        (Abs.VariableDeclaration (arrayinit_content (sel1 arrayInitTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 arrayInitTac),(sel3 arrayInitTac),dim,addrIdList,sel4 arrayInitTac)
+
+genTacArrayInit :: Abs.ARRAYINIT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.ARRAYINIT TAC,Prelude.Integer,Prelude.Integer,[Address])
+genTacArrayInit (Abs.ArrayInitSingleElems res listelementarray) n l k (w,j) = let listElementTac = genTacListElementOfArray listelementarray n l k (w,j) in
+                                                                                    (Abs.ArrayInitSingleElems (listelementarray_content (sel1 listElementTac)) (sel1 listElementTac),n,k,sel4 listElementTac)
+
+genTacListElementOfArray :: Abs.LISTELEMENTARRAY TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.LISTELEMENTARRAY TAC,Prelude.Integer,Prelude.Integer,[Address])
+genTacListElementOfArray (Abs.ListElementOfArray res exp)  n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) res in
+                                                                            (Abs.ListElementOfArray (TAC [][]) (sel1 expTac),n,k,[sel4 expTac])
+genTacListElementOfArray (Abs.ListElementsOfArray res exp listelement)  n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) res in
+                                                                                        let listelementTac = genTacListElementOfArray listelement n l k (w,j) in
+                                                                                        (Abs.ListElementOfArray (TAC [][]) (sel1 expTac),n,k,[sel4 expTac]++(sel4 listelementTac))
 
 genTacExpression :: Abs.EXPRESSION TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> TCheckResult -> (Abs.EXPRESSION TAC,Prelude.Integer,Prelude.Integer,Address)
 genTacExpression (Abs.ExpressionInteger res value@(Abs.Integer val resi))       n l k (w,j) tres = (Abs.ExpressionInteger (TAC [] []) (Abs.Integer val (TAC [] []))  ,n,k, AddrInt val)
