@@ -216,15 +216,16 @@ buildROp t1 t2 str = case str of
 
 -- Given an assign operator node + 2 addresses + the type (of the assignement, from the tcheck result of the assignment operator)
 -- builds the right TAC instruction.
-buildAssignTac :: Abs.ASSIGNOP TCheckResult -> Address -> Address -> Type -> TACEntry
-buildAssignTac assignOp leftAddr rightAddr t = case assignOp of
-                                                (Abs.AssignOperationEq _ )         -> TacAssignNullOp   leftAddr rightAddr t
-                                                (Abs.AssignOperationEqPlus _ )     -> TacAssignBinaryOp leftAddr (buildOp t "plus") leftAddr rightAddr t
-                                                (Abs.AssignOperationEqMinus _ )    -> TacAssignBinaryOp leftAddr (buildOp t "minus") leftAddr rightAddr t
-                                                (Abs.AssignOperationEqProd _ )     -> TacAssignBinaryOp leftAddr (buildOp t "product") leftAddr rightAddr t
-                                                (Abs.AssignOperationEqFract _ )    -> TacAssignBinaryOp leftAddr (buildOp t "division") leftAddr rightAddr t
-                                                (Abs.AssignOperationEqPercent _ )  -> TacAssignBinaryOp leftAddr (buildOp t "module") leftAddr rightAddr t
-                                                (Abs.AssignOperationEqPower _ )    -> TacAssignBinaryOp leftAddr (buildOp t "power") leftAddr rightAddr t
+buildAssignTac :: Abs.ASSIGNOP TCheckResult -> [Address] -> Address -> Type -> [TACEntry]
+buildAssignTac assignOp (leftAddr:xs) rightAddr t = case assignOp of
+                                                (Abs.AssignOperationEq _ )         -> [TacAssignNullOp   leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
+                                                (Abs.AssignOperationEqPlus _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "plus") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
+                                                (Abs.AssignOperationEqMinus _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "minus") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
+                                                (Abs.AssignOperationEqProd _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "product") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
+                                                (Abs.AssignOperationEqFract _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "division") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
+                                                (Abs.AssignOperationEqPercent _ )  -> [TacAssignBinaryOp leftAddr (buildOp t "module") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
+                                                (Abs.AssignOperationEqPower _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "power") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
+buildAssignTac _ [] _ _ = []
 
 ------------------------------------------------------------------------------------------------
 -- TAC GENERATION FUNCTIONS --------------------------------------------------------------------
@@ -280,10 +281,10 @@ genTacStatement (Abs.AssignmentStatement resres@(TResult _ t _) lval assignOp ex
                                                                                         let rightVal = (genTacExpression exp n newL k (w,j) tres) in
                                                                                             let newC = sel2 rightVal in
                                                                                                 let exprAddr = sel4 rightVal in
-                                                                                                    let leftValAddr = sel4 leftVal in
-                                                                                                        let assignTac = (buildAssignTac assignOp leftValAddr exprAddr t) in
+                                                                                                    let leftValAddrs = sel4 leftVal in
+                                                                                                        let assignTac = (buildAssignTac assignOp leftValAddrs exprAddr t) in
                                                                                                         ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++ -- expression (rval) evaluation tac code
-                                                                                                                                        [assignTac])                                 -- assign tac
+                                                                                                                                        assignTac)                                   -- assignements tac (list)
                                                                                                                                         []) (sel1 leftVal) (genTacAssignOp assignOp) (sel1 rightVal)),newC,(sel3 rightVal),AddrNULL)
 genTacStatement (Abs.ConditionalStatement res condition) n l k (w,j) tres = let newL = newLabel "else" k in 
                                                                                 let condStatementTac = (genTacConditionalStatement condition n newL (k+1) (w,j)) in
@@ -338,12 +339,19 @@ genTacAssignOp (Abs.AssignOperationEqFract _ )   = (Abs.AssignOperationEqFract (
 genTacAssignOp (Abs.AssignOperationEqPercent _ ) = (Abs.AssignOperationEqPercent (TAC [] []))
 genTacAssignOp (Abs.AssignOperationEqPower _ )   = (Abs.AssignOperationEqPower (TAC [] []))  
 
-genTacLeftVal :: Abs.LVALUEEXPRESSION  TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.LVALUEEXPRESSION  TAC, Prelude.Integer, Prelude.Integer, Address)
---genTAcLeftVal (Abs.LvalueExpressions res ident arrayindex lval) n l k (w,j) =
-genTacLeftVal (Abs.LvalueExpression res@(TResult env _ _) ident@(Abs.Ident id resi) arrayindex     ) n l k (w,j) = case arrayindex of 
+genTacLeftVal :: Abs.LVALUEEXPRESSION  TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.LVALUEEXPRESSION  TAC, Prelude.Integer, Prelude.Integer, [Address])
+genTAcLeftVal (Abs.LvalueExpressions res@(TResult env _ _) ident@(Abs.Ident id resi) arrayindex lval) n l k (w,j) = case arrayindex of  
                                                                                                     (Abs.ArrayIndexElementEmpty _) -> case Data.Map.lookup id env of
-                                                                                                        Just [Variable _ posv _ _] ->  let leftAddr = buildIDAddr posv id in -- gestire tutti icasi TODO
-                                                                                                                                            ((Abs.LvalueExpression (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,leftAddr)
+                                                                                                        Just (entry:entries) ->  case findEntryOfType (entry:entries) "var" of
+                                                                                                            ((Variable _ posv _ _):xs) -> let leftAddr = buildIDAddr posv id in
+                                                                                                                                            let lvalAddr = (genTacLeftVal lval n l k (w,j)) in
+                                                                                                                                                ((Abs.LvalueExpressions (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] [])) (sel1 lvalAddr)),n,k,[leftAddr]++(sel4 lvalAddr))
+                                                                                                    -- _ -> -- is array
+genTacLeftVal (Abs.LvalueExpression res@(TResult env _ _) ident@(Abs.Ident id resi) arrayindex) n l k (w,j) = case arrayindex of  
+                                                                                                    (Abs.ArrayIndexElementEmpty _) -> case Data.Map.lookup id env of
+                                                                                                        Just (entry:entries) ->  case findEntryOfType (entry:entries) "var" of
+                                                                                                            ((Variable _ posv _ _):xs) -> let leftAddr = buildIDAddr posv id in
+                                                                                                                                            ((Abs.LvalueExpression (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,[leftAddr])
                                                                                                     -- _ -> -- is array
 
 genTacExpressionStatement :: Abs.EXPRESSIONSTATEMENT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.EXPRESSIONSTATEMENT TAC, Prelude.Integer, Prelude.Integer, Address)
