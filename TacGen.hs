@@ -340,7 +340,7 @@ genTacAssignOp (Abs.AssignOperationEqPercent _ ) = (Abs.AssignOperationEqPercent
 genTacAssignOp (Abs.AssignOperationEqPower _ )   = (Abs.AssignOperationEqPower (TAC [] []))  
 
 genTacLeftVal :: Abs.LVALUEEXPRESSION  TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.LVALUEEXPRESSION  TAC, Prelude.Integer, Prelude.Integer, [Address])
-genTAcLeftVal (Abs.LvalueExpressions res@(TResult env _ _) ident@(Abs.Ident id resi) arrayindex lval) n l k (w,j) = case arrayindex of  
+genTacLeftVal (Abs.LvalueExpressions res@(TResult env _ _) ident@(Abs.Ident id resi) arrayindex lval) n l k (w,j) = case arrayindex of  
                                                                                                     (Abs.ArrayIndexElementEmpty _) -> case Data.Map.lookup id env of
                                                                                                         Just (entry:entries) ->  case findEntryOfType (entry:entries) "var" of
                                                                                                             ((Variable _ posv _ _):xs) -> let leftAddr = buildIDAddr posv id in
@@ -697,7 +697,7 @@ genTacVarDecId (Abs.VariableDeclaration res@(TResult _ ty _) idlist typepart ini
                                                                                                                                 let initTac = (Abs.InitializzationPart (expression_content (sel1 exprTac)) (sel1 exprTac)) in
                                                                                                                                     let initAddr = sel4 exprTac in
                                                                                                                                         (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),addrIdList,initAddr)
-                                                                                --InitializzationPartArray resi array -> 
+                                                                            --InitializzationPartArray resi array -> 
 
 genTacExpression :: Abs.EXPRESSION TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> TCheckResult -> (Abs.EXPRESSION TAC,Prelude.Integer,Prelude.Integer,Address)
 genTacExpression (Abs.ExpressionInteger res value@(Abs.Integer val resi))       n l k (w,j) tres = (Abs.ExpressionInteger (TAC [] []) (Abs.Integer val (TAC [] []))  ,n,k, AddrInt val)
@@ -776,10 +776,60 @@ genTacExpression (Abs.ExpressionBinaryLess res@(TResult env t pos) expr1 expr2) 
                                                                                                         (Abs.ExpressionBinaryLess (merge2Tacs (merge2Tacs (expression_content (sel1 expr1Tac)) (expression_content (sel1 expr2Tac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromExpr expr1) (getTypeFromExpr expr2) "less") (sel4 expr1Tac) (sel4 expr2Tac) t] [])) (sel1 expr1Tac) (sel1 expr2Tac),(sel2 expr2Tac),(sel3 expr2Tac),temp)                                                                                                    
 
 genTacExpression (Abs.ExpressionIdent res ident@(Abs.Ident id resi@(TResult env t pos)) index) n l k (w,j) tres = case Data.Map.lookup id env of
-                                                                                                                  Just [Variable _ posv _ _] -> case index of -- gestire tutti icasi TODO 
-                                                                                                                                                (Abs.ArrayIndexElementEmpty _) -> ((Abs.ExpressionIdent (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,buildIDAddr posv id)
-                                                                                                                                                -- _ -> it is array
---genTacExpression (Abs.ExpressionCall res id exps) = ident@(Abs.Ident id resi)) n l k (w,j) tres       = 
+                                                                                                                  Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
+                                                                                                                                            ((Variable _ posv _ _):xs) -> case index of
+                                                                                                                                                                            (Abs.ArrayIndexElementEmpty _) -> ((Abs.ExpressionIdent (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,buildIDAddr posv id)
+                                                                                                                                                                            -- _ -> it is array
+genTacExpression (Abs.ExpressionCall res@(TResult env _ _) ident@(Abs.Ident id resi) exps) n l k (w,j) tres = case Data.Map.lookup id env of
+                                                                                                                Just (entry:entries) -> case findEntryOfType (entry:entries) "func" of
+                                                                                                                    ((Function ty pos _ _):xs) -> let funcReturn = newTemp n in
+                                                                                                                                                    let funcAddr = buildIDAddr pos id in
+                                                                                                                                                    case exps of
+                                                                                                                                                        (Abs.Expressions rese expr exprs)   -> let expression = genTacExpression expr (n+1) l k (w,j) tres in
+                                                                                                                                                                                                let expressions = genTacExpressions exprs (sel2 expression) l (sel3 expression) (w,j) in
+                                                                                                                                                                                                    ((Abs.ExpressionCall (TAC ((code (expression_content (sel1 expression))) ++       -- evaluation of the first param value
+                                                                                                                                                                                                                               [TacParam (sel4 expression) (getTypeFromExpr expr)] ++  -- first param tac
+                                                                                                                                                                                                                               (code (expressions_content (sel1 expressions))) ++     -- tac of others param
+                                                                                                                                                                                                                               [TacAssignNullOp funcReturn funcAddr ty])              -- call tac
+                                                                                                                                                                                                                               []) (Abs.Ident id (TAC [][])) (Abs.Expressions (TAC [][]) (sel1 expression) (sel1 expressions))),(sel2 expressions),(sel3 expressions),funcReturn) 
+                                                                                                                                                        (Abs.Expression rese expr)          -> let expression = genTacExpression expr (n+1) l k (w,j) tres in
+                                                                                                                                                                                                    ((Abs.ExpressionCall (TAC ((code (expression_content (sel1 expression))) ++        -- evaluation of the param value
+                                                                                                                                                                                                                              [(TacParam (sel4 expression) (getTypeFromExpr expr)),    -- param tac
+                                                                                                                                                                                                                               (TacAssignNullOp funcReturn funcAddr ty)])              -- call tac
+                                                                                                                                                                                                                               []) (Abs.Ident id (TAC [][])) (Abs.Expression (TAC [][]) (sel1 expression))),(sel2 expression),(sel3 expression),funcReturn) 
+                                                                                                                                                        (Abs.ExpressionEmpty rese)          -> ((Abs.ExpressionCall (TAC [TacAssignNullOp funcReturn funcAddr ty]   -- call tac
+                                                                                                                                                                                                                         []) (Abs.Ident id (TAC [][])) (Abs.ExpressionEmpty (TAC [][]))),n+1,k,funcReturn)
+-- for functions R calls (expressions param lists)
+genTacExpressions :: Abs.EXPRESSIONS TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.EXPRESSIONS TAC,Prelude.Integer,Prelude.Integer,Address)
+genTacExpressions (Abs.Expressions res expr exprs) n l k (w,j) = let expression = genTacExpression expr n l k (w,j) res in 
+                                                                    let expressions = genTacExpressions exprs (sel2 expression) l (sel3 expression) (w,j) in
+                                                                        ((Abs.Expressions (TAC ((code (expression_content (sel1 expression))) ++     
+                                                                                                [TacParam (sel4 expression) (getTypeFromExpr expr)] ++
+                                                                                                (code (expressions_content (sel1 expressions))))
+                                                                                                []) (sel1 expression) (sel1 expressions)),(sel2 expressions),(sel3 expressions),(sel4 expression))
+genTacExpressions (Abs.Expression res expr) n l k (w,j)        = let expression = genTacExpression expr n l k (w,j) res in 
+                                                                    ((Abs.Expression (TAC ((code (expression_content (sel1 expression))) ++     
+                                                                                          [TacParam (sel4 expression) (getTypeFromExpr expr)]) 
+                                                                                          []) (sel1 expression)),(sel2 expression),(sel3 expression),(sel4 expression))
+genTacExpressions (Abs.ExpressionEmpty res) n l k (w,j)        = ((Abs.ExpressionEmpty (TAC [][])),n,k,AddrNULL)
+{-
+
+data EXPRESSIONS a
+    =  Expressions {expressions_content::a, expressions_expression::(EXPRESSION a), expressions_expressions::(EXPRESSIONS a)}
+    |  Expression {expressions_content::a,expressions_expression::(EXPRESSION a)}
+    |  ExpressionEmpty {expressions_content::a}
+genTacNamedExpression (Abs.NamedExpressionLists res namedexpr@(Abs.NamedExpression _ expr) namedexprs) n l k (w,j) = let expression = genTacExpression expr n l k (w,j) res in
+                                                                                                                        let namedExpressions = genTacNamedExpression namedexprs (sel2 expression) l (sel3 expression) (w,j) in
+                                                                                                                            let namedExprsTac = sel1 namedExpressions in
+                                                                                                                                let exprTac = (sel1 expression) in
+                                                                                                                                    let exprAddr = (sel4 expression) in
+                                                                                                                                        let p_type = getTypeFromExpr expr in
+                                                                                                                                            ((Abs.NamedExpressionList (mergeTacs [(expression_content exprTac),         -- evaluation of the param
+                                                                                                                                                                                  (TAC [TacParam exprAddr p_type] []),     -- param tac
+                                                                                                                                                                                  (namedexpressionlist_content namedExprsTac) -- tac of other params (recursive call)
+                                                                                                                                                                                  ])
+                                                                                                                                                                                  (Abs.NamedExpression (TAC [] []) exprTac)),(sel2 namedExpressions),(sel3 namedExpressions))
+-}
 
 genTacDefault :: Abs.DEFAULT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> TCheckResult -> (Abs.DEFAULT TAC,Prelude.Integer,Prelude.Integer,Address)
 genTacDefault (Abs.ExpressionIntegerD res value@(Abs.Integer val resi))       n l k (w,j) tres = (Abs.ExpressionIntegerD (TAC [] []) (Abs.Integer val (TAC [] [])),n,k, AddrInt val)
