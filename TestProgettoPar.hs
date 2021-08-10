@@ -19,7 +19,7 @@ import Control.Monad      (when)
 
 import AbsProgettoPar   as Abs (S (StartCode), STATEMENTS (ListStatements, EmptyStatement), DOSTATEMENT (..), STATEMENT (..),
                                 B (BlockStatement), FORSTATEMENT (..), ELSESTATEMENT (..), CONDITIONALSTATE(..), WHILESTATEMENT (..)) 
-import LexProgettoPar   (Token, Posn)
+import LexProgettoPar   (Token, Posn (..))
 import ParProgettoPar   (pS, myLexer)
 import PrintProgettoPar (Print, printTree)
 import SkelProgettoPar  ()
@@ -43,34 +43,46 @@ run :: Verbosity -> ParseFun (S Posn) -> String -> IO ()
 run v p s =
   case p ts of
     Left err -> do
-      putStrLn "\nParse            Failed :( ...\n"
+      putStrLn "\n[Parsing]"
+      putStrLn "\n   Parse            Failed :( ...\n"
       putStrV v "Tokens:"
       putStrV v $ show ts
       putStrLn err
     Right tree -> do
-      putStrLn "\n > Parse Successful! :) "
-      Main.showTree v tree
+      putStrLn "\n[Parsing]"
+      putStrLn "\n   Parse Successful! :) "
       let includeDebugInfo = False in -- flag for complete or pretty printing
-        let start_env = startEnv in -- (Data.Map.fromList []) in -- substitute with startEnv for including pre-defined functions
+        let start_env = startEnv in   -- (Data.Map.fromList []) in -- substitute with startEnv for including pre-defined functions
           let typecheckRes = TypeChecker.executeTypeChecking tree start_env in 
             let tacgeneration = TacGen.genTAC typecheckRes in
               ------------------------------------------------------------------------
               if (includeDebugInfo) then do -- include more informations for debugging
+                  putStrLn "\n[Input Code]\n"
+                  putStrLn s
+                  Main.showTree v tree
+                  putStrLn "\n[TCheckResult extended]\n"
                   putStrLn (show typecheckRes)
                   putStrLn "\n\n[Statements TypeChecker Result]\n   For each statements it shows the TCheckResult (env+infos)\n"
                   putStrLn (showTypeCheckResult typecheckRes True)
                   putStrLn "\n\n[Compiler Errors]\n"        
                   let compilerErrors = (showTypeCheckResult typecheckRes False) in
                     if compilerErrors == "" -- Set "TRUE" to ignore compiler errors and force TAC generation
-                    then putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ (show tacgeneration) ++"\n\n[TAC in code]\n" ++ (showTac tacgeneration))
-                    else putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ " Cannot generate TAC with compiler errors!\n")
+                    then putStrLn (compilerErrors ++ "   No compiler errors. \n\n[TAC]\n\n" ++ (show tacgeneration) ++"\n\n[TAC in code]\n" ++ (showTac tacgeneration))
+                    else putStrLn (compilerErrors ++ "\n\n[TAC]\n\n" ++ " Cannot generate TAC with compiler errors!\n")
                 ------------------------------------------------------------------------
                 else do -- pretty print with no debug infos
-                  putStrLn "\n\n[Compiler Errors]\n"        
+                  putStrLn ("\n[Input Code]\n\n" ++ s)
+                  putStrLn ("\n[Linearized tree]\n\n" ++ printTree tree)
+                  if (printTree tree == printTree (case (p (myLexer (printTree tree))) of -- CHECK IF LINEARIZED CODE IS LEGAL SYNTAX
+                                                    Left e -> (Abs.StartCode (Pn 0 0 0) (Abs.EmptyStatement (Pn 0 0 0)))
+                                                    Right newTree -> newTree))
+                    then putStrLn "\n Serialization of abstract syntax tree produced legal concrete syntax!" 
+                    else putStrLn "\n WARNING: Serialization of abstract syntax tree DID NOT produce legal concrete syntax!" 
+                  putStrLn "\n[Compiler Errors]\n"        
                   let compilerErrors = (showTypeCheckResult typecheckRes False) in
                     if compilerErrors == "" -- Set "TRUE" to ignore compiler errors and force TAC generation
                     then putStrLn (compilerErrors ++ "   No compiler errors. \n\n[TAC]\n\n   Tac of pre-defined functions is not included.\n" ++ (showTac tacgeneration))
-                    else putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ " Cannot generate TAC with compiler errors!\n")
+                    else putStrLn (compilerErrors ++ "\n\n[TAC]\n\n" ++ " Cannot generate TAC with compiler errors!\n")
   where
   ts = myLexer (pointersSyntaxPreprocessing s [])
 
@@ -78,8 +90,8 @@ run v p s =
 runTests :: Prelude.Int -> Verbosity -> [String] -> IO()
 runTests index v (x:xs) = do
                       putStrLn "\n\n---------------------------------------------------------------------------------------------"
-                      putStrLn ("------------ TEST n° " ++ show index ++ "-----------------------------------------------------------------------")
-                      putStrLn "---------------------------------------------------------------------------------------------"
+                      putStrLn    ("------------ TEST n° " ++ show index ++ "-----------------------------------------------------------------------")
+                      putStrLn     "---------------------------------------------------------------------------------------------"
                       x <- readFile x
                       run v pS x
 
@@ -163,7 +175,6 @@ showTypeCheckResultStatement (Abs.ReturnStatement res _) spacer flag            
 showTac :: S TAC -> String
 showTac (Abs.StartCode tac@(TAC code funcs) _) = "\n----------- Functions declarations ----------- \n" ++ showContent funcs ++ "\n\n-------------------- Code -------------------- \n" ++ showContent code 
                                                  
-
 showContent :: [TACEntry] -> String
 showContent (x:xs) = case x of
                       TacAssignBinaryOp id op fst scnd ty     -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ showAddrContent fst ++ " " ++ show op           ++ " " ++ showAddrContent scnd ++ showContent xs
