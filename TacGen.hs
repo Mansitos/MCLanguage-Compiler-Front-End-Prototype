@@ -266,7 +266,7 @@ genTacStatement (Abs.ReturnStatement res ret) n l k (w,j) tres = case ret of
     (Abs.ReturnState _ expr)  -> let expression = genTacExpression expr n l k (w,j) tres in
                                                                                     ((Abs.ReturnStatement (TAC ((code (expression_content (sel1 expression)))++
                                                                                                                [TacReturn (sel4 expression) (getTypeFromExpr expr)])
-                                                                                                               []) (Abs.ReturnState (TAC [][]) (sel1 expression))),n,k,AddrNULL)
+                                                                                                               []) (Abs.ReturnState (TAC [][]) (sel1 expression))),(sel2 expression),(sel3 expression),AddrNULL)
 genTacStatement (Abs.Statement res block) n l k (w,j) tres = let newL = newLabel "" k in 
                                                                 let newC = sel2 (genTacBlock block n newL k (w,j)) in
                                                                     let blockTac = (genTacBlock block n newL k (w,j)) in (Abs.Statement (b_content (sel1 blockTac)) (sel1 blockTac),newC,(sel3 blockTac),AddrNULL)
