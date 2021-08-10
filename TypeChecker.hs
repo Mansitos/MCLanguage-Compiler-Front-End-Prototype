@@ -152,17 +152,19 @@ updateEnv node@(Abs.ListStatements pos stat stats) env = case stat of
                                                                                                                                 then updateEnvFromListOfVarIds ids env posns varMode ty -- updating env for each declared var.
                                                                                                                                 else updateEnvFromListOfVarIds ids env posns varMode ty)))
                                                                 -- Functions and Procedures
-                                                                Abs.ProcedureStatement pos id params stats -> let parameters = getParamList params in
+                                                                Abs.ProcedureStatement posf id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
-                                                                                                                    if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
-                                                                                                                    then insertWith (++) fid [Function (B_type Type_Void) pos parameters False] env
-                                                                                                                    else env -- it was already defined
-                                                                Abs.FunctionStatement pos id params ty stats -> let parameters = getParamList params in
+                                                                                                                    let fpos = getPosFromIdent id in
+                                                                                                                        if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
+                                                                                                                        then insertWith (++) fid [Function (B_type Type_Void) fpos parameters False] env
+                                                                                                                        else env -- it was already defined
+                                                                Abs.FunctionStatement posf id params ty stats -> let parameters = getParamList params in
                                                                                                                     let fty = getTypeFromTypeExpF ty in
                                                                                                                         let fid = getIdFromIdent id in 
-                                                                                                                            if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
-                                                                                                                            then insertWith (++) fid [Function fty pos parameters False] env
-                                                                                                                            else env -- it was already defined
+                                                                                                                            let fpos = getPosFromIdent id in
+                                                                                                                                if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
+                                                                                                                                then insertWith (++) fid [Function fty fpos parameters False] env
+                                                                                                                                else env -- it was already defined
                                                                 -- generic case
                                                                 _ -> env 
 updateEnv node@(Abs.EmptyStatement pos) env = env
@@ -170,21 +172,21 @@ updateEnv node@(Abs.EmptyStatement pos) env = env
 -- Update the env for Conditional if-then-else statement
 updateEnvCondStat :: (Abs.CONDITIONALSTATE Posn) -> Env -> Env
 updateEnvCondStat (Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env  = case ctrlState of
-                    Abs.CtrlDecStateVar pos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env
-                    Abs.CtrlDecStateConst pos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env
+                    Abs.CtrlDecStateVar cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False] env
+                    Abs.CtrlDecStateConst cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False] env
 updateEnvCondStat (Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env  = case ctrlState of
-                    Abs.CtrlDecStateVar pos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env
-                    Abs.CtrlDecStateConst pos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env
+                    Abs.CtrlDecStateVar cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False] env
+                    Abs.CtrlDecStateConst cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False] env
 updateEnvCondStat _ env  = env
 
 -- Update the env for while statement
 updateEnvWhileStat :: (Abs.WHILESTATEMENT Posn) -> Env -> Env
 updateEnvWhileStat (Abs.WhileStateCtrlDo pos ctrl state) env  = case ctrl of
-                    Abs.CtrlDecStateVar pos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env in insertWith (++) "while" [] newEnv
-                    Abs.CtrlDecStateConst pos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateVar cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateConst cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False] env in insertWith (++) "while" [] newEnv
 updateEnvWhileStat (Abs.WhileStateCtrlWDo pos ctrl b) env  = case ctrl of
-                    Abs.CtrlDecStateVar pos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "var" False] env in insertWith (++) "while" [] newEnv
-                    Abs.CtrlDecStateConst pos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) pos "const" False] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateVar cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateConst cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False] env in insertWith (++) "while" [] newEnv
 updateEnvWhileStat (Abs.WhileStateSimpleDo pos expr state) env  = insertWith (++) "while" [] env
 updateEnvWhileStat (Abs.WhileStateSimpleWDo pos expr b) env  = insertWith (++) "while" [] env
 
@@ -243,6 +245,9 @@ checkIfCanOverride [] env _ = True
 getIdFromIdent :: Abs.Ident Posn -> Prelude.String
 getIdFromIdent (Abs.Ident s _) = s 
 
+getPosFromIdent :: Abs.Ident Posn -> Posn
+getPosFromIdent (Abs.Ident s pos) = pos
+
 -- Given a List of ids, returns the string with the list of identifier
 getIdsFromIdentList :: Abs.IDENTLIST Posn -> Prelude.String
 getIdsFromIdentList node@(Abs.IdentifierList pos ident@(Abs.Ident id posI) idents) = id ++ "," ++ getIdsFromIdentList idents
@@ -256,7 +261,7 @@ getParamList (Abs.ParameterListEmpty pos)         = []
 
 -- Given a Parameter node of the ABS, return a single built Parameter data type (constructor for the ENV)
 buildParam :: Abs.PARAMETER Posn -> Parameter
-buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromTypeExpF ty) pos "_mode_" (getIdFromIdent id)) 
+buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromTypeExpF ty) (getPosFromIdent id) "_mode_" (getIdFromIdent id)) 
 
 -- Given a list of parameters (from a func env entry) returns the list of types of each parameter
 getTypeListFromFuncParams :: [Parameter] -> [Type]
