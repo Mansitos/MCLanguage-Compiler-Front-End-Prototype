@@ -50,18 +50,27 @@ run v p s =
     Right tree -> do
       putStrLn "\n > Parse Successful! :) "
       Main.showTree v tree
-      
-      let typecheckRes = TypeChecker.executeTypeChecking tree (Data.Map.fromList []) in
-        let tacgeneration = TacGen.genTAC typecheckRes in
-          do
-            putStrLn (show typecheckRes)
-            putStrLn "\n\n[Statements TypeChecker Result]\n   For each statements it shows the TCheckResult (env+infos)\n"
-            putStrLn (showTypeCheckResult typecheckRes True)
-            putStrLn "\n\n[Compiler Errors]\n"        
-            let compilerErrors = (showTypeCheckResult typecheckRes False) in
-              if True --compilerErrors == ""
-              then putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ (show tacgeneration) ++"\n\n[TAC in code]\n" ++ (showTac tacgeneration))
-              else putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ " Cannot generate TAC with compiler errors!\n")
+      let includeDebugInfo = False in -- flag for complete or pretty printing
+        let start_env = startEnv in -- (Data.Map.fromList []) in -- substitute with startEnv for including pre-defined functions
+          let typecheckRes = TypeChecker.executeTypeChecking tree start_env in 
+            let tacgeneration = TacGen.genTAC typecheckRes in
+              ------------------------------------------------------------------------
+              if (includeDebugInfo) then do -- include more informations for debugging
+                  putStrLn (show typecheckRes)
+                  putStrLn "\n\n[Statements TypeChecker Result]\n   For each statements it shows the TCheckResult (env+infos)\n"
+                  putStrLn (showTypeCheckResult typecheckRes True)
+                  putStrLn "\n\n[Compiler Errors]\n"        
+                  let compilerErrors = (showTypeCheckResult typecheckRes False) in
+                    if compilerErrors == "" -- Set "TRUE" to ignore compiler errors and force TAC generation
+                    then putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ (show tacgeneration) ++"\n\n[TAC in code]\n" ++ (showTac tacgeneration))
+                    else putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ " Cannot generate TAC with compiler errors!\n")
+                ------------------------------------------------------------------------
+                else do -- pretty print with no debug infos
+                  putStrLn "\n\n[Compiler Errors]\n"        
+                  let compilerErrors = (showTypeCheckResult typecheckRes False) in
+                    if compilerErrors == "" -- Set "TRUE" to ignore compiler errors and force TAC generation
+                    then putStrLn (compilerErrors ++ "   No compiler errors. \n\n[TAC]\n\n   Tac of pre-defined functions is not included.\n" ++ (showTac tacgeneration))
+                    else putStrLn (compilerErrors ++ "\n\n[TAC]\n" ++ " Cannot generate TAC with compiler errors!\n")
   where
   ts = myLexer (pointersSyntaxPreprocessing s [])
 
