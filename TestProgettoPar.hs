@@ -166,18 +166,19 @@ showTac (Abs.StartCode tac@(TAC code funcs) _) = "\n----------- Functions declar
 
 showContent :: [TACEntry] -> String
 showContent (x:xs) = case x of
-                      TacAssignBinaryOp id op fst scnd ty -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ showAddrContent fst ++ " " ++ show op           ++ " " ++ showAddrContent scnd ++ showContent xs
-                      TacAssignRelOp id op fst scnd ty    -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ showAddrContent fst ++ " " ++ show op           ++ " " ++ showAddrContent scnd ++ showContent xs
-                      TacAssignUnaryOp id op fst ty       -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ show op             ++ " " ++ showAddrContent fst  ++ showContent xs
-                      TacAssignNullOp id fst ty           -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ genAssignEq ty ++ " " ++ showAddrContent fst                                ++ showContent xs
-                      TacLabel (Label l)                  -> "\n" ++ l ++ ":" ++ showContent xs
-                      TacJump  (Label l)                  -> "\n" ++ "\t  goto " ++ l ++ showContent xs
-                      TacProcCall id                      -> "\n" ++ "\t  " ++ "pcall " ++ showAddrContent id ++ showContent xs
-                      TacFuncCallLeft id                  -> "\n" ++ "\t  " ++ "fcall " ++ showAddrContent id ++ showContent xs
-                      TacFuncCall id retAddr ty           -> "\n" ++ "\t  " ++ showAddrContent retAddr ++ " " ++ genAssignEq ty ++ " fcall " ++ showAddrContent id ++ showContent xs
-                      TacParam addr ty                    -> "\n" ++ "\t  " ++ "param_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
-                      TacReturnVoid                       -> "\n" ++ "\t  " ++ "return_void" ++ showContent xs
-                      TacReturn addr ty                   -> "\n" ++ "\t  " ++ "return_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
+                      TacAssignBinaryOp id op fst scnd ty     -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ showAddrContent fst ++ " " ++ show op           ++ " " ++ showAddrContent scnd ++ showContent xs
+                      TacAssignRelOp id op fst scnd ty        -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ showAddrContent fst ++ " " ++ show op           ++ " " ++ showAddrContent scnd ++ showContent xs
+                      TacAssignUnaryOp id op fst ty           -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ show op             ++ " " ++ showAddrContent fst  ++ showContent xs
+                      TacAssignNullOp id fst ty               -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ showAddrContent fst                                ++ showContent xs
+                      TacLabel (Label l)                      -> "\n" ++ l ++ ":" ++ showContent xs
+                      TacJump  (Label l)                      -> "\n" ++ "\t  goto " ++ l ++ showContent xs
+                      TacProcCall id                          -> "\n" ++ "\t  " ++ "pcall " ++ showAddrContent id ++ showContent xs
+                      TacFuncCallLeft id                      -> "\n" ++ "\t  " ++ "fcall " ++ showAddrContent id ++ showContent xs
+                      TacFuncCall id retAddr ty               -> "\n" ++ "\t  " ++ showAddrContent retAddr ++ " " ++ buildEqOperator ty ++ " fcall " ++ showAddrContent id ++ showContent xs
+                      TacParam addr ty                        -> "\n" ++ "\t  " ++ "param_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
+                      TacReturnVoid                           -> "\n" ++ "\t  " ++ "return_void" ++ showContent xs
+                      TacReturn addr ty                       -> "\n" ++ "\t  " ++ "return_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
+                      TacCastConversion addr fst tfrom tto    -> "\n" ++ "\t  " ++ (showAddrContent addr ++) " " ++ (buildEqOperator tto) ++ " " ++ (buildCastOperator tfrom tto) ++ " " ++  (showAddrContent fst) ++ showContent xs
                       TacConditionalJump (Label lab) flag addr -> case flag of
                           True ->  "\n" ++ "\t  if "       ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs
                           False -> "\n" ++ "\t  if_false " ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs
@@ -188,8 +189,9 @@ showContent (x:xs) = case x of
                       ExitTac -> "" ++"\n\n"
 showContent [] = ""
 
-genAssignEq:: Type -> String
-genAssignEq ty = case ty of
+-- Given a type, return the right equal (assign) operator string
+buildEqOperator :: Type -> String
+buildEqOperator ty = case ty of
   B_type Type_Integer  -> "=int"
   B_type Type_Boolean  -> "=bool"
   B_type Type_Char     -> "=char"
@@ -197,6 +199,9 @@ genAssignEq ty = case ty of
   B_type Type_Void     -> "=void" -- should not be reached!
   B_type Type_Real     -> "=real"
 
+-- Given a from-type and a to-type generates the right convert (coertion/casting) operator string
+buildCastOperator :: Type -> Type -> String
+buildCastOperator tfrom tto = "convert-" ++ show tfrom ++ "-to-" ++ show tto
 
 --------------------------------------------------------------------------------------------------
 --- Preprocessing of the input for multiple pointers compatibility "$$$$$$$" ---------------------

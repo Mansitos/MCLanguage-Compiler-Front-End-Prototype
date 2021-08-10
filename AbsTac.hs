@@ -18,6 +18,7 @@ data TACEntry
     | TacParam              {first::Address, paramType::Type}
     | TacReturnVoid         {}
     | TacReturn             {first:: Address, returnType::Type}
+    | TacCastConversion     {getAddr::Address,first:: Address, fromType::Type, toType::Type}
     | TacJump               Label
     | TacLabel              Label
     | TacConditionalJump    {destination::Label, flag::Prelude.Bool, first::Address}                                        -- if first goto lab
@@ -29,7 +30,7 @@ data TACEntry
     -- pointers?
   deriving (Eq, Ord, Show, Read)
 
-data TacUnaryOp     = IntCastToInt | Pos | Neg | Not | Point  
+data TacUnaryOp     = Pos | Neg | Not | Point  
     deriving (Eq, Ord, Read)
 
 data TacBinaryOp    = IntAdd | RealAdd | IntSub | RealSub | IntMul | RealMul | IntDiv | RealDiv | IntMod | RealMod | IntPow | RealPow 
@@ -46,7 +47,6 @@ data TacRelOp       = EqInt | EqReal | EqString | EqChar | EqBool
 
 instance Show TacUnaryOp where
     show op = case op of
-        IntCastToInt -> "int_to_real"
         Pos          -> "pos"
         Neg          -> "neg"
         Not          -> "not"
