@@ -564,6 +564,36 @@ showTypePrimitive (Abs.PrimitiveTypeString pos) = "string"
 showTypePrimitive (Abs.PrimitiveTypeChar pos) = "char"
 showTypePrimitive (Abs.TypeArray pos primitivetype) = "array"++showTypePrimitive primitivetype
 
+getTypeFromExpressionTResult :: Abs.EXPRESSION TCheckResult -> Type
+getTypeFromExpressionTResult (Abs.ExpressionInteger res@(TResult _ ty _) value) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBoolean res@(TResult _ ty _) value) = ty
+getTypeFromExpressionTResult (Abs.ExpressionChar res@(TResult _ ty _) value) = ty
+getTypeFromExpressionTResult (Abs.ExpressionString res@(TResult _ ty _) value) = ty
+getTypeFromExpressionTResult (Abs.ExpressionReal res@(TResult _ ty _) value) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBracket res@(TResult _ ty _) exp) = ty
+getTypeFromExpressionTResult (Abs.ExpressionCast res@(TResult _ ty _) def tipo) = ty
+getTypeFromExpressionTResult (Abs.ExpressionUnary res@(TResult _ ty _) unary def) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryPlus res@(TResult _ ty _) exp1 exp2) = ty                                                          
+getTypeFromExpressionTResult (Abs.ExpressionBinaryMinus res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryProduct res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryDivision res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryModule res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryPower res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryAnd res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryOr res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryEq res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryNotEq res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryGratherEq res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryGrather res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryLessEq res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionBinaryLess res@(TResult _ ty _) exp1 exp2) = ty
+getTypeFromExpressionTResult (Abs.ExpressionIdent res@(TResult _ ty _) id index) = ty
+getTypeFromExpressionTResult (Abs.ExpressionCall res@(TResult _ ty _) id exps) = ty
+
+getTypeFromLvalTResult :: Abs.LVALUEEXPRESSION TCheckResult -> Type
+getTypeFromLvalTResult (Abs.LvalueExpression res@(TResult _ ty _) id ident) = ty
+getTypeFromLvalTResult (Abs.LvalueExpressions res@(TResult _ ty _) id ident next) = ty
+
 ---------------------------------------------------------------------------------------------------
 --- EXECUTION FUNCTIONS ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------
@@ -584,7 +614,17 @@ executeStatement node@(Abs.ContinueStatement _) env = Abs.ContinueStatement (che
 executeStatement node@(Abs.ReturnStatement _ ret) env = Abs.ReturnStatement (checkTypeReturnStatement node env) (executeReturnStatement ret env)
 executeStatement node@(Abs.Statement _ b) env = let newEnv = updateIfCanOverride env in Abs.Statement (checkTypeStatement node env) (executeB b newEnv)
 executeStatement node@(Abs.ExpressionStatement _ exp) env = Abs.ExpressionStatement (checkTypeStatement node env) (executeExpressionStatement exp env)
-executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = Abs.AssignmentStatement (checkTypeStatement node env) (executeLValue lval env) (executeAssignOp assignOp env) (executeExpression exp env)
+executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = let lvalExecute = (executeLValue lval env) in
+                                                                                let exprExecute = (executeExpression exp env) in
+                                                                                    let leftType = (getTypeFromLvalTResult lvalExecute) in
+                                                                                        let rightType = (getTypeFromExpressionTResult exprExecute) in
+                                                                                            if (leftType == rightType && rightType == (B_type Type_Integer))   -- no implicit casts to be explicited!
+                                                                                            then (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) exprExecute) 
+                                                                                            else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                                 then (Abs.AssignmentStatement (checkTypeStatement node env)lvalExecute (executeAssignOp assignOp env) exprExecute)  
+                                                                                                 else if (rightType == (B_type Type_Integer))
+                                                                                                      then (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeReal pos)) env))   -- right needs an implicit cast to real to be explicited!
+                                                                                                      else (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) exprExecute)  -- no implicit cats to be explicited! (you cannot cast the lval; only rval can be casted to be matched with lval type!)
 executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeVarType tipo env) (executeVarDecList vardec env)
 executeStatement node@(Abs.ConditionalStatement pos condition) env = let newEnv = updateEnvCondStat condition (updateIfCanOverride env)  in Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition newEnv)
 executeStatement node@(Abs.WhileDoStatement pos whileStatement) env = let newEnv = updateEnvWhileStat whileStatement (updateIfCanOverride env)  in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStatement newEnv)
@@ -647,7 +687,18 @@ executeVarDecList :: Abs.VARDECLIST Posn -> Env -> Abs.VARDECLIST TCheckResult
 executeVarDecList node@(Abs.VariableDeclarationSingle pos vardec) env = Abs.VariableDeclarationSingle (checkTypeVardec node env) (executeVardecID vardec env)
 
 executeVardecID :: Abs.VARDECID Posn -> Env -> Abs.VARDECID TCheckResult
-executeVardecID node@(Abs.VariableDeclaration pos idlist tipo init) env = Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) (executeTypePart tipo env) (executeInitPart init env)
+executeVardecID node@(Abs.VariableDeclaration pos idlist tipo init) env = let tipoExecute = (executeTypePart tipo env) in 
+                                                                            let initExecute = (executeInitPart init env) in
+                                                                                let varsType = getTypePart tipo in
+                                                                                    case init of
+                                                                                        Abs.InitializzationPart e exp -> let exprExecute = (executeExpression exp env) in
+                                                                                                                            let initType = (getTypeFromExpressionTResult exprExecute) in
+                                                                                                                                if (initType == (B_type Type_Integer) && varsType == (B_type Type_Real))
+                                                                                                                                then (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute (executeInitPart (Abs.InitializzationPart e (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeReal pos))) env)) -- vars are declared as real but expr is int! it needs implicit cast to be explicited!
+                                                                                                                                else (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited
+                                                                                        _ -> (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited
+                                                                                
+                                                                                
 
 executeIDList :: Abs.IDENTLIST Posn -> Env -> Abs.IDENTLIST TCheckResult
 executeIDList node@(Abs.IdentifierList pos ident@(Abs.Ident id posI) next) env = Abs.IdentifierList (checkIdentifierList node env) (Abs.Ident id (TResult env (B_type Type_Void) posI)) (executeIDList next env)
@@ -735,20 +786,160 @@ executeExpression node@(Abs.ExpressionReal pos value) env = Abs.ExpressionReal (
 executeExpression node@(Abs.ExpressionBracket pos exp) env = Abs.ExpressionBracket (checkTypeExpression node env) (executeExpression exp env)
 executeExpression node@(Abs.ExpressionCast pos def tipo) env = Abs.ExpressionCast (checkTypeExpression node env) (executeDefault def env) (executePrimitiveType tipo env)
 executeExpression node@(Abs.ExpressionUnary pos unary def) env = Abs.ExpressionUnary (checkTypeExpression node env) (executeUnaryOp unary env) (executeDefault def env)
-executeExpression node@(Abs.ExpressionBinaryPlus pos exp1 exp2) env = Abs.ExpressionBinaryPlus (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryMinus pos exp1 exp2) env = Abs.ExpressionBinaryMinus (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryProduct pos exp1 exp2) env = Abs.ExpressionBinaryProduct (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryDivision pos exp1 exp2) env = Abs.ExpressionBinaryDivision (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryModule pos exp1 exp2) env = Abs.ExpressionBinaryModule (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryPower pos exp1 exp2) env = Abs.ExpressionBinaryPower (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryAnd pos exp1 exp2) env = Abs.ExpressionBinaryAnd (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryOr pos exp1 exp2) env = Abs.ExpressionBinaryOr (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryEq pos exp1 exp2) env = Abs.ExpressionBinaryEq (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryNotEq pos exp1 exp2) env = Abs.ExpressionBinaryNotEq (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryGratherEq pos exp1 exp2) env = Abs.ExpressionBinaryGratherEq (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryGrather pos exp1 exp2) env = Abs.ExpressionBinaryGrather (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryLessEq pos exp1 exp2) env = Abs.ExpressionBinaryLessEq (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
-executeExpression node@(Abs.ExpressionBinaryLess pos exp1 exp2) env = Abs.ExpressionBinaryLess (checkTypeExpression node env) (executeExpression exp1 env) (executeExpression exp2 env)
+executeExpression node@(Abs.ExpressionBinaryPlus pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                        let rightExecute = (executeExpression exp2 env) in
+                                                                                let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                    let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                        if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                        then (Abs.ExpressionBinaryPlus (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                        else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                             then (Abs.ExpressionBinaryPlus (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                             else if (leftType == (B_type Type_Integer))
+                                                                                                 then (Abs.ExpressionBinaryPlus (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                 else (Abs.ExpressionBinaryPlus (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryMinus pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                        let rightExecute = (executeExpression exp2 env) in
+                                                                                let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                    let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                        if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                        then (Abs.ExpressionBinaryMinus (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                        else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                             then (Abs.ExpressionBinaryMinus (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                             else if (leftType == (B_type Type_Integer))
+                                                                                                 then (Abs.ExpressionBinaryMinus (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                 else (Abs.ExpressionBinaryMinus (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryProduct pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                            let rightExecute = (executeExpression exp2 env) in
+                                                                                    let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                        let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                            if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                            then (Abs.ExpressionBinaryProduct (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                            else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                                 then (Abs.ExpressionBinaryProduct (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                                 else if (leftType == (B_type Type_Integer))
+                                                                                                     then (Abs.ExpressionBinaryProduct (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                     else (Abs.ExpressionBinaryProduct (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryDivision pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                            let rightExecute = (executeExpression exp2 env) in
+                                                                                    let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                        let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                            if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                            then (Abs.ExpressionBinaryDivision (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                            else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                                 then (Abs.ExpressionBinaryDivision (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                                 else if (leftType == (B_type Type_Integer))
+                                                                                                     then (Abs.ExpressionBinaryDivision (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                     else (Abs.ExpressionBinaryDivision (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryModule pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                            let rightExecute = (executeExpression exp2 env) in
+                                                                                    let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                        let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                            if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                            then (Abs.ExpressionBinaryModule (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                            else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                                 then (Abs.ExpressionBinaryModule (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                                 else if (leftType == (B_type Type_Integer))
+                                                                                                     then (Abs.ExpressionBinaryModule (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                     else (Abs.ExpressionBinaryModule (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryPower pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                        let rightExecute = (executeExpression exp2 env) in
+                                                                                let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                    let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                        if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                        then (Abs.ExpressionBinaryPower (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                        else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                             then (Abs.ExpressionBinaryPower (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                             else if (leftType == (B_type Type_Integer))
+                                                                                                 then (Abs.ExpressionBinaryPower (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                 else (Abs.ExpressionBinaryPower (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryAnd pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                        let rightExecute = (executeExpression exp2 env) in
+                                                                                let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                    let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                        if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                        then (Abs.ExpressionBinaryAnd (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                        else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                             then (Abs.ExpressionBinaryAnd (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                             else if (leftType == (B_type Type_Integer))
+                                                                                                 then (Abs.ExpressionBinaryAnd (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                 else (Abs.ExpressionBinaryAnd (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryOr pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                        let rightExecute = (executeExpression exp2 env) in
+                                                                                let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                    let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                        if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                        then (Abs.ExpressionBinaryOr (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                        else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                             then (Abs.ExpressionBinaryOr (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                             else if (leftType == (B_type Type_Integer))
+                                                                                                 then (Abs.ExpressionBinaryOr (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                 else (Abs.ExpressionBinaryOr (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryEq pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                        let rightExecute = (executeExpression exp2 env) in
+                                                                                let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                    let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                        if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                        then (Abs.ExpressionBinaryEq (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                        else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                             then (Abs.ExpressionBinaryEq (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                             else if (leftType == (B_type Type_Integer))
+                                                                                                 then (Abs.ExpressionBinaryEq (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                 else (Abs.ExpressionBinaryEq (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryNotEq pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                        let rightExecute = (executeExpression exp2 env) in
+                                                                                let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                    let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                        if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                        then (Abs.ExpressionBinaryNotEq (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                        else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                             then (Abs.ExpressionBinaryNotEq (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                             else if (leftType == (B_type Type_Integer))
+                                                                                                 then (Abs.ExpressionBinaryNotEq (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                 else (Abs.ExpressionBinaryNotEq (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryGratherEq pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                            let rightExecute = (executeExpression exp2 env) in
+                                                                                    let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                        let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                            if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                            then (Abs.ExpressionBinaryGratherEq (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                            else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                                 then (Abs.ExpressionBinaryGratherEq (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                                 else if (leftType == (B_type Type_Integer))
+                                                                                                     then (Abs.ExpressionBinaryGratherEq (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                     else (Abs.ExpressionBinaryGratherEq (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryGrather pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                            let rightExecute = (executeExpression exp2 env) in
+                                                                                    let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                        let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                            if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                            then (Abs.ExpressionBinaryGrather (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                            else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                                 then (Abs.ExpressionBinaryGrather (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                                 else if (leftType == (B_type Type_Integer))
+                                                                                                     then (Abs.ExpressionBinaryGrather (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                     else (Abs.ExpressionBinaryGrather (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryLessEq pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                        let rightExecute = (executeExpression exp2 env) in
+                                                                                let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                    let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                        if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                        then (Abs.ExpressionBinaryLessEq (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                        else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                             then (Abs.ExpressionBinaryLessEq (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                             else if (leftType == (B_type Type_Integer))
+                                                                                                 then (Abs.ExpressionBinaryLessEq (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                 else (Abs.ExpressionBinaryLessEq (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+executeExpression node@(Abs.ExpressionBinaryLess pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
+                                                                        let rightExecute = (executeExpression exp2 env) in
+                                                                                let leftType = getTypeFromExpressionTResult leftExecute in
+                                                                                    let rightType = getTypeFromExpressionTResult rightExecute in
+                                                                                        if (leftType == rightType && rightType == (B_type Type_Integer)) -- no implicit casts to be explicited!
+                                                                                        then (Abs.ExpressionBinaryLess (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                        else if (leftType == rightType && rightType == (B_type Type_Real)) -- no implicit cats to be explicited!
+                                                                                             then (Abs.ExpressionBinaryLess (checkTypeExpression node env) leftExecute rightExecute) 
+                                                                                             else if (leftType == (B_type Type_Integer))
+                                                                                                 then (Abs.ExpressionBinaryLess (checkTypeExpression node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
+                                                                                                 else (Abs.ExpressionBinaryLess (checkTypeExpression node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
 executeExpression node@(Abs.ExpressionIdent pos id index) env = Abs.ExpressionIdent (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement index env)
 executeExpression node@(Abs.ExpressionCall pos id exps) env = Abs.ExpressionCall (checkTypeExpression node env) (executeIdentFunc id env) (executeExpressions exps env) 
 
