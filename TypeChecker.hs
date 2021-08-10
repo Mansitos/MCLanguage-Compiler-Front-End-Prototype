@@ -93,6 +93,34 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                                             _ -> if t==ts then True else False
                                                                                         _ -> False
 
+checkCastCompatibility :: TCheckResult -> TCheckResult -> Bool
+checkCastCompatibility (TResult env t pos) (TResult envs ts poss) = case t of
+                                                                        B_type Type_Integer -> case ts of
+                                                                                                B_type Type_Boolean -> False
+                                                                                                Array _ _ -> False
+                                                                                                Pointer _ _ -> False
+                                                                                                _ -> True
+                                                                        B_type Type_Real -> case ts of
+                                                                                                B_type Type_Boolean -> False
+                                                                                                Array _ _ -> False
+                                                                                                Pointer _ _ -> False
+                                                                                                _ -> True
+                                                                        B_type Type_Char -> case ts of
+                                                                                                B_type Type_Boolean -> False
+                                                                                                Array _ _ -> False
+                                                                                                Pointer _ _ -> False
+                                                                                                _ -> True
+                                                                        B_type Type_String -> case ts of
+                                                                                                B_type Type_Boolean -> False
+                                                                                                Array _ _ -> False
+                                                                                                Pointer _ _ -> False
+                                                                                                _ -> True
+                                                                        B_type Type_Boolean -> False
+                                                                        Array _ _ -> False
+                                                                        Pointer _ _ -> False
+                                                                        
+                                                                        
+
 -- Given Type A and B (from TCheckResults) it returns the one which is more generic.
 -- Semantic: Which type is more generic; a or b?
 --      Examples: int int -> int
@@ -1255,15 +1283,11 @@ checkTypeExpression node@(Abs.ExpressionChar pos value) env = checkTypeChar valu
 checkTypeExpression node@(Abs.ExpressionString pos value) env = checkTypeString value env
 checkTypeExpression node@(Abs.ExpressionReal pos value) env = checkTypeReal value env
 checkTypeExpression node@(Abs.ExpressionBracket pos exp) env = checkTypeExpression exp env
-checkTypeExpression node@(Abs.ExpressionCast pos def tipo) env = let tipoTCheck = checkPrimitiveType tipo env in
-                                                                    let defTCheck = checkTypeDefault 0 def env in
-                                                                    case defTCheck of
-                                                                        TResult _ _ _ -> case tipoTCheck of
-                                                                            TResult _ _ _ -> if(checkCompatibility defTCheck tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++ show pos]
-                                                                            _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) tipoTCheck
-                                                                        _ -> case tipoTCheck of
-                                                                            TResult _ _ _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) defTCheck
-                                                                            _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) (checkErrors defTCheck tipoTCheck)
+checkTypeExpression node@(Abs.ExpressionCast pos def tipo) env = let tipoTCheck@(TResult _ tyTo _) = checkPrimitiveType tipo env in
+                                                                    let defTCheck = checkTypeDefault 1 def env in
+                                                                        case defTCheck of
+                                                                            TResult _ tyFrom _ -> if (checkCastCompatibility defTCheck tipoTCheck) then tipoTCheck else TError ["Type "++show tyFrom++" cannot be converted into "++show tyTo++"! Position: "++ show pos]
+                                                                            _ -> defTCheck
 checkTypeExpression node@(Abs.ExpressionUnary pos unary def) env = case unary of
                                                                     Abs.UnaryOperationPointer posu -> let numberDef= 1+checkDef__ def in
                                                                                                     (case def of
@@ -1487,12 +1511,8 @@ checkTypeDefault s node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) inde
 checkTypeDefault s node@(Abs.ExpressionCastD pos def ty) env = let tipoTCheck = checkPrimitiveType ty env in
                                                                     let defTCheck = checkTypeDefault 1 def env in
                                                                         case defTCheck of
-                                                                            TResult _ _ _ -> case tipoTCheck of
-                                                                                TResult _ _ _ -> if(checkCompatibility defTCheck tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++ show pos]
-                                                                                _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) tipoTCheck
-                                                                            _ -> case tipoTCheck of
-                                                                                TResult _ _ _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) defTCheck
-                                                                                _ -> if(checkCompatibility defTCheck tipoTCheck) then checkErrors defTCheck tipoTCheck else mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) (checkErrors defTCheck tipoTCheck)
+                                                                            TResult _ _ _ -> if (checkCastCompatibility defTCheck tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++ show pos]
+                                                                            _ -> mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) defTCheck
 checkTypeDefault s node@(Abs.ExpressionCallD pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
                                                                                 Just [Function t posf param canOverride] -> checkTypeExpressionCallD_ node env [Function t posf param canOverride]
                                                                                 Just [Variable _ _ _ _] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
