@@ -32,14 +32,6 @@ Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 
 ------------
 
-short-cut flags
-
-RICORDARSI DI ATTIVARE L'ENV DI PARTENZA CON LE FUNZZZZZZZZZZS
-
-aggiustare label e counter funzioni e procedure
-
-controllare messaggi errore dei return (unexepected dove il tipo è errato)
-
-check file prof con suggestions
+short-cut/lazy eval on bool flags
 
 -------------
