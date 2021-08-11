@@ -102,20 +102,20 @@ showAddrContent (AddrNULL) = "NULL"
 --      returns a list of 3 tac entries (one for each variable initialized at addr. of 5)
 buildTacEntriesForVarsDecl :: [Address] -> [Address] -> Type -> Prelude.Integer -> Prelude.Integer -> [TACEntry]
 buildTacEntriesForVarsDecl [x] [r] ty dim n = case r of
-    AddrNULL -> [TacAssignNullOp (buildArrayId x n) (genDefaultInitAddr ty) ty]
-    _ -> [TacAssignNullOp (buildArrayId x n) r ty]
+    AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty) ty]
+    _ -> [TacAssignNullOp (buildArrayId x n dim) r ty]
 buildTacEntriesForVarsDecl [x] (r:rs) ty dim n = case r of
-    AddrNULL -> [TacAssignNullOp (buildArrayId x n) (genDefaultInitAddr ty) ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
-    _ -> [TacAssignNullOp (buildArrayId x n) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
+    AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty) ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
+    _ -> [TacAssignNullOp (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
 buildTacEntriesForVarsDecl (x:xs) [r] ty dim n = case r of 
-    AddrNULL -> [TacAssignNullOp (buildArrayId x n) (genDefaultInitAddr ty)  ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
-    _ -> [TacAssignNullOp (buildArrayId x n) r ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
-buildTacEntriesForVarsDecl (x:xs) (r:rs) ty dim n =  [TacAssignNullOp (buildArrayId x n) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) ty dim 0
+    AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty)  ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
+    _ -> [TacAssignNullOp (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
+buildTacEntriesForVarsDecl (x:xs) (r:rs) ty dim n =  [TacAssignNullOp (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) ty dim 0
 
-buildArrayId :: Address -> Prelude.Integer -> Address
-buildArrayId (AddrAddress str) dim = case dim of
+buildArrayId :: Address -> Prelude.Integer -> Prelude.Integer -> Address
+buildArrayId (AddrAddress str) n dim = case dim of
                                         -1 -> AddrAddress str
-                                        _ -> AddrAddress (str++"["++show dim++"]")
+                                        _ -> AddrAddress (str++"["++show n++"]")
 
 -- Generate a default address for default values
 -- Example: declaring a variable of time int without initialization: the default init. value is 0; so a int address of val. 0 must be generated.
@@ -257,16 +257,24 @@ buildROp t1 t2 str = case str of
 
 -- Given an assign operator node + 2 addresses + the type (of the assignement, from the tcheck result of the assignment operator)
 -- builds the right TAC instruction.
-buildAssignTac :: Abs.ASSIGNOP TCheckResult -> [Address] -> Address -> Type -> [TACEntry]
-buildAssignTac assignOp (leftAddr:xs) rightAddr t = case assignOp of
-                                                (Abs.AssignOperationEq _ )         -> [TacAssignNullOp   leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
-                                                (Abs.AssignOperationEqPlus _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "plus") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
-                                                (Abs.AssignOperationEqMinus _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "minus") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
-                                                (Abs.AssignOperationEqProd _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "product") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
-                                                (Abs.AssignOperationEqFract _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "division") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
-                                                (Abs.AssignOperationEqPercent _ )  -> [TacAssignBinaryOp leftAddr (buildOp t "module") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
-                                                (Abs.AssignOperationEqPower _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "power") leftAddr rightAddr t] ++ buildAssignTac assignOp xs rightAddr t
-buildAssignTac _ [] _ _ = []
+buildAssignTac :: Abs.ASSIGNOP TCheckResult -> [Address] -> [TACEntry] -> Address -> Type -> [TACEntry]
+buildAssignTac assignOp (leftAddr:xs) (a:arr) rightAddr t = case assignOp of
+                                                        (Abs.AssignOperationEq _ )         -> [TacAssignNullOp   leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
+                                                        (Abs.AssignOperationEqPlus _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "plus") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
+                                                        (Abs.AssignOperationEqMinus _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "minus") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
+                                                        (Abs.AssignOperationEqProd _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "product") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
+                                                        (Abs.AssignOperationEqFract _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "division") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
+                                                        (Abs.AssignOperationEqPercent _ )  -> [TacAssignBinaryOp leftAddr (buildOp t "module") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
+                                                        (Abs.AssignOperationEqPower _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "power") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
+buildAssignTac assignOp (leftAddr:xs) [] rightAddr t = case assignOp of
+                                                        (Abs.AssignOperationEq _ )         -> [TacAssignNullOp   leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
+                                                        (Abs.AssignOperationEqPlus _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "plus") leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
+                                                        (Abs.AssignOperationEqMinus _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "minus") leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
+                                                        (Abs.AssignOperationEqProd _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "product") leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
+                                                        (Abs.AssignOperationEqFract _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "division") leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
+                                                        (Abs.AssignOperationEqPercent _ )  -> [TacAssignBinaryOp leftAddr (buildOp t "module") leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
+                                                        (Abs.AssignOperationEqPower _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "power") leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
+buildAssignTac _ [] _ _ _ = []
 
 generateDimForArray_ :: Abs.TYPEEXPRESSIONFUNC TCheckResult -> Prelude.Integer
 generateDimForArray_ (Abs.TypeExpressionFunction _ typeexp) = generateDimForArray typeexp
@@ -282,6 +290,21 @@ generateDimForArrayPrim (Abs.PrimitiveTypeInt  _ ) = 4
 generateDimForArrayPrim (Abs.PrimitiveTypeReal _ ) = 8
 generateDimForArrayPrim (Abs.PrimitiveTypeString _ ) = 8
 generateDimForArrayPrim (Abs.PrimitiveTypeChar _ ) = 1
+
+findArray :: [EnvEntry] -> [EnvEntry]
+findArray ((Variable ty@(Array _ _) pos mode override):xs) = [Variable ty pos mode override]
+findArray (x:xs) = findArray xs
+findArray [] = []
+
+generateDimForArrayFromType :: Type -> Prelude.Integer
+generateDimForArrayFromType (B_type Type_Void) = 0
+generateDimForArrayFromType (B_type Type_Boolean) = 1
+generateDimForArrayFromType (B_type Type_Integer) = 4
+generateDimForArrayFromType (B_type Type_Real) = 8
+generateDimForArrayFromType (B_type Type_String) = 8
+generateDimForArrayFromType (B_type Type_Char) = 1
+generateDimForArrayFromType (Array t _) = generateDimForArrayFromType t
+--generateDimForArrayFromType (B_type Type_Void) = 0
 
 ------------------------------------------------------------------------------------------------
 -- TAC GENERATION FUNCTIONS --------------------------------------------------------------------
@@ -339,9 +362,9 @@ genTacStatement (Abs.AssignmentStatement resres@(TResult _ t _) lval assignOp ex
                                                                                             let newC = sel2 rightVal in
                                                                                                 let exprAddr = sel4 rightVal in
                                                                                                     let leftValAddrs = sel4 leftVal in
-                                                                                                        let assignTac = (buildAssignTac assignOp leftValAddrs exprAddr t) in
-                                                                                                        ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++ -- expression (rval) evaluation tac code
-                                                                                                                                        assignTac)                                   -- assignements tac (list)
+                                                                                                        let assignTac = (buildAssignTac assignOp leftValAddrs (code (lvalueexpression_content (sel1 leftVal))) exprAddr t) in
+                                                                                                        ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++        -- expression (rval) evaluation tac code
+                                                                                                                                        assignTac)                                     -- assignements tac (list)                    
                                                                                                                                         []) (sel1 leftVal) (genTacAssignOp assignOp) (sel1 rightVal)),newC,(sel3 rightVal),AddrNULL)
 genTacStatement (Abs.ConditionalStatement res condition) n l k (w,j) tres = let newL = newLabel "else" k in 
                                                                                 let condStatementTac = (genTacConditionalStatement condition n newL (k+1) (w,j)) in
@@ -402,14 +425,36 @@ genTacLeftVal (Abs.LvalueExpressions res@(TResult env _ _) ident@(Abs.Ident id r
                                                                                                         Just (entry:entries) ->  case findEntryOfType (entry:entries) "var" of
                                                                                                             ((Variable _ posv _ _):xs) -> let leftAddr = buildIDAddr posv id in
                                                                                                                                             let lvalAddr = (genTacLeftVal lval n l k (w,j)) in
-                                                                                                                                                ((Abs.LvalueExpressions (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] [])) (sel1 lvalAddr)),n,k,[leftAddr]++(sel4 lvalAddr))
-                                                                                                    -- _ -> -- is array
+                                                                                                                                                ((Abs.LvalueExpressions (TAC ([TacComment ""]++(code (lvalueexpression_content (sel1 lvalAddr)))) []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] [])) (sel1 lvalAddr)),n,k,[leftAddr]++(sel4 lvalAddr))
+                                                                                                    (Abs.ArrayIndexElement _ typeindex) -> case Data.Map.lookup id env of
+                                                                                                        Just (entry:entries) ->  case findEntryOfType (entry:entries) "var" of
+                                                                                                            (x:xs) -> case findArray (x:xs) of
+                                                                                                                [Variable ty@(Array t _) posv _ _] -> let typeIndexTac = genTacTypeIndex typeindex n l k (w,j) in
+                                                                                                                                                        let lvalAddr = (genTacLeftVal lval (sel2 typeIndexTac) l (sel3 typeIndexTac) (w,j)) in
+                                                                                                                                                            let dim = generateDimForArrayFromType ty in
+                                                                                                                                                                let leftAddr = buildIDAddr posv id in
+                                                                                                                                                                    let posArr = content_addr_int (sel4 typeIndexTac)-1 in
+                                                                                                                                                                        let leftAddrArray = buildArrayId leftAddr (dim*posArr) 0 in
+                                                                                                                                                                            ((Abs.LvalueExpressions (TAC ([TacComment (show posArr++"*"++"sizeof("++show t++")="++show (dim*posArr))]++(code (lvalueexpression_content (sel1 lvalAddr)))) []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElement (TAC [] []) (sel1 typeIndexTac)) (sel1 lvalAddr)),(sel2 lvalAddr),(sel3 lvalAddr),[leftAddrArray]++(sel4 lvalAddr))
+                                                                                                    --multiple array TODO
 genTacLeftVal (Abs.LvalueExpression res@(TResult env _ _) ident@(Abs.Ident id resi) arrayindex) n l k (w,j) = case arrayindex of  
                                                                                                     (Abs.ArrayIndexElementEmpty _) -> case Data.Map.lookup id env of
                                                                                                         Just (entry:entries) ->  case findEntryOfType (entry:entries) "var" of
                                                                                                             ((Variable _ posv _ _):xs) -> let leftAddr = buildIDAddr posv id in
                                                                                                                                             ((Abs.LvalueExpression (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,[leftAddr])
-                                                                                                    -- _ -> -- is array
+                                                                                                    (Abs.ArrayIndexElement _ typeindex) -> case Data.Map.lookup id env of
+                                                                                                        Just (entry:entries) ->  case findEntryOfType (entry:entries) "var" of
+                                                                                                            (x:xs) -> case findArray (x:xs) of
+                                                                                                                [Variable ty@(Array t _) posv _ _] -> let typeIndexTac = genTacTypeIndex typeindex n l k (w,j) in
+                                                                                                                                                        let dim = generateDimForArrayFromType ty in
+                                                                                                                                                            let leftAddr = buildIDAddr posv id in
+                                                                                                                                                                let posArr = content_addr_int (sel4 typeIndexTac)-1 in
+                                                                                                                                                                    let leftAddrArray = buildArrayId leftAddr (dim*posArr) 0 in
+                                                                                                                                                                        ((Abs.LvalueExpression (TAC [TacComment (show posArr++"*"++"sizeof("++show t++")="++show (dim*posArr))] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElement (TAC [] []) (sel1 typeIndexTac))),(sel2 typeIndexTac),(sel3 typeIndexTac),[leftAddrArray])
+                                                                                                    --multiple array TODO
+genTacTypeIndex :: Abs.TYPEINDEX  TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.TYPEINDEX  TAC, Prelude.Integer, Prelude.Integer, Address)
+genTacTypeIndex (Abs.TypeOfIndexIntSingle res val@(Abs.Integer value resI)) n l k (w,j) = (Abs.TypeOfIndexIntSingle (TAC [][]) (Abs.Integer value (TAC [][])),n,k,AddrInt value)
+-- TODO
 
 genTacExpressionStatement :: Abs.EXPRESSIONSTATEMENT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.EXPRESSIONSTATEMENT TAC, Prelude.Integer, Prelude.Integer, Address)
 genTacExpressionStatement (Abs.VariableExpression res@(TResult _ _ pos) ident@(Abs.Ident id resi)) n l k (w,j) = ((Abs.VariableExpression (TAC [] []) (Abs.Ident id (TAC [] []))),n,k,buildIDAddr pos id)
@@ -753,7 +798,7 @@ genTacVarDecId (Abs.VariableDeclaration res@(TResult _ ty _) idlist typepart@(Ab
                                                                                                                                 let initTac = (Abs.InitializzationPart (expression_content (sel1 exprTac)) (sel1 exprTac)) in
                                                                                                                                     let initAddr = sel4 exprTac in
                                                                                                                                         (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),-1,addrIdList,[initAddr])
-                                                                            InitializzationPartArray resi array -> let idlistTac = genTacIdentifierList idlist n l k (w,j) tres in
+                                                                            Abs.InitializzationPartArray resi array -> let idlistTac = genTacIdentifierList idlist n l k (w,j) tres in
                                                                                                                     let tacId = identlist_content (sel1 idlistTac) in
                                                                                                                         let addrIdList = sel4 idlistTac in
                                                                                                                             let dim = generateDimForArray typeExp in
@@ -857,9 +902,16 @@ genTacExpression (Abs.ExpressionBinaryLess res@(TResult env t pos) expr1 expr2) 
 
 genTacExpression (Abs.ExpressionIdent res ident@(Abs.Ident id resi@(TResult env t pos)) index) n l k (w,j) tres = case Data.Map.lookup id env of
                                                                                                                   Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
-                                                                                                                                            ((Variable _ posv _ _):xs) -> case index of
+                                                                                                                                            (x@(Variable _ posv _ _):xs) -> case index of
                                                                                                                                                                             (Abs.ArrayIndexElementEmpty _) -> ((Abs.ExpressionIdent (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,buildIDAddr posv id)
-                                                                                                                                                                            -- _ -> it is array
+                                                                                                                                                                            (Abs.ArrayIndexElement _ typeindex) -> case findArray (x:xs) of
+                                                                                                                                                                                                                        [Variable ty@(Array t _) posv _ _] -> let typeIndexTac = genTacTypeIndex typeindex n l k (w,j) in
+                                                                                                                                                                                                                                                                let dim = generateDimForArrayFromType ty in
+                                                                                                                                                                                                                                                                    let leftAddr = buildIDAddr posv id in
+                                                                                                                                                                                                                                                                        let posArr = content_addr_int (sel4 typeIndexTac)-1 in
+                                                                                                                                                                                                                                                                            let leftAddrArray = buildArrayId leftAddr (dim*posArr) 0 in
+                                                                                                                                                                                                                                                                                let temp = newTemp (sel2 typeIndexTac) in
+                                                                                                                                                                                                                                                                                    ((Abs.ExpressionIdent (TAC [TacAssignNullOp temp leftAddrArray t,TacComment (show posArr++"*"++"sizeof("++show t++")="++show (dim*posArr))] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElement (TAC [] []) (sel1 typeIndexTac))),(sel2 typeIndexTac)+1,(sel3 typeIndexTac),temp)
 genTacExpression (Abs.ExpressionCall res@(TResult env _ _) ident@(Abs.Ident id resi) exps) n l k (w,j) tres = case Data.Map.lookup id env of
                                                                                                                 Just (entry:entries) -> case findEntryOfType (entry:entries) "func" of
                                                                                                                     ((Function ty pos _ _):xs) -> let funcReturn = newTemp n in
@@ -929,9 +981,16 @@ genTacDefault (Abs.ExpressionUnaryD res@(TResult env ty pos) unary def)       n 
                                                                                                     UnaryOperationPointer  _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Point (sel4 defTac) ty] [])) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp)
 genTacDefault (Abs.ExpressionIdentD res@(TResult env _ _) ident@(Abs.Ident id resI) index)  n l k (w,j) tres = case Data.Map.lookup id env of
                                                                                                         Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
-                                                                                                                                  ((Variable _ posv _ _):xs) -> case index of
+                                                                                                                                  (x@(Variable _ posv _ _):xs) -> case index of
                                                                                                                                                                   (Abs.ArrayIndexElementEmpty _) -> ((Abs.ExpressionIdentD (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,buildIDAddr posv id)
-                                                                                                                                                                  -- _ -> it is array
+                                                                                                                                                                  (Abs.ArrayIndexElement _ typeindex) -> case findArray (x:xs) of
+                                                                                                                                                                                                                        [Variable ty@(Array t _) posv _ _] -> let typeIndexTac = genTacTypeIndex typeindex n l k (w,j) in
+                                                                                                                                                                                                                                                                let dim = generateDimForArrayFromType ty in
+                                                                                                                                                                                                                                                                    let leftAddr = buildIDAddr posv id in
+                                                                                                                                                                                                                                                                        let posArr = content_addr_int (sel4 typeIndexTac)-1 in
+                                                                                                                                                                                                                                                                            let leftAddrArray = buildArrayId leftAddr (dim*posArr) 0 in
+                                                                                                                                                                                                                                                                                let temp = newTemp (sel2 typeIndexTac) in
+                                                                                                                                                                                                                                                                                    ((Abs.ExpressionIdentD (TAC [TacAssignNullOp temp leftAddrArray t,TacComment (show posArr++"*"++"sizeof("++show t++")="++show (dim*posArr))] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElement (TAC [] []) (sel1 typeIndexTac))),(sel2 typeIndexTac)+1,(sel3 typeIndexTac),temp)
 genTacDefault (Abs.ExpressionCallD res@(TResult env _ _) ident@(Abs.Ident id resI) exps)    n l k (w,j) tres = case Data.Map.lookup id env of
                                                                                                         Just (entry:entries) -> case findEntryOfType (entry:entries) "func" of
                                                                                                             ((Function ty pos _ _):xs) -> let funcReturn = newTemp n in
