@@ -41,6 +41,8 @@ note da controllare?
 inputs) should not be allowed. This can require to do suitable conservative
 checks on the presence of statements (like return ).
 
+>> le guardie dei for devono essere const!
+
 >>It is expected that a language allows you to define constants and that its
 compiler does not handle them as variables that will not be modified. In
 particular, it is not necessary to reserve memory space where to keep the
