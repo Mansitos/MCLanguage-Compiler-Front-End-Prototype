@@ -90,9 +90,14 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                         _ -> False
                                                                     Array t dim -> case tC of
                                                                                         Array ts dims -> case t of
-                                                                                                            B_type Type_Integer -> if (ts==(B_type Type_Real) || ts==(B_type Type_Integer)) then True else False
-                                                                                                            _ -> if t==ts then True else False
+                                                                                                            B_type Type_Integer -> if (ts==(B_type Type_Real) || ts==(B_type Type_Integer) || ts==(Pointer (B_type Type_Real) 1) || ts==(Pointer (B_type Type_Integer) 1)) then True else False
+                                                                                                            Pointer pt pl -> if (ts == (Pointer pt (pl+1))) then True else False
+                                                                                                            _ -> if ((t==ts) || (ts==(Pointer t 1)))  then True else False
+
                                                                                         _ -> False
+
+-- t = array    int
+-- tC = array       int$ 
 
 checkCastCompatibility :: TCheckResult -> TCheckResult -> Bool
 checkCastCompatibility (TResult env t pos) (TResult envs ts poss) = case t of
@@ -240,8 +245,8 @@ updateEnvFromListOfVarIds (x:xs) env (p:ps) varMode ty s= case Data.Map.lookup x
                                                         Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
                                                                                  [] -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
                                                                                  ((Variable typ posv varMv override sv):ys) -> if override 
-                                                                                                                             then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
-                                                                                                                             else updateEnvFromListOfVarIds xs env ps varMode ty s                                                               
+                                                                                                                               then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
+                                                                                                                               else updateEnvFromListOfVarIds xs env ps varMode ty s                                                               
                                                         Nothing -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
 
 -- Given an Env set to TRUE in CanOverride for each variable and func!
@@ -1889,10 +1894,10 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                                                     TError errs -> TError errs
                                                                                                                                     _ -> if (checkCompatibility initCheck (TResult env t pos) && depth==1) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation with incompatible type! Position: "++ show (getPos initCheck)]) identTCheck)
                                                                                                                             TResult env (Array t dim) post -> case initCheck of
-                                                                                                                                TResult env (Array ts dims) posi -> if checkCompatibility (TResult env ts posi) (TResult env t post) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
+                                                                                                                                TResult env (Array ts dims) posi -> if checkCompatibility initCheck typeCheck then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
                                                                                                                                                                                                                                                                                                                                                                             (Abs.IdentifierList _ _ _) -> "arrays"
                                                                                                                                                                                                                                                                                                                                                                             (Abs.IdentifierSingle _ _) -> "array")
-                                                                                                                                                                                                                                                                                                                                                                            ++" " ++ getIdsFromIdentList identlist ++" of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position:" ++ show (getPos initCheck)]) identTCheck)
+                                                                                                                                                                                                                                                                                                                                                                            ++" " ++ getIdsFromIdentList identlist ++" of type " ++ show t ++ " with values of type "++ show ts ++ "! Position:" ++ show (getPos initCheck)]) identTCheck)
                                                                                                                                 _ -> mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
                                                                                                                                                                                                         (Abs.IdentifierList _ _ _) -> "arrays"
                                                                                                                                                                                                         (Abs.IdentifierSingle _ _) -> "array") ++" "
