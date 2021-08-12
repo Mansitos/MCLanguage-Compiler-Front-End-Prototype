@@ -18,9 +18,10 @@ data TACEntry
     | TacParam              {first::Address, paramType::Type}
     | TacReturnVoid         {}
     | TacReturn             {first:: Address, returnType::Type}
-    | TacCastConversion     {getAddr::Address,first:: Address, fromType::Type, toType::Type}
+    | TacCastConversion     {getAddr::Address, first:: Address, fromType::Type, toType::Type}
     | TacJump               Label
     | TacLabel              Label
+    | TacPointDeref         {getAddr::Address,first::Address}
     | TacConditionalJump    {destination::Label, flag::Prelude.Bool, first::Address}                                        -- if first goto lab
     | TacRelConditionalJump {destination::Label, flag::Prelude.Bool, relOp::TacRelOp, first::Address, second::Address}      -- if x rel y goto lab
     | TacComment            Prelude.String  -- for comments on TAC print
@@ -50,7 +51,7 @@ instance Show TacUnaryOp where
         Pos          -> "pos"
         Neg          -> "neg"
         Not          -> "not"
-        Point        -> "ptr_ref"
+        Point        -> "&"
 
 instance Show TacBinaryOp where
     show op = case op of
