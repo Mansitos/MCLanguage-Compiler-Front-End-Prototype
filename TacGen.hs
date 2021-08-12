@@ -101,15 +101,34 @@ showAddrContent (AddrNULL) = "NULL"
 --      the address for rExpr is the address of 5
 --      returns a list of 3 tac entries (one for each variable initialized at addr. of 5)
 buildTacEntriesForVarsDecl :: [Address] -> [Address] -> Type -> Prelude.Integer -> Prelude.Integer -> [TACEntry]
-buildTacEntriesForVarsDecl [x] [r] ty dim n = case r of
+------------------------------------------------------   
+buildTacEntriesForVarsDecl [x] [r] (Pointer t p) dim n = case r of  -- single, pointer
+    AddrNULL -> [TacPointDeref (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))]
+    _ -> [TacPointDeref (buildArrayId x n dim) r]
+buildTacEntriesForVarsDecl [x] [r] (Array t d) dim n = buildTacEntriesForVarsDecl [x] [r] t dim n
+buildTacEntriesForVarsDecl [x] [r] ty dim n = case r of     -- single, not pointer
     AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty) ty]
     _ -> [TacAssignNullOp (buildArrayId x n dim) r ty]
+------------------------------------------------------ 
+buildTacEntriesForVarsDecl [x] (r:rs) (Pointer t p) dim n = case r of -- TODO
+    AddrNULL -> [TacPointDeref (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim)
+    _ -> [TacPointDeref (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim)
+buildTacEntriesForVarsDecl [x] (r:rs) (Array t d) dim n = buildTacEntriesForVarsDecl [x] (r:rs) t dim n
 buildTacEntriesForVarsDecl [x] (r:rs) ty dim n = case r of
     AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty) ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
     _ -> [TacAssignNullOp (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
-buildTacEntriesForVarsDecl (x:xs) [r] ty dim n = case r of 
+------------------------------------------------------ 
+buildTacEntriesForVarsDecl (x:xs) [r] (Pointer t p) dim n = case r of -- multiple, pointers
+    AddrNULL -> [TacPointDeref (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))] ++ buildTacEntriesForVarsDecl xs [r] (Pointer t p) dim n
+    _ -> [TacPointDeref (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl xs [r] (Pointer t p) dim n
+buildTacEntriesForVarsDecl (x:xs) [r] (Array t d) dim n = buildTacEntriesForVarsDecl (x:xs) [r] t dim n
+buildTacEntriesForVarsDecl (x:xs) [r] ty dim n = case r of -- multiple, not pointers
     AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty)  ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
     _ -> [TacAssignNullOp (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
+------------------------------------------------------ 
+-- TODO versione pointers
+buildTacEntriesForVarsDecl (x:xs) (r:rs) (Pointer t p) dim n =  [TacPointDeref (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) (Pointer t p) dim 0
+buildTacEntriesForVarsDecl (x:xs) (r:rs) (Array t d) dim n = buildTacEntriesForVarsDecl (x:xs) (r:rs) t dim n
 buildTacEntriesForVarsDecl (x:xs) (r:rs) ty dim n =  [TacAssignNullOp (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) ty dim 0
 
 buildArrayId :: Address -> Prelude.Integer -> Prelude.Integer -> Address
@@ -127,6 +146,7 @@ genDefaultInitAddr ty = case ty of
     B_type Type_String   -> AddrString ""   
     B_type Type_Real     -> AddrReal  0.0
     Array t _            -> genDefaultInitAddr t
+    Pointer t _          -> AddrNULL
 
 -- Given a EXPRESSION node, return it's type
 getTypeFromExpr :: Abs.EXPRESSION TCheckResult -> Type
@@ -282,6 +302,7 @@ generateDimForArray_ (Abs.TypeExpressionFunction _ typeexp) = generateDimForArra
 generateDimForArray :: Abs.TYPEEXPRESSION TCheckResult -> Prelude.Integer
 generateDimForArray (Abs.TypeExpression _ prim) = generateDimForArrayPrim prim
 generateDimForArray (Abs.TypeExpressionArraySimple _ _ typeexp) = generateDimForArray_ typeexp
+generateDimForArray _ = 1 -- TODO 
 
 generateDimForArrayPrim :: Abs.PRIMITIVETYPE TCheckResult -> Prelude.Integer
 generateDimForArrayPrim (Abs.PrimitiveTypeVoid _ ) = 0
@@ -371,8 +392,10 @@ genTacStatement (Abs.VariableDeclarationStatement res@(TResult _ ty _) tipo vard
                                                                                                                 let vardecAddrs = sel5 vardecTac in -- variable addresses # >1
                                                                                                                     let initAddr = sel6 vardecTac in
                                                                                                                         let dim = sel4 vardecTac in
-                                                                                                                            (Abs.VariableDeclarationStatement (merge2Tacs (merge2Tacs vardecContent (TAC (buildTacEntriesForVarsDecl vardecAddrs initAddr ty dim 0) []))
-                                                                                                                                                                 tipoContent) (sel1 tipoTac) (sel1 vardecTac) ,(sel2 vardecTac),(sel3 vardecTac),AddrNULL)
+                                                                                                                            (Abs.VariableDeclarationStatement (mergeTacs [vardecContent,
+                                                                                                                                                                          (TAC (buildTacEntriesForVarsDecl vardecAddrs initAddr ty dim 0) []),
+                                                                                                                                                                          tipoContent])
+                                                                                                                                                                          (sel1 tipoTac) (sel1 vardecTac) ,(sel2 vardecTac),(sel3 vardecTac),AddrNULL)
 genTacStatement (Abs.BreakStatement res) n l k (w,j) tres    = ((Abs.BreakStatement (TAC [TacJump w,TacComment "break jump"] [])),n,k,AddrNULL)
 genTacStatement (Abs.ContinueStatement res) n l k (w,j) tres = ((Abs.ContinueStatement (TAC [TacJump j,TacComment "continue jump"] [])),n,k,AddrNULL)
 genTacStatement (Abs.ReturnStatement res ret) n l k (w,j) tres = case ret of 
@@ -396,7 +419,7 @@ genTacStatement (Abs.AssignmentStatement resres@(TResult _ t _) lval assignOp ex
                                                                                                 let exprAddr = sel4 rightVal in
                                                                                                     let leftValAddrs = sel4 leftVal in
                                                                                                         let assignTac = (buildAssignTac assignOp leftValAddrs (code (lvalueexpression_content (sel1 leftVal))) exprAddr t) in
-                                                                                                        ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++        -- expression (rval) evaluation tac code
+                                                                                                        ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++   -- expression (rval) evaluation tac code
                                                                                                                                         assignTac)                                     -- assignements tac (list)                    
                                                                                                                                         []) (sel1 leftVal) (genTacAssignOp assignOp) (sel1 rightVal)),newC,(sel3 rightVal),AddrNULL)
 genTacStatement (Abs.ConditionalStatement res condition) n l k (w,j) tres = let newL = newLabel "else" k in 

@@ -96,8 +96,8 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
 
                                                                                         _ -> False
 
--- t = array    int
--- tC = array       int$ 
+-- t = destra
+-- tC = sinistra
 
 checkCastCompatibility :: TCheckResult -> TCheckResult -> Bool
 checkCastCompatibility (TResult env t pos) (TResult envs ts poss) = case t of
@@ -367,6 +367,7 @@ showInit (Abs.InitializzationPartArray _ arrayInit) = let p = Pn 0 0 0 in
                                                                                                                  )
                                                                                                 )
                                                                     ) [] []
+showInit _ = ""                                                                  
 
 getListDimFromType :: Abs.TYPEPART a -> [Prelude.Integer]
 getListDimFromType (Abs.TypePart _ typeexp) = getListDimFromTypeExp typeexp
@@ -1909,7 +1910,10 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                                                                                                                                                                                                                                                     (Abs.IdentifierList _ _ _) -> "variables"
                                                                                                                                                                                                                                                                                                                                     (Abs.IdentifierSingle _ _) -> "variable")
                                                                                                                                                                                                                                                                                                                                     ++" "++ getIdsFromIdentList identlist ++" of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position:" ++ show (getPos initCheck)]))
-                                                                                                                    else TError ["Array initialization "++showInit initpart++" has "++show initDim++(if initDim==1 then " element" else " elements")++", while the declaration prescribes "++show typeDim++(if typeDim==1 then " element!" else " elements!")++" Position: "++show pos])
+                                                                                                                    else case initpart of
+                                                                                                                            (Abs.InitializzationPartArray _ arrayInit) -> TError ["Array initialization "++ showInit initpart++" has "++show initDim++(if initDim==1 then " element" else " elements")++", while the declaration prescribes "++show typeDim++(if typeDim==1 then " element!" else " elements!")++" Position: "++show pos]
+                                                                                                                            _ -> TError ["Invalid array initialization part! Position: "++show pos]
+                                                                                                                            ) -- case end            
 checkErrors :: TCheckResult -> TCheckResult -> TCheckResult
 checkErrors (TResult env ty pos) (TResult envs tys poss) = TResult envs tys poss
 checkErrors (TResult env ty pos) (TError e) = TError e
