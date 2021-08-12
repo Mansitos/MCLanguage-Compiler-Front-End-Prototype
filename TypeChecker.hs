@@ -19,7 +19,7 @@ type Env = Map Prelude.String [EnvEntry]
             -- chiave, valore
 
 data EnvEntry
-    = Variable {varType::Type, varPosition::LexProgettoPar.Posn, varMode::Prelude.String, canOverride::Prelude.Bool}
+    = Variable {varType::Type, varPosition::LexProgettoPar.Posn, varMode::Prelude.String, canOverride::Prelude.Bool, size::[Prelude.Integer]}
     | Function {funType::Type, funPosition::LexProgettoPar.Posn, funParameters::[Parameter], canOverride::Prelude.Bool}
 
 data Parameter
@@ -39,7 +39,7 @@ startEnv = fromList [("readChar",[Function {funType = (B_type Type_Char), funPos
 
 instance Show EnvEntry where
     show entry = case entry of
-        TypeChecker.Variable ty pos varMode canOverride -> "EnvEntry: [" ++ "var:" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show varMode ++ "|canOverride:" ++ show canOverride ++ "]"
+        TypeChecker.Variable ty pos varMode canOverride s -> "EnvEntry: [" ++ "var:" ++ show ty ++ "|" ++ show pos ++ "|mode:" ++ show varMode ++ "|canOverride:" ++ show canOverride ++ show s++"]"
         TypeChecker.Function ty pos params canOverride  -> "EnvEntry: [" ++ "fun:" ++ show ty ++ "|" ++ show pos ++ "|params:" ++ show params ++ "|canOverride:" ++ show canOverride ++ "]"
 
 instance Show Parameter where
@@ -163,7 +163,7 @@ mergeErrors _ (TError e2) = TError e2
 getTypeEnvEntry :: [EnvEntry] -> Type
 getTypeEnvEntry [] = B_type Type_Void
 getTypeEnvEntry (x:xs) = case x of 
-                            (Variable t pos mode canOverride) -> t
+                            (Variable t pos mode canOverride s) -> t
                             (Function t pos parameters canOverride) -> t
 
 -- Called when an environment update is needed.
@@ -177,9 +177,10 @@ updateEnv node@(Abs.ListStatements pos stat stats) env = case stat of
                                                                                                                          (let varMode = getVarMode varType in -- getting variable mode (const etc.)
                                                                                                                             (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
                                                                                                                                 (let posns = getVariableDeclStatPos vardec in
-                                                                                                                                if (checkIfCanOverride ids env "var") -- check if vars can be overrided (yes if inside a new block)
-                                                                                                                                then updateEnvFromListOfVarIds ids env posns varMode ty -- updating env for each declared var.
-                                                                                                                                else updateEnvFromListOfVarIds ids env posns varMode ty)))
+                                                                                                                                    let sizes = getListDimFromType (vardecid_typepart (vardeclist_vardecid vardec)) in
+                                                                                                                                        if (checkIfCanOverride ids env "var") -- check if vars can be overrided (yes if inside a new block)
+                                                                                                                                        then updateEnvFromListOfVarIds ids env posns varMode ty sizes -- updating env for each declared var.
+                                                                                                                                        else updateEnvFromListOfVarIds ids env posns varMode ty sizes)))
                                                                 -- Functions and Procedures
                                                                 Abs.ProcedureStatement posf id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
@@ -201,27 +202,27 @@ updateEnv node@(Abs.EmptyStatement pos) env = env
 -- Update the env for Conditional if-then-else statement
 updateEnvCondStat :: (Abs.CONDITIONALSTATE Posn) -> Env -> Env
 updateEnvCondStat (Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env  = case ctrlState of
-                    Abs.CtrlDecStateVar cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False] env
-                    Abs.CtrlDecStateConst cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False] env
+                    Abs.CtrlDecStateVar cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False []] env
+                    Abs.CtrlDecStateConst cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False []] env
 updateEnvCondStat (Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) env  = case ctrlState of
-                    Abs.CtrlDecStateVar cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False] env
-                    Abs.CtrlDecStateConst cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False] env
+                    Abs.CtrlDecStateVar cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False []] env
+                    Abs.CtrlDecStateConst cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False []] env
 updateEnvCondStat _ env  = env
 
 -- Update the env for while statement
 updateEnvWhileStat :: (Abs.WHILESTATEMENT Posn) -> Env -> Env
 updateEnvWhileStat (Abs.WhileStateCtrlDo pos ctrl state) env  = case ctrl of
-                    Abs.CtrlDecStateVar cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False] env in insertWith (++) "while" [] newEnv
-                    Abs.CtrlDecStateConst cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateVar cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False []] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateConst cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False []] env in insertWith (++) "while" [] newEnv
 updateEnvWhileStat (Abs.WhileStateCtrlWDo pos ctrl b) env  = case ctrl of
-                    Abs.CtrlDecStateVar cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False] env in insertWith (++) "while" [] newEnv
-                    Abs.CtrlDecStateConst cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateVar cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False []] env in insertWith (++) "while" [] newEnv
+                    Abs.CtrlDecStateConst cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False []] env in insertWith (++) "while" [] newEnv
 updateEnvWhileStat (Abs.WhileStateSimpleDo pos expr state) env  = insertWith (++) "while" [] env
 updateEnvWhileStat (Abs.WhileStateSimpleWDo pos expr b) env  = insertWith (++) "while" [] env
 
 updateEnvForStat :: Abs.FORSTATEMENT Posn -> Env -> Env
-updateEnvForStat (Abs.ForStateIndexDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = let newEnv = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env in insertWith (++) "for" [] newEnv
-updateEnvForStat (Abs.ForStateIndexWDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = let newEnv = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False] env in insertWith (++) "for" [] newEnv
+updateEnvForStat (Abs.ForStateIndexDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = let newEnv = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False []] env in insertWith (++) "for" [] newEnv
+updateEnvForStat (Abs.ForStateIndexWDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = let newEnv = insertWith (++) id [Variable (B_type Type_Integer) posi "var" False []] env in insertWith (++) "for" [] newEnv
 updateEnvForStat _ env = insertWith (++) "for" [] env
 
 updateEnvDoWhileStat :: Abs.DOSTATEMENT Posn -> Env -> Env
@@ -229,19 +230,19 @@ updateEnvDoWhileStat (Abs.DoWhileState _ _ _) env = insertWith (++) "dowhile" []
 
 -- Given a list of Params, it creates an envEntry of type param for each of them
 createEnvEntryForParams :: [TypeChecker.Parameter] -> Env -> Env
-createEnvEntryForParams ((TypeChecker.Parameter ty pos mode id):xs) env = createEnvEntryForParams xs (insertWith (++) id [Variable ty pos mode False] env)
+createEnvEntryForParams ((TypeChecker.Parameter ty pos mode id):xs) env = createEnvEntryForParams xs (insertWith (++) id [Variable ty pos mode False []] env)
 createEnvEntryForParams [] env = env
 
 -- Given a list of var IDS and an Env, it update that env adding the variable enventries for each var id.
-updateEnvFromListOfVarIds :: [Prelude.String] -> Env -> [Posn] -> Prelude.String -> Type -> Env
-updateEnvFromListOfVarIds [] env [] varMode ty = env
-updateEnvFromListOfVarIds (x:xs) env (p:ps) varMode ty = case Data.Map.lookup x env of
-                                                       Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
-                                                                                [] -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty
-                                                                                ((Variable typ posv varMv override):ys) -> if override 
-                                                                                                                            then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty 
-                                                                                                                            else updateEnvFromListOfVarIds xs env ps varMode ty                                                                   
-                                                       Nothing -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False] env) ps varMode ty
+updateEnvFromListOfVarIds :: [Prelude.String] -> Env -> [Posn] -> Prelude.String -> Type -> [Prelude.Integer] -> Env
+updateEnvFromListOfVarIds [] env [] varMode ty s= env
+updateEnvFromListOfVarIds (x:xs) env (p:ps) varMode ty s= case Data.Map.lookup x env of
+                                                        Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
+                                                                                 [] -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
+                                                                                 ((Variable typ posv varMv override sv):ys) -> if override 
+                                                                                                                             then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
+                                                                                                                             else updateEnvFromListOfVarIds xs env ps varMode ty s                                                               
+                                                        Nothing -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
 
 -- Given an Env set to TRUE in CanOverride for each variable and func!
 -- Used at the beginning of a new block (for example, after declaring a function, inside it is possible to override previous variable declaration (those outside))
@@ -251,7 +252,7 @@ updateIfCanOverride env = Data.Map.fromList (updateIfCanOverride_ (Data.Map.toLi
 -- Implementation of the previous function
 updateIfCanOverride_ :: [(Prelude.String, [EnvEntry])] -> [(Prelude.String, [EnvEntry])]
 updateIfCanOverride_ ((str,entry:entries):xs) = case entry of
-                    Variable ty pos varMode canOverride ->  [(str,(Variable ty pos varMode True):entries)] ++ updateIfCanOverride_ xs
+                    Variable ty pos varMode canOverride s ->  [(str,(Variable ty pos varMode True s):entries)] ++ updateIfCanOverride_ xs
                     Function ty pos param canOverride -> [(str,(Function ty pos param True):entries)] ++ updateIfCanOverride_ xs
 updateIfCanOverride_ ((str,[]):xs) = ((str,[]):xs)
 updateIfCanOverride_ [] = []
@@ -261,7 +262,7 @@ checkIfCanOverride :: [Prelude.String] -> Env -> Prelude.String -> Bool
 checkIfCanOverride (x:xs) env t = case Data.Map.lookup x env of
     Just (entry:entries) -> case findEntryOfType (entry:entries) t of
                             [] -> True && checkIfCanOverride xs env t
-                            ((Variable _ _ _ override):ys) -> override && checkIfCanOverride xs env t
+                            ((Variable _ _ _ override _):ys) -> override && checkIfCanOverride xs env t
                             ((Function _ _ _ override):ys) -> override && checkIfCanOverride xs env t
     Nothing -> True && (checkIfCanOverride xs env t)
 checkIfCanOverride [] env _ = True
@@ -362,15 +363,44 @@ showInit (Abs.InitializzationPartArray _ arrayInit) = let p = Pn 0 0 0 in
                                                                                                 )
                                                                     ) [] []
 
-getDimFromType :: Abs.TYPEPART Posn -> Prelude.Integer
+getListDimFromType :: Abs.TYPEPART a -> [Prelude.Integer]
+getListDimFromType (Abs.TypePart _ typeexp) = getListDimFromTypeExp typeexp
+
+getListDimFromExpF :: Abs.TYPEEXPRESSIONFUNC a -> [Prelude.Integer]
+getListDimFromExpF (Abs.TypeExpressionArrayOfPointer _ _) = []
+getListDimFromExpF (Abs.TypeExpressionFunction _ typeexp) = getListDimFromTypeExp typeexp
+
+getListDimFromTypeExp :: Abs.TYPEEXPRESSION a -> [Prelude.Integer]
+getListDimFromTypeExp (Abs.TypeExpressionArraySimple _ range expf) = getListDimFromRange range ++ getListDimFromExpF expf
+getListDimFromTypeExp (Abs.TypeExpressionArray _ range expf) = getListDimFromRange range ++ getListDimFromExpF expf
+getListDimFromTypeExp _ = []
+
+getListDimFromRange :: Abs.RANGEEXP a -> [Prelude.Integer]
+getListDimFromRange (Abs.RangeExpression _ exp1 exp2 range) = case exp1 of
+                                                            Abs.ExpressionInteger _ (Abs.Integer val _) -> case exp2 of
+                                                                                                            Abs.ExpressionInteger _ (Abs.Integer vals _) -> let rangeDim = getListDimFromRange range in
+                                                                                                                                                                if rangeDim==[] then [] else [((vals - val)+1)] ++ rangeDim
+                                                                                                            _ -> []
+                                                            _ -> []
+getListDimFromRange (Abs.RangeExpressionSingle _ exp1 exp2) = case exp1 of
+                                                            Abs.ExpressionInteger _ (Abs.Integer val _) -> case exp2 of
+                                                                                                            Abs.ExpressionInteger _ (Abs.Integer vals _) -> [(vals - val)+1]
+                                                                                                            _ -> []
+                                                            _ -> []
+
+getDimFromType :: Abs.TYPEPART a -> Prelude.Integer
 getDimFromType (Abs.TypePart _ typeexp) = getDimFromTypeExp typeexp
 
-getDimFromTypeExp :: Abs.TYPEEXPRESSION Posn -> Prelude.Integer
-getDimFromTypeExp (Abs.TypeExpressionArraySimple _ range _) = getDimFromRange range
-getDimFromTypeExp (Abs.TypeExpressionArray _ range _) = getDimFromRange range
+getDimFromExpF :: Abs.TYPEEXPRESSIONFUNC a -> Prelude.Integer
+getDimFromExpF (Abs.TypeExpressionArrayOfPointer _ _) = 0
+getDimFromExpF (Abs.TypeExpressionFunction _ typeexp) = getDimFromTypeExp typeexp
+
+getDimFromTypeExp :: Abs.TYPEEXPRESSION a -> Prelude.Integer
+getDimFromTypeExp (Abs.TypeExpressionArraySimple _ range expf) = getDimFromRange range + getDimFromExpF expf
+getDimFromTypeExp (Abs.TypeExpressionArray _ range expf) = getDimFromRange range + getDimFromExpF expf
 getDimFromTypeExp _ = 0
 
-getDimFromRange :: Abs.RANGEEXP Posn -> Prelude.Integer
+getDimFromRange :: Abs.RANGEEXP a -> Prelude.Integer
 getDimFromRange (Abs.RangeExpression _ exp1 exp2 range) = case exp1 of
                                                             Abs.ExpressionInteger _ (Abs.Integer val _) -> case exp2 of
                                                                                                             Abs.ExpressionInteger _ (Abs.Integer vals _) -> let rangeDim = getDimFromRange range in
@@ -384,8 +414,18 @@ getDimFromRange (Abs.RangeExpressionSingle _ exp1 exp2) = case exp1 of
                                                             _ -> 0
 
 getDimFromInit :: Abs.INITPART Posn -> Prelude.Integer
---getDimFromInit (Abs.InitializzationPartArray _ arrayInit)
+getDimFromInit (Abs.InitializzationPartArray _ arrayInit) = getDimFromArrayInit arrayInit
 getDimFromInit _ = 0
+
+getDimFromArrayInit :: Abs.ARRAYINIT Posn -> Prelude.Integer
+getDimFromArrayInit (Abs.ArrayInitSingleElems _ listelement) = getDimFromListElement listelement
+getDimFromArrayInit (Abs.ArrayInitElems _ listelement arrayInit) = getDimFromListElement listelement + getDimFromArrayInit arrayInit
+getDimFromArrayInit (Abs.ArrayInitSingle _ arrayInit) = getDimFromArrayInit arrayInit
+getDimFromArrayInit (Abs.ArrayInit _ arrayInit1 arrayInit2) = getDimFromArrayInit arrayInit1 + getDimFromArrayInit arrayInit2
+
+getDimFromListElement :: Abs.LISTELEMENTARRAY Posn -> Prelude.Integer
+getDimFromListElement (Abs.ListElementsOfArray _ exp listelement) = 1 + getDimFromListElement listelement
+getDimFromListElement (Abs.ListElementOfArray _ exp) = 1
 
 getInitPart :: Prelude.String -> Prelude.String -> Prelude.String -> Prelude.String
 getInitPart (x:xs) zs result = case x of
@@ -1073,7 +1113,7 @@ checkListStatement (Abs.ListStatements pos stat stats) env = TResult env (B_type
 checkTypeLvalueExpression :: Abs.LVALUEEXPRESSION Posn -> Env -> TCheckResult
 checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id posI) index) env = case Data.Map.lookup id env of
                                                                         -- 1 entry of type array
-                                                                        Just [Variable (Array t dim) pose mode override] -> case index of 
+                                                                        Just [Variable (Array t dim) pose mode override s] -> case index of 
                                                                                                                             Abs.ArrayIndexElementEmpty posIn -> if mode == "param"  -- if param.. error because it cannot be overwritten
                                                                                                                                                                 then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                 else if mode == "const"
@@ -1088,7 +1128,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
                                                                                                                                                                             (Abs.ArrayIndexElements _ _ elems) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
                                                                                                                                                              else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
                                                                         -- multiple entries; first is of type array
-                                                                        Just ((Variable (Array t dim) pose mode override):xs) -> case index of
+                                                                        Just ((Variable (Array t dim) pose mode override s):xs) -> case index of
                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> if mode == "param"  -- if param.. error because it cannot be overwritten
                                                                                                                                                                     then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                     else if mode == "const"
@@ -1108,7 +1148,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
                                                                         Just ((Function _ _ _ _):xs) -> let v = findEntryOfType xs "var" in
                                                                                                         case v of
                                                                                                             [] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
-                                                                                                            ((Variable (Array t dim) pose mode override):ys) -> case index of
+                                                                                                            ((Variable (Array t dim) pose mode override s):ys) -> case index of
                                                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> if mode == "param"  -- if param.. error because it cannot be overwritten
                                                                                                                                                                                                     then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!" ++ (show posI)]
                                                                                                                                                                                                     else if mode == "const"
@@ -1122,19 +1162,19 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
                                                                                                                                                                                                                     (Abs.ArrayIndexElement _ _) -> checkErrors (checkArrayIndexElement index env) (TResult env t pos)
                                                                                                                                                                                                                     (Abs.ArrayIndexElements _ _ elems) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)) 
                                                                                                                                                                                                     else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! " ++ show posI] 
-                                                                                                            ((Variable t pose mode override):ys) -> if mode == "param" -- if param.. error because it cannot be overwritten
+                                                                                                            ((Variable t pose mode override s):ys) -> if mode == "param" -- if param.. error because it cannot be overwritten
                                                                                                                                                    then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                    else if mode == "const"
                                                                                                                                                             then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                             else TResult env t pos
                                                                         -- 1 entry of type var
-                                                                        Just [Variable t pose mode override] -> if mode == "param"  -- if param.. error because it cannot be overwritten
+                                                                        Just [Variable t pose mode override s] -> if mode == "param"  -- if param.. error because it cannot be overwritten
                                                                                                                then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                else if mode == "const"
                                                                                                                         then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                         else TResult env t pos
                                                                         -- multiple entries; first is of type var
-                                                                        Just ((Variable t pose mode override):xs) -> if mode == "param"  -- if param.. error because it cannot be overwritten
+                                                                        Just ((Variable t pose mode override s):xs) -> if mode == "param"  -- if param.. error because it cannot be overwritten
                                                                                                                then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                else if mode == "const"
                                                                                                                         then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
@@ -1143,7 +1183,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
 
 checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id posI) index next) env = case Data.Map.lookup id env of
                                                                         -- 1 entry of type array
-                                                                        Just [Variable (Array t dim) pose mode override] -> case index of
+                                                                        Just [Variable (Array t dim) pose mode override s] -> case index of
                                                                                                                             Abs.ArrayIndexElementEmpty posIn -> if (checkCompatibility (TResult env (Array t dim) pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
                                                                                                                                                                                                                                                                   then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                                                                                   else if mode == "const"
@@ -1163,7 +1203,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id po
                                                                                                                                                                                                                                                                 _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
                                                                                                                                 else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
                                                                         -- multiple entries; first is of type array
-                                                                        Just ((Variable (Array t dim) pose mode override):xs) -> case index of
+                                                                        Just ((Variable (Array t dim) pose mode override s):xs) -> case index of
                                                                                                                             Abs.ArrayIndexElementEmpty posIn -> if (checkCompatibility (TResult env (Array t dim) pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
                                                                                                                                                                                                                                                              then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                                                                              else if mode == "const"
@@ -1188,7 +1228,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id po
                                                                         Just ((Function _ _ _ _):xs) -> let v =findEntryOfType xs "var" in
                                                                                                         case v of
                                                                                                             [] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
-                                                                                                            ((Variable (Array t dim) pose mode override):ys) -> case index of
+                                                                                                            ((Variable (Array t dim) pose mode override s):ys) -> case index of
                                                                                                                             Abs.ArrayIndexElementEmpty posIn -> if (checkCompatibility (TResult env (Array t dim) pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
                                                                                                                                                                                                                                                                   then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                                                                                   else if mode == "const"
@@ -1207,7 +1247,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id po
                                                                                                                                                                                                                                                                         TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                                                                                                                                                         _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
                                                                                                                                 else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show pos] 
-                                                                                                            ((Variable t pose mode override):ys) -> if (checkCompatibility (TResult env t pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
+                                                                                                            ((Variable t pose mode override s):ys) -> if (checkCompatibility (TResult env t pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
                                                                                                                                                                                                                                          then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                                                          else if mode == "const"
                                                                                                                                                                                                                                                     then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
@@ -1215,7 +1255,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id po
                                                                                                                                                                                                                                             TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                                                                                                                             _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
                                                                         -- 1 entry of type var
-                                                                        Just [Variable t pose mode override] -> if (checkCompatibility (TResult env t pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
+                                                                        Just [Variable t pose mode override s] -> if (checkCompatibility (TResult env t pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
                                                                                                                                                                                                 then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                 else if mode == "const"
                                                                                                                                                                                                         then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
@@ -1223,7 +1263,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id po
                                                                                                                                                                                                     TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                                                                                     _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
                                                                         -- multiple entries; first is of type var
-                                                                        Just ((Variable t pose mode override):xs) -> if (checkCompatibility (TResult env t pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
+                                                                        Just ((Variable t pose mode override s):xs) -> if (checkCompatibility (TResult env t pos) (checkTypeLvalueExpression next env)) then if mode == "param" 
                                                                                                                                                                                                           then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                           else if mode == "const"
                                                                                                                                                                                                                     then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
@@ -1627,13 +1667,13 @@ checkTypeExpression node@(Abs.ExpressionBinaryLess pos exp1 exp2) env = let exp1
                                                                                         then TResult env (B_type Type_Boolean) pos
                                                                                         else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position:" ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression node@(Abs.ExpressionIdent pos ident@(Abs.Ident id posI) index) env =  case Data.Map.lookup id env of
-                                                                                            Just [Variable (Array t dim) pose mode override] -> case index of
+                                                                                            Just [Variable (Array t dim) pose mode override s] -> case index of
                                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                                                 _ ->if dim == (countIndex index) then case index of
                                                                                                                                                     (Abs.ArrayIndexElement _ _) -> TResult env t pos
                                                                                                                                                     (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
                                                                                                                                                     else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
-                                                                                            Just ((Variable (Array t dim) pose mode override):xs) -> case index of
+                                                                                            Just ((Variable (Array t dim) pose mode override s):xs) -> case index of
                                                                                                                                                     Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                                                     _ ->if dim == (countIndex index) then case index of
                                                                                                                                                         (Abs.ArrayIndexElement _ _) -> TResult env t pos
@@ -1643,19 +1683,19 @@ checkTypeExpression node@(Abs.ExpressionIdent pos ident@(Abs.Ident id posI) inde
                                                                                             Just ((Function _ _ _ _):xs) -> let v =findEntryOfType xs "var" in
                                                                                                                             case v of
                                                                                                                                 [] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
-                                                                                                                                ((Variable (Array t dim) pose mode override):ys) -> case index of
+                                                                                                                                ((Variable (Array t dim) pose mode override s):ys) -> case index of
                                                                                                                                                                                     Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                                                                                     _ ->if dim == (countIndex index) then case index of
                                                                                                                                                                                         (Abs.ArrayIndexElement _ _) -> TResult env t pos
                                                                                                                                                                                         (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
                                                                                                                                                                                         else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
-                                                                                                                                ((Variable t pose mode override):ys) -> TResult env t pos
-                                                                                            Just [Variable t pose mode override] -> TResult env t pos
-                                                                                            Just ((Variable t pose mode override):xs) -> TResult env t pos
+                                                                                                                                ((Variable t pose mode override s):ys) -> TResult env t pos
+                                                                                            Just [Variable t pose mode override s] -> TResult env t pos
+                                                                                            Just ((Variable t pose mode override s):xs) -> TResult env t pos
                                                                                             Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
 checkTypeExpression node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
                                                                 Just [Function t posf param canOverride] -> checkTypeExpressionCall_ node env [Function t posf param canOverride]
-                                                                Just [Variable _ _ _ _] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
+                                                                Just [Variable _ _ _ _ _] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
                                                                 Just (x:xs) -> case findEntryOfType (x:xs) "func" of
                                                                         [] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
                                                                         [Function t posf param canOverride] -> checkTypeExpressionCall_ node env [Function t posf param canOverride]
@@ -1702,13 +1742,13 @@ checkTypeDefault s node@(Abs.ExpressionStringD pos value) env = checkTypeString 
 checkTypeDefault s node@(Abs.ExpressionRealD pos value) env = checkTypeReal value env
 checkTypeDefault s node@(Abs.ExpressionBracketD pos exp) env = checkTypeExpression exp env
 checkTypeDefault s node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) index) env = case Data.Map.lookup id env of
-                                                                        Just [Variable (Array t dim) posd mode override] -> case index of
+                                                                        Just [Variable (Array t dim) posd mode override s] -> case index of
                                                                                                                             Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                             _ ->if dim == (countIndex index) then case index of
                                                                                                                                 (Abs.ArrayIndexElement _ _) -> TResult env t pos
                                                                                                                                 (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
                                                                                                                                 else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
-                                                                        Just ((Variable (Array t dim) posd mode override):xs) -> case index of
+                                                                        Just ((Variable (Array t dim) posd mode override s):xs) -> case index of
                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                                 _ ->if dim == (countIndex index) then case index of
                                                                                                                                     (Abs.ArrayIndexElement _ _) -> TResult env t pos
@@ -1718,15 +1758,15 @@ checkTypeDefault s node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) inde
                                                                         Just ((Function _ _ _ _):xs) -> let v =findEntryOfType xs "var" in
                                                                                                         case v of
                                                                                                             [] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
-                                                                                                            ((Variable (Array t dim) posd mode override):ys) -> case index of
+                                                                                                            ((Variable (Array t dim) posd mode override s):ys) -> case index of
                                                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                                                                 _ ->if dim == (countIndex index) then case index of
                                                                                                                                                                     (Abs.ArrayIndexElement _ _) -> TResult env t pos
                                                                                                                                                                     (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
                                                                                                                                                                     else TError ["Array indexing incorrect! number of indexed dimensions not matching the dim. of the array! "++ show posI] 
-                                                                                                            ((Variable t posd mode override):ys) -> TResult env t pos
-                                                                        Just [Variable t posd mode override] -> TResult env t pos
-                                                                        Just ((Variable t posd mode override):xs) -> TResult env t pos
+                                                                                                            ((Variable t posd mode override s):ys) -> TResult env t pos
+                                                                        Just [Variable t posd mode override s] -> TResult env t pos
+                                                                        Just ((Variable t posd mode override s):xs) -> TResult env t pos
                                                                         Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
 checkTypeDefault s node@(Abs.ExpressionCastD pos def ty) env = let tipoTCheck = checkPrimitiveType ty env in
                                                                     let defTCheck = checkTypeDefault 1 def env in
@@ -1735,7 +1775,7 @@ checkTypeDefault s node@(Abs.ExpressionCastD pos def ty) env = let tipoTCheck = 
                                                                             _ -> mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) defTCheck
 checkTypeDefault s node@(Abs.ExpressionCallD pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
                                                                                 Just [Function t posf param canOverride] -> checkTypeExpressionCallD_ node env [Function t posf param canOverride]
-                                                                                Just [Variable _ _ _ _] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
+                                                                                Just [Variable _ _ _ _ _] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
                                                                                 Just (x:xs) -> case findEntryOfType (x:xs) "func" of
                                                                                         [] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
                                                                                         [Function t posf param canOverride] -> checkTypeExpressionCallD_ node env [Function t posf param canOverride]
@@ -1785,7 +1825,7 @@ checkTypeExpressionCallD_ (Abs.ExpressionCallD pos (Abs.Ident id posid) exps) en
 
 checkTypeIdentVar :: Abs.Ident Posn -> Env -> TCheckResult
 checkTypeIdentVar node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
-    Just [Variable t posv mode override] -> TResult env t pos
+    Just [Variable t posv mode override s] -> TResult env t pos
     Just (x:xs) -> case findEntryOfType (x:xs) "var" of
                     [] -> TError ["Variable " ++ id ++ " undeclared at position: " ++ (show pos)]
                     [y] -> TResult env (getTypeEnvEntry [y]) pos
@@ -1803,7 +1843,7 @@ checkTypeIdentFunc node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
 findEntryOfType :: [EnvEntry] -> Prelude.String -> [EnvEntry]
 findEntryOfType (x:xs) str = case str of 
                                 "var" -> case x of -- searching for var entry 
-                                        Variable t pos mode override -> [x]
+                                        Variable t pos mode override s -> [x]
                                         _ -> findEntryOfType xs str
                                 "func"-> case x of -- searching for func entry 
                                         Function t pos param canOverride -> [x]
@@ -1838,7 +1878,7 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                                                     True -> TError ["Type void is not allowed as type for variable declaration! Position: "++show pos]
                                                                                                                                     False -> checkErrors identTCheck (checkTypeTypePart typepart env)
                                                                                                 _ ->let typeDim = getDimFromType typepart in
-                                                                                                        let initDim = 10 in 
+                                                                                                        let initDim = getDimFromInit initpart in 
                                                                                                             let typeCheck = checkTypeTypePart typepart env in
                                                                                                                 let initCheck = checkTypeInitializzationPart initpart env in
                                                                                                                     if typeDim == initDim
@@ -1905,12 +1945,12 @@ checkIdentifierList node@(Abs.IdentifierList pos ident@(Abs.Ident id posI) ident
                                                                                                             _ -> mergeErrors identTCheck identListTCheck
 
 checkIdentifierList node@(Abs.IdentifierSingle pos ident@(Abs.Ident id posI)) env = case Data.Map.lookup id env of
-                                                                                    Just [Variable ty posv mode override] -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posv]
-                                                                                    Just (Variable ty posv mode override:xs) -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posv]
+                                                                                    Just [Variable ty posv mode override s] -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posv]
+                                                                                    Just (Variable ty posv mode override s:xs) -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posv]
                                                                                     Just [Function ty posv param canOverride] -> TResult env (B_type Type_Void) pos
                                                                                     Just (Function ty posv param canOverride:xs) -> case findEntryOfType xs "var" of
                                                                                                                                     [] -> TResult env (B_type Type_Void) pos
-                                                                                                                                    (Variable ty posv mode override):xs -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posv]
+                                                                                                                                    (Variable ty posv mode override s):xs -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posv]
                                                                                     Nothing -> TResult env (B_type Type_Void) pos
 
 checkTypeTypePart :: Abs.TYPEPART Posn -> Env -> TCheckResult
@@ -2048,104 +2088,104 @@ checkTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = if chec
 checkTypeTypeIndex node@(Abs.TypeOfIndexIntSingle pos integer) env = TResult env (B_type Type_Integer) pos
 checkTypeTypeIndex node@(Abs.TypeOfIndexVar pos typeindex id@(Abs.Ident idi posi) index) env = case index of
                                                                                     Abs.ArrayIndexElementEmpty posi -> case Data.Map.lookup idi env of
-                                                                                                                        Just [Variable t _ _ _] -> if checkCompatibility (TResult env t pos) (TResult env (B_type Type_Integer) pos) 
+                                                                                                                        Just [Variable t _ _ _ _] -> if checkCompatibility (TResult env t pos) (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                     then checkErrors (checkTypeTypeIndex typeindex env) (TResult env t pos) 
                                                                                                                                                     else TError ["Incompatible type for index at: "++ show pos]
-                                                                                                                        Just ((Variable t _ _ _):xs) -> if checkCompatibility (TResult env t pos) (TResult env (B_type Type_Integer) pos) 
+                                                                                                                        Just ((Variable t _ _ _ _):xs) -> if checkCompatibility (TResult env t pos) (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                     then checkErrors (checkTypeTypeIndex typeindex env) (TResult env t pos) 
                                                                                                                                                     else TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Just [Function t _ _ _] -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
                                                                                                                         Just ((Function t _ _ _):xs) -> let v = findEntryOfType xs "var" in
                                                                                                                                                         case v of
                                                                                                                                                             [] -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
-                                                                                                                                                            ((Variable tv _ _ _):ys) -> if checkCompatibility (TResult env tv pos) (TResult env (B_type Type_Integer) pos) 
+                                                                                                                                                            ((Variable tv _ _ _ _):ys) -> if checkCompatibility (TResult env tv pos) (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                                         then checkErrors (checkTypeTypeIndex typeindex env) (TResult env tv pos) 
                                                                                                                                                                                         else TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Nothing -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
                                                                                     Abs.ArrayIndexElement posi tyindex -> case Data.Map.lookup idi env of
-                                                                                                                        Just [Variable (Array t dim) _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos)
+                                                                                                                        Just [Variable (Array t dim) _ _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos)
                                                                                                                                                                 then checkErrors (checkTypeTypeIndex typeindex env) (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                 else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                        Just ((Variable (Array t dim) _ _ _):xs) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos)
+                                                                                                                        Just ((Variable (Array t dim) _ _ _ _):xs) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos)
                                                                                                                                                                     then checkErrors (checkTypeTypeIndex typeindex env) (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                     else TError ["Incompatible type for index at: "++ show pos]
-                                                                                                                        Just [Variable t _ _ _] -> TError ["Incompatible type for index at: "++ show pos]
-                                                                                                                        Just ((Variable t _ _ _):xs) -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                        Just [Variable t _ _ _ _] -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                        Just ((Variable t _ _ _ _):xs) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Just [Function t _ _ _] -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
                                                                                                                         Just ((Function t _ _ _):xs) -> let v = findEntryOfType xs "var" in
                                                                                                                                                         case v of
                                                                                                                                                             [] -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
-                                                                                                                                                            ((Variable tv _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                                                            ((Variable tv _ _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Nothing -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
                                                                                     Abs.ArrayIndexElements posi tyindex arrindex -> case Data.Map.lookup idi env of
-                                                                                                                                    Just [Variable (Array t dim) _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
+                                                                                                                                    Just [Variable (Array t dim) _ _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
                                                                                                                                                                             then checkErrors (checkTypeTypeIndex typeindex env)  (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                             else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                                    Just ((Variable (Array t dim) _ _ _):xs) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
+                                                                                                                                    Just ((Variable (Array t dim) _ _ _ _):xs) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
                                                                                                                                                                                 then checkErrors (checkTypeTypeIndex typeindex env)  (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                                 else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                                    Just [Variable t _ _ _] -> TError ["Incompatible type for index at: "++ show pos]
-                                                                                                                                    Just ((Variable t _ _ _):xs) -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                                    Just [Variable t _ _ _ _] -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                                    Just ((Variable t _ _ _ _):xs) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                                     Just [Function t _ _ _] -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
                                                                                                                                     Just ((Function t _ _ _):xs) -> let v = findEntryOfType xs "var" in
                                                                                                                                                                     case v of
                                                                                                                                                                         [] -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
-                                                                                                                                                                        ((Variable (Array tv dim) _ _ _):ys) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements tv arrindex env)
+                                                                                                                                                                        ((Variable (Array tv dim) _ _ _ _):ys) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements tv arrindex env)
                                                                                                                                                                                                                 then checkErrors (checkTypeTypeIndex typeindex env)  (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                                                                 else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                                                                        ((Variable tv _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                                                                        ((Variable tv _ _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                                     Nothing -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
 checkTypeTypeIndex node@(Abs.TypeOfIndexVarSingle pos (Abs.Ident id posI) index) env = case index of
                                                                                     Abs.ArrayIndexElementEmpty posi -> case Data.Map.lookup id env of
-                                                                                                                        Just [Variable t _ _ _] -> if checkCompatibility (TResult env t pos) (TResult env (B_type Type_Integer) pos)  
+                                                                                                                        Just [Variable t _ _ _ _] -> if checkCompatibility (TResult env t pos) (TResult env (B_type Type_Integer) pos)  
                                                                                                                                                     then TResult env t pos 
                                                                                                                                                     else TError ["Incompatible type for index at: "++ show pos]
-                                                                                                                        Just ((Variable t _ _ _):xs) -> if checkCompatibility (TResult env t pos) (TResult env (B_type Type_Integer) pos)  
+                                                                                                                        Just ((Variable t _ _ _ _):xs) -> if checkCompatibility (TResult env t pos) (TResult env (B_type Type_Integer) pos)  
                                                                                                                                                           then TResult env t pos 
                                                                                                                                                           else TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Just [Function t _ _ _] -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
                                                                                                                         Just ((Function t _ _ _):xs) -> let v = findEntryOfType xs "var" in
                                                                                                                                                         case v of
                                                                                                                                                             [] -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
-                                                                                                                                                            ((Variable tv _ _ _):ys) -> if checkCompatibility (TResult env tv pos) (TResult env (B_type Type_Integer) pos)  
+                                                                                                                                                            ((Variable tv _ _ _ _):ys) -> if checkCompatibility (TResult env tv pos) (TResult env (B_type Type_Integer) pos)  
                                                                                                                                                                                             then TResult env tv pos 
                                                                                                                                                                                             else TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Nothing -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
                                                                                     Abs.ArrayIndexElement posi tyindex -> case Data.Map.lookup id env of
-                                                                                                                        Just [Variable (Array t dim) _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos)
+                                                                                                                        Just [Variable (Array t dim) _ _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos)
                                                                                                                                                                 then (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                 else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                        Just ((Variable (Array t dim) _ _ _):xs) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos)
+                                                                                                                        Just ((Variable (Array t dim) _ _ _ _):xs) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos)
                                                                                                                                                                     then (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                     else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                        Just [Variable t _ _ _] -> TError ["Incompatible type for index at: "++ show pos]
-                                                                                                                        Just ((Variable t _ _ _):xs) -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                        Just [Variable t _ _ _ _] -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                        Just ((Variable t _ _ _ _):xs) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Just [Function t _ _ _] -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
                                                                                                                         Just ((Function t _ _ _):xs) -> let v = findEntryOfType xs "var" in
                                                                                                                                                         case v of
                                                                                                                                                             [] -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
-                                                                                                                                                            ((Variable (Array tv dim) _ _ _):ys) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env tv pos)
+                                                                                                                                                            ((Variable (Array tv dim) _ _ _ _):ys) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env tv pos)
                                                                                                                                                                                                     then (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                                                     else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                                                            ((Variable tv _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                                                            ((Variable tv _ _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Nothing -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
                                                                                     Abs.ArrayIndexElements posi tyindex arrindex -> case Data.Map.lookup id env of
-                                                                                                                                    Just [Variable (Array t dim) _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
+                                                                                                                                    Just [Variable (Array t dim) _ _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
                                                                                                                                                                             then (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                             else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                                    Just ((Variable (Array t dim) _ _ _):xs) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
+                                                                                                                                    Just ((Variable (Array t dim) _ _ _ _):xs) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
                                                                                                                                                                                 then (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                                 else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                                    Just [Variable t _ _ _] -> TError ["Incompatible type for index at: "++ show pos]
-                                                                                                                                    Just ((Variable t _ _ _):xs) -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                                    Just [Variable t _ _ _ _] -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                                    Just ((Variable t _ _ _ _):xs) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                                     Just [Function t _ _ _] -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
                                                                                                                                     Just ((Function t _ _ _):xs) -> let v = findEntryOfType xs "var" in
                                                                                                                                                                     case v of
                                                                                                                                                                         [] -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
-                                                                                                                                                                        ((Variable (Array tv dim) _ _ _):ys) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements tv arrindex env)
+                                                                                                                                                                        ((Variable (Array tv dim) _ _ _ _):ys) -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements tv arrindex env)
                                                                                                                                                                                                                 then (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                                                                 else TError ["Incompatible type for index at: "++ show pos] 
-                                                                                                                                                                        ((Variable tv _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
+                                                                                                                                                                        ((Variable tv _ _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                                     Nothing -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
 checkTypeTypeIndex node@(Abs.TypeOfIndexPointer pos typeindex unaryop def) env = let defTCheck = checkTypeDefault 0 (Abs.ExpressionUnaryD pos unaryop def) env in
                                                                                 case defTCheck of
@@ -2218,8 +2258,8 @@ checkTypeTypeIndex node@(Abs.TypeOfIndexBinarySingle pos def binaryop exp ) env 
 checkTypeTypeIndex node@(Abs.TypeOfIndexExpressionCall pos typeindex (Abs.Ident id posi) exps ) env = case checkTypeExpression (Abs.ExpressionCall pos (Abs.Ident id posi) exps) env of
                                                                                                 TResult _ _ _ ->
                                                                                                                     case Data.Map.lookup id env of
-                                                                                                                        Just [Variable _ _ _ _] -> TError ["Function "++ id++ "( ) not defined! Position:" ++ (show pos)]
-                                                                                                                        Just ((Variable _ _ _ _):xs) -> let f =findEntryOfType xs "func" in
+                                                                                                                        Just [Variable _ _ _ _ _] -> TError ["Function "++ id++ "( ) not defined! Position:" ++ (show pos)]
+                                                                                                                        Just ((Variable _ _ _ _ _):xs) -> let f =findEntryOfType xs "func" in
                                                                                                                                                         case f of
                                                                                                                                                             [Function t _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos) && checkCompatibility (TResult env t pos) (checkTypeTypeIndex typeindex env) then TResult env t pos else TError ["Incompatible type for index at: "++ show pos]
                                                                                                                                                             [] -> TError ["Function "++ id++ "( ) not defined! Position:" ++ (show pos)]
@@ -2230,8 +2270,8 @@ checkTypeTypeIndex node@(Abs.TypeOfIndexExpressionCall pos typeindex (Abs.Ident 
 checkTypeTypeIndex node@(Abs.TypeOfIndexExpressionCallSingle pos (Abs.Ident id posi) exps ) env = case checkTypeExpression (Abs.ExpressionCall pos (Abs.Ident id posi) exps) env of
                                                                                                 TResult _ _ _ ->
                                                                                                                     case Data.Map.lookup id env of
-                                                                                                                        Just [Variable _ _ _ _] -> TError ["Function "++ id++ "( ) not defined! Position:" ++ (show pos)]
-                                                                                                                        Just ((Variable _ _ _ _):xs) -> let f =findEntryOfType xs "func" in
+                                                                                                                        Just [Variable _ _ _ _ _] -> TError ["Function "++ id++ "( ) not defined! Position:" ++ (show pos)]
+                                                                                                                        Just ((Variable _ _ _ _ _):xs) -> let f =findEntryOfType xs "func" in
                                                                                                                                                         case f of
                                                                                                                                                             [Function t _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (TResult env t pos) then TResult env t pos else TError ["Incompatible type for index at: "++ show pos]
                                                                                                                                                             [] -> TError ["Function "++ id++ "( ) not defined! Position:" ++ (show pos)]
@@ -2257,7 +2297,7 @@ checkUnary _ = 0
 checkTypeCallExpression :: Abs.CALLEXPRESSION Posn -> Env -> TCheckResult
 checkTypeCallExpression node@(Abs.CallExpressionParentheses _ (Abs.Ident id pos) namedexpr) env = case Data.Map.lookup id env of
                                                     Just [Function t posf param canOverride] -> checkTypeCallExpression_ node env [Function t posf param canOverride]
-                                                    Just [Variable _ _ _ _] -> mergeErrors (TError ["Function "++ id++ "( ) not defined! Position:" ++ (show pos)]) (checkTypeNamedExpressionList namedexpr env)
+                                                    Just [Variable _ _ _ _ _] -> mergeErrors (TError ["Function "++ id++ "( ) not defined! Position:" ++ (show pos)]) (checkTypeNamedExpressionList namedexpr env)
                                                     Just (x:xs) -> case findEntryOfType (x:xs) "func" of
                                                         [] -> mergeErrors (TError ["Function "++ id++ "( ) not defined! Position:" ++ (show pos)]) (checkTypeNamedExpressionList namedexpr env)
                                                         [Function t posf param canOverride] -> checkTypeCallExpression_ node env [Function t posf param canOverride]

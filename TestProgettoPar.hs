@@ -196,7 +196,7 @@ showContent (x:xs) = case x of
                       TacRelConditionalJump (Label lab) flag relop laddr raddr -> case flag of
                           True ->  "\n" ++ "\t  if "       ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab ++ showContent xs
                           False -> "\n" ++ "\t  if_false " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab ++ showContent xs
-                      TacComment comment -> "\t  \t # "   ++ comment ++ showContent xs 
+                      TacComment comment -> if comment == "" then showContent xs else"\t  \t # "   ++ comment ++ showContent xs 
                       ExitTac -> "" ++"\n\n"
 showContent [] = ""
 
@@ -209,6 +209,7 @@ buildEqOperator ty = case ty of
   B_type Type_String   -> "=str"
   B_type Type_Void     -> "=void" -- should not be reached!
   B_type Type_Real     -> "=real"
+  Array t _            -> buildEqOperator t
 
 -- Given a from-type and a to-type generates the right convert (coertion/casting) operator string
 buildCastOperator :: Type -> Type -> String
