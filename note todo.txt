@@ -50,4 +50,21 @@ value, but the corresponding value (calculated during the definition phase)
 must be used instead of the occurrences of the constant’s name.
 
 
+ERRORE:
+
+[Input Code]
+
+var x:[1..1]int$ = 3;
+
+
+[Linearized tree]
+
+var x : [1 .. 1] int $ = 3;
+
+ Serialization of abstract syntax tree produced legal concrete syntax!
+
+[Compiler Errors]
+
+TestProgettoPar.exe: TypeChecker.hs:(363,1)-(369,75): Non-exhaustive patterns in function showInit
+
 -------------

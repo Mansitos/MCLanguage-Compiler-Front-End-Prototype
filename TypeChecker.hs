@@ -90,9 +90,14 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                         _ -> False
                                                                     Array t dim -> case tC of
                                                                                         Array ts dims -> case t of
-                                                                                                            B_type Type_Integer -> if (ts==(B_type Type_Real) || ts==(B_type Type_Integer)) then True else False
-                                                                                                            _ -> if t==ts then True else False
+                                                                                                            B_type Type_Integer -> if (ts==(B_type Type_Real) || ts==(B_type Type_Integer) || ts==(Pointer (B_type Type_Real) 1) || ts==(Pointer (B_type Type_Integer) 1)) then True else False
+                                                                                                            Pointer pt pl -> if (ts == (Pointer pt (pl+1))) then True else False
+                                                                                                            _ -> if ((t==ts) || (ts==(Pointer t 1)))  then True else False
+
                                                                                         _ -> False
+
+-- t = destra
+-- tC = sinistra
 
 checkCastCompatibility :: TCheckResult -> TCheckResult -> Bool
 checkCastCompatibility (TResult env t pos) (TResult envs ts poss) = case t of
@@ -240,8 +245,8 @@ updateEnvFromListOfVarIds (x:xs) env (p:ps) varMode ty s= case Data.Map.lookup x
                                                         Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
                                                                                  [] -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
                                                                                  ((Variable typ posv varMv override sv):ys) -> if override 
-                                                                                                                             then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
-                                                                                                                             else updateEnvFromListOfVarIds xs env ps varMode ty s                                                               
+                                                                                                                               then updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
+                                                                                                                               else updateEnvFromListOfVarIds xs env ps varMode ty s                                                               
                                                         Nothing -> updateEnvFromListOfVarIds xs (insertWith (++) x [Variable ty p varMode False s] env) ps varMode ty s
 
 -- Given an Env set to TRUE in CanOverride for each variable and func!
@@ -362,6 +367,7 @@ showInit (Abs.InitializzationPartArray _ arrayInit) = let p = Pn 0 0 0 in
                                                                                                                  )
                                                                                                 )
                                                                     ) [] []
+showInit _ = ""                                                                  
 
 getListDimFromType :: Abs.TYPEPART a -> [Prelude.Integer]
 getListDimFromType (Abs.TypePart _ typeexp) = getListDimFromTypeExp typeexp
@@ -1330,30 +1336,30 @@ checkTypeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = le
                                                                                                                              TResult _ (Pointer te depthe) _ ->if depth==depthe+1 
                                                                                                                                                                 then
                                                                                                                                                                     if t==te
-                                                                                                                                                                        then
-                                                                                                                                                                            expTCheck
-                                                                                                                                                                        else
-                                                                                                                                                                            TError ["Cannot assign pointer of type " ++ show (getType expTCheck) ++ " to pointer of type " ++ show (getType lvalTCheck) ++ "! Position: "++ show pos]
+                                                                                                                                                                    then
+                                                                                                                                                                        expTCheck
+                                                                                                                                                                    else
+                                                                                                                                                                        TError ["Cannot assign pointer of type " ++ show (getType expTCheck) ++ " to pointer of type " ++ show (getType lvalTCheck) ++ "! Position: "++ show pos]
                                                                                                                                                                 else TError ["Pointer of depth "++ show depth++" is incompatible with a pointer of depth "++ show depthe++"! Position: "++ show pos]
                                                                                                                              TResult _ (Array te dime) _ -> if depth==1 then
-                                                                                                                                                                 if t == Array te dime
-                                                                                                                                                                         then
-                                                                                                                                                                             expTCheck
-                                                                                                                                                                         else 
-                                                                                                                                                                             TError ["Pointer of type "++ show t++" cannot point to value of type " ++ show (getType expTCheck) ++ "! Position: "++ show pos]
-                                                                                                                                                else TError ["Expression is not a pointer! Position: "++ show pos]
+                                                                                                                                                                if t == Array te dime
+                                                                                                                                                                then
+                                                                                                                                                                    expTCheck
+                                                                                                                                                                else 
+                                                                                                                                                                    TError ["Pointer of type "++ show t++" cannot point to value of type " ++ show (getType expTCheck) ++ "! Position: "++ show pos]
+                                                                                                                                                else TError ["Cannot assign value of type " ++ show (getType expTCheck) ++ " to pointer of type " ++ show (getType lvalTCheck) ++ "! Position: "++ show pos]
                                                                                                                              TResult _ te _ -> if depth==1 then
                                                                                                                                                     if t==te
-                                                                                                                                                        then
-                                                                                                                                                            expTCheck
-                                                                                                                                                        else 
-                                                                                                                                                            TError ["Pointer of type "++ show t++" cannot point to value of type " ++ show (getType expTCheck) ++ "! Position: "++ show pos]
-                                                                                                                                                else TError ["Expression is not a pointer! Position: "++ show pos]
+                                                                                                                                                    then
+                                                                                                                                                        expTCheck
+                                                                                                                                                    else 
+                                                                                                                                                        TError ["Pointer of type "++ show t++" cannot point to value of type " ++ show (getType expTCheck) ++ "! Position: "++ show pos]
+                                                                                                                                                else TError ["Cannot assign value of type " ++ show (getType expTCheck) ++ " to pointer of type " ++ show (getType lvalTCheck) ++ "! Position: "++ show pos]
                                                                                                                              TError e -> expTCheck
                                                                                             TResult _ (Array t dim) _ -> case expTCheck of
                                                                                                                              TResult _ _ _ -> TError ["Cannot assign values to variable of type " ++ show (getType lvalTCheck) ++ "! Position: "++ show pos]
                                                                                                                              TError e -> expTCheck
-                                                                                            TResult _ t _ -> case expTCheck of --casi base
+                                                                                            TResult _ t _ -> case expTCheck of -- casi base
                                                                                                                 TResult _ (Array te dime) _ -> TError ["Cannot assign value of type " ++ show (getType expTCheck) ++ " to variable of type " ++ show (getType lvalTCheck) ++ "! Position: "++ show pos]                                                                          
                                                                                                                 TResult _ (Pointer te depthe) _ ->  TError ["Cannot assign value of type " ++ show (getType expTCheck) ++ " to variable of type " ++ show (getType lvalTCheck) ++ "! Position: "++ show pos]                                                                          
                                                                                                                 TResult _ te _ -> if(checkCompatibility expTCheck lvalTCheck) then returnSuperType expTCheck lvalTCheck else TError ["Cannot assign value of type " ++ show (getType expTCheck) ++ " to variable of type " ++ show (getType lvalTCheck) ++ "! Position: "++ show pos]
@@ -1889,10 +1895,10 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                                                     TError errs -> TError errs
                                                                                                                                     _ -> if (checkCompatibility initCheck (TResult env t pos) && depth==1) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation with incompatible type! Position: "++ show (getPos initCheck)]) identTCheck)
                                                                                                                             TResult env (Array t dim) post -> case initCheck of
-                                                                                                                                TResult env (Array ts dims) posi -> if checkCompatibility (TResult env ts posi) (TResult env t post) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
+                                                                                                                                TResult env (Array ts dims) posi -> if checkCompatibility initCheck typeCheck then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
                                                                                                                                                                                                                                                                                                                                                                             (Abs.IdentifierList _ _ _) -> "arrays"
                                                                                                                                                                                                                                                                                                                                                                             (Abs.IdentifierSingle _ _) -> "array")
-                                                                                                                                                                                                                                                                                                                                                                            ++" " ++ getIdsFromIdentList identlist ++" of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position:" ++ show (getPos initCheck)]) identTCheck)
+                                                                                                                                                                                                                                                                                                                                                                            ++" " ++ getIdsFromIdentList identlist ++" of type " ++ show t ++ " with values of type "++ show ts ++ "! Position:" ++ show (getPos initCheck)]) identTCheck)
                                                                                                                                 _ -> mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
                                                                                                                                                                                                         (Abs.IdentifierList _ _ _) -> "arrays"
                                                                                                                                                                                                         (Abs.IdentifierSingle _ _) -> "array") ++" "
@@ -1904,7 +1910,10 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                                                                                                                                                                                                                                                     (Abs.IdentifierList _ _ _) -> "variables"
                                                                                                                                                                                                                                                                                                                                     (Abs.IdentifierSingle _ _) -> "variable")
                                                                                                                                                                                                                                                                                                                                     ++" "++ getIdsFromIdentList identlist ++" of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position:" ++ show (getPos initCheck)]))
-                                                                                                                    else TError ["Array initialization "++showInit initpart++" has "++show initDim++(if initDim==1 then " element" else " elements")++", while the declaration prescribes "++show typeDim++(if typeDim==1 then " element!" else " elements!")++" Position: "++show pos])
+                                                                                                                    else case initpart of
+                                                                                                                            (Abs.InitializzationPartArray _ arrayInit) -> TError ["Array initialization "++ showInit initpart++" has "++show initDim++(if initDim==1 then " element" else " elements")++", while the declaration prescribes "++show typeDim++(if typeDim==1 then " element!" else " elements!")++" Position: "++show pos]
+                                                                                                                            _ -> TError ["Invalid array initialization part! Position: "++show pos]
+                                                                                                                            ) -- case end            
 checkErrors :: TCheckResult -> TCheckResult -> TCheckResult
 checkErrors (TResult env ty pos) (TResult envs tys poss) = TResult envs tys poss
 checkErrors (TResult env ty pos) (TError e) = TError e

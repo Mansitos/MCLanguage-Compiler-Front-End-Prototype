@@ -189,7 +189,8 @@ showContent (x:xs) = case x of
                       TacParam addr ty                        -> "\n" ++ "\t  " ++ "param_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
                       TacReturnVoid                           -> "\n" ++ "\t  " ++ "return_void" ++ showContent xs
                       TacReturn addr ty                       -> "\n" ++ "\t  " ++ "return_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
-                      TacCastConversion addr fst tfrom tto    -> "\n" ++ "\t  " ++ (showAddrContent addr ++) " " ++ (buildEqOperator tto) ++ " " ++ (buildCastOperator tfrom tto) ++ " " ++  (showAddrContent fst) ++ showContent xs
+                      TacCastConversion addr fst tfrom tto    -> "\n" ++ "\t  " ++ (showAddrContent addr) ++ " " ++ (buildEqOperator tto) ++ " " ++ (buildCastOperator tfrom tto) ++ " " ++  (showAddrContent fst) ++ showContent xs
+                      TacPointDeref addr r                    -> "\n" ++ "\t  " ++ (showAddrContent addr) ++ " " ++ "=address &" ++ (showAddrContent r) ++ showContent xs
                       TacConditionalJump (Label lab) flag addr -> case flag of
                           True ->  "\n" ++ "\t  if "       ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs
                           False -> "\n" ++ "\t  if_false " ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs
@@ -210,6 +211,7 @@ buildEqOperator ty = case ty of
   B_type Type_Void     -> "=void" -- should not be reached!
   B_type Type_Real     -> "=real"
   Array t _            -> buildEqOperator t
+  _                    -> "=address"
 
 -- Given a from-type and a to-type generates the right convert (coertion/casting) operator string
 buildCastOperator :: Type -> Type -> String
