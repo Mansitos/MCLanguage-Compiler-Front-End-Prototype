@@ -678,10 +678,12 @@ getTypeFromExpressionTResult (Abs.ExpressionBinaryLessEq res@(TResult _ ty _) ex
 getTypeFromExpressionTResult (Abs.ExpressionBinaryLess res@(TResult _ ty _) exp1 exp2) = ty
 getTypeFromExpressionTResult (Abs.ExpressionIdent res@(TResult _ ty _) id index) = ty
 getTypeFromExpressionTResult (Abs.ExpressionCall res@(TResult _ ty _) id exps) = ty
+getTypeFromExpressionTResult _ = (B_type Type_Void) -- when err
 
 getTypeFromLvalTResult :: Abs.LVALUEEXPRESSION TCheckResult -> Type
 getTypeFromLvalTResult (Abs.LvalueExpression res@(TResult _ ty _) id ident) = ty
 getTypeFromLvalTResult (Abs.LvalueExpressions res@(TResult _ ty _) id ident next) = ty
+getTypeFromLvalTResult _ = (B_type Type_Void) -- when err
 
 ---------------------------------------------------------------------------------------------------
 --- EXECUTION FUNCTIONS ---------------------------------------------------------------------------
