@@ -1,13 +1,13 @@
 proc writeInt(input:int):void{
 }
 
-proc writeReal(input:int):void{
+proc writeReal(input:real):void{
 }
 
-proc writeChar(input:int):void{
+proc writeChar(input:char):void{
 }
 
-proc writeString(input:int):void{
+proc writeString(input:string):void{
 }
 
 function readInt():int{
