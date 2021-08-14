@@ -99,7 +99,7 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                         Array ts dims -> case t of
                                                                                                             B_type Type_Integer -> if (ts==(B_type Type_Real) || ts==(B_type Type_Integer) || ts==(Pointer (B_type Type_Real) 1) || ts==(Pointer (B_type Type_Integer) 1)) then True else False
                                                                                                             Pointer pt pl -> if (ts == (Pointer pt (pl+1))) then True else False
-                                                                                                            _ -> if ((t==ts) || (ts==(Pointer t 1)))  then True else False
+                                                                                                            _ -> if ((checkCompatibility (TResult env t pos) (TResult env ts pos)) || (ts==(Pointer t 1)))  then True else False
 
                                                                                         _ -> False
 
@@ -409,8 +409,14 @@ getDimFromExpF (Abs.TypeExpressionArrayOfPointer _ _) = 0
 getDimFromExpF (Abs.TypeExpressionFunction _ typeexp) = getDimFromTypeExp typeexp
 
 getDimFromTypeExp :: Abs.TYPEEXPRESSION a -> Prelude.Integer
-getDimFromTypeExp (Abs.TypeExpressionArraySimple _ range expf) = getDimFromRange range + getDimFromExpF expf
-getDimFromTypeExp (Abs.TypeExpressionArray _ range expf) = getDimFromRange range + getDimFromExpF expf
+getDimFromTypeExp (Abs.TypeExpressionArraySimple _ range expf) = let next = getDimFromExpF expf in
+                                                                    if next==0 
+                                                                        then getDimFromRange range
+                                                                        else getDimFromRange range * getDimFromExpF expf
+getDimFromTypeExp (Abs.TypeExpressionArray _ range expf) = let next = getDimFromExpF expf in
+                                                                    if next==0 
+                                                                        then getDimFromRange range
+                                                                        else getDimFromRange range * getDimFromExpF expf
 getDimFromTypeExp _ = 0
 
 getDimFromRange :: Abs.RANGEEXP a -> Prelude.Integer
@@ -426,19 +432,100 @@ getDimFromRange (Abs.RangeExpressionSingle _ exp1 exp2) = case exp1 of
                                                                                                             _ -> 0
                                                             _ -> 0
 
-getDimFromInit :: Abs.INITPART Posn -> Prelude.Integer
+getDimFromInit :: Abs.INITPART a -> Prelude.Integer
 getDimFromInit (Abs.InitializzationPartArray _ arrayInit) = getDimFromArrayInit arrayInit
 getDimFromInit _ = 0
 
-getDimFromArrayInit :: Abs.ARRAYINIT Posn -> Prelude.Integer
-getDimFromArrayInit (Abs.ArrayInitSingleElems _ listelement) = getDimFromListElement listelement
-getDimFromArrayInit (Abs.ArrayInitElems _ listelement arrayInit) = getDimFromListElement listelement + getDimFromArrayInit arrayInit
+getDimFromArrayInit :: Abs.ARRAYINIT a -> Prelude.Integer
+getDimFromArrayInit (Abs.ArrayInitElems _ listelement) = getDimFromListElement listelement
 getDimFromArrayInit (Abs.ArrayInitSingle _ arrayInit) = getDimFromArrayInit arrayInit
 getDimFromArrayInit (Abs.ArrayInit _ arrayInit1 arrayInit2) = getDimFromArrayInit arrayInit1 + getDimFromArrayInit arrayInit2
 
-getDimFromListElement :: Abs.LISTELEMENTARRAY Posn -> Prelude.Integer
+getDimFromListElement :: Abs.LISTELEMENTARRAY a -> Prelude.Integer
 getDimFromListElement (Abs.ListElementsOfArray _ exp listelement) = 1 + getDimFromListElement listelement
 getDimFromListElement (Abs.ListElementOfArray _ exp) = 1
+
+countListEl :: Abs.ARRAYINIT a -> Prelude.Integer
+countListEl (Abs.ArrayInitElems _ listelement) = 1 
+countListEl (Abs.ArrayInitSingle _ arrayInit) = countListEl arrayInit
+countListEl (Abs.ArrayInit _ arrayInit1 arrayInit2) = countListEl arrayInit1 + countListEl arrayInit2
+
+countListEl_ :: Abs.LISTELEMENTARRAY a -> Prelude.Integer
+countListEl_ (Abs.ListElementsOfArray _ el elems) = 1 + countListEl_ elems
+countListEl_ (Abs.ListElementOfArray _ el) = 1
+
+countListInit :: Abs.ARRAYINIT a -> Prelude.Integer
+countListInit (Abs.ArrayInit _ arrayInit1 arrayInit2) = countListInit arrayInit1 + 1
+countListInit (Abs.ArrayInitSingle _ arrayInit) = 1
+countListInit _  = 0
+
+getChild :: Abs.TYPEEXPRESSIONFUNC a -> Abs.TYPEEXPRESSION a
+getChild (Abs.TypeExpressionArrayOfPointer _ expf) = getChild expf
+getChild (Abs.TypeExpressionFunction _ exp) = exp
+
+executeInitCheck :: Abs.ARRAYINIT a -> Abs.TYPEEXPRESSION a -> Prelude.Bool
+executeInitCheck (Abs.ArrayInitSingle _ arrayInit) (Abs.TypeExpressionArraySimple _ range expf) = dimIsOk_ (getChild expf) arrayInit
+executeInitCheck (Abs.ArrayInit _ arrayInit1 arrayInit2) ty@(Abs.TypeExpressionArraySimple _ range expf) = (executeInitCheck arrayInit1 ty) && dimIsOk_ (getChild expf) arrayInit2
+executeInitCheck (Abs.ArrayInitSingle _ arrayInit) (Abs.TypeExpressionArray _ range expf) = dimIsOk_ (getChild expf) arrayInit
+executeInitCheck (Abs.ArrayInit _ arrayInit1 arrayInit2) ty@(Abs.TypeExpressionArray _ range expf) = (executeInitCheck arrayInit1 ty) && dimIsOk_ (getChild expf) arrayInit2
+executeInitCheck _ _ = False
+
+dimIsOk :: Abs.TYPEPART a -> Abs.INITPART a -> Prelude.Bool
+dimIsOk (Abs.TypePart _ typeexp) (Abs.InitializzationPartArray _ arrayInit) = dimIsOk_ typeexp arrayInit
+dimIsOk _ _ = True
+-- todo lvalue multipli con array di array e interi ++ typeindexpointer 
+dimIsOk_ :: Abs.TYPEEXPRESSION a -> Abs.ARRAYINIT a -> Prelude.Bool
+dimIsOk_ (Abs.TypeExpressionArraySimple _ range expf) init@(Abs.ArrayInitElems _ listelement) = let next = getDimFromExpF expf in
+                                                                                                    let rangeDim = getDimFromRange range in
+                                                                                                        let listEl = countListEl_ listelement in
+                                                                                                            if next==0
+                                                                                                                then
+                                                                                                                    if rangeDim == listEl 
+                                                                                                                        then True
+                                                                                                                        else False
+                                                                                                                else 
+                                                                                                                    False
+dimIsOk_ ty@(Abs.TypeExpressionArraySimple _ range expf) init@(Abs.ArrayInit _ arrayInit1 arrayInit2) = let listEl = countListInit init in
+                                                                                                            let rangeDim = getDimFromRange range in
+                                                                                                                if listEl==rangeDim
+                                                                                                                    then let isOkInit1 = executeInitCheck arrayInit1 ty in
+                                                                                                                            isOkInit1 && dimIsOk_ (getChild expf) arrayInit2
+                                                                                                                    else False
+dimIsOk_ ty@(Abs.TypeExpressionArraySimple _ range expf) init@(Abs.ArrayInitSingle _ arrayInit) = let next = getDimFromExpF expf in
+                                                                                                    if next==0
+                                                                                                        then dimIsOk_ (getChild expf) arrayInit
+                                                                                                        else let listEl = countListInit init in
+                                                                                                                let rangeDim = getDimFromRange range in
+                                                                                                                    if listEl==rangeDim
+                                                                                                                        then dimIsOk_ (getChild expf) arrayInit
+                                                                                                                        else False
+dimIsOk_ (Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInitElems _ listelement) = let next = getDimFromExpF expf in
+                                                                                            let rangeDim = getDimFromRange range in
+                                                                                                let listEl = countListEl_ listelement in
+                                                                                                    if next==0
+                                                                                                        then
+                                                                                                            if rangeDim == listEl 
+                                                                                                                then True
+                                                                                                                else False
+                                                                                                        else 
+                                                                                                            False
+dimIsOk_ ty@(Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInit _ arrayInit1 arrayInit2) = let listEl = countListInit init in
+                                                                                                    let rangeDim = getDimFromRange range in
+                                                                                                        if listEl==rangeDim
+                                                                                                            then let isOkInit1 = executeInitCheck arrayInit1 ty in
+                                                                                                                    isOkInit1 && dimIsOk_ (getChild expf) arrayInit2
+                                                                                                            else False
+dimIsOk_ ty@(Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInitSingle _ arrayInit) = let next = getDimFromExpF expf in
+                                                                                                if next==0
+                                                                                                    then dimIsOk_ (getChild expf) arrayInit
+                                                                                                    else let listEl = countListInit init in
+                                                                                                            let rangeDim = getDimFromRange range in
+                                                                                                                if listEl==rangeDim
+                                                                                                                    then dimIsOk_ (getChild expf) arrayInit
+                                                                                                                    else False
+dimIsOk_ _ _ = False
+
+
 
 getInitPart :: Prelude.String -> Prelude.String -> Prelude.String -> Prelude.String
 getInitPart (x:xs) zs result = case x of
@@ -580,14 +667,31 @@ getPosList :: Abs.IDENTLIST Posn -> [Posn]
 getPosList (Abs.IdentifierList _ (Abs.Ident s pos) identlist) = [pos] ++ getPosList identlist
 getPosList (Abs.IdentifierSingle _ (Abs.Ident s pos)) = [pos] 
 
+first :: (Abs.ARRAYINDEXELEMENTS Posn,Abs.TYPEINDEX Posn) -> Abs.ARRAYINDEXELEMENTS Posn
+first (a,b) = a
+
+second :: (Abs.ARRAYINDEXELEMENTS Posn,Abs.TYPEINDEX Posn) -> Abs.TYPEINDEX Posn
+second (a,b) = b
+
+reverseIndexTree :: Abs.ARRAYINDEXELEMENT Posn -> Abs.ARRAYINDEXELEMENT Posn
+reverseIndexTree (Abs.ArrayIndexElement pos ti) = Abs.ArrayIndexElement pos ti
+reverseIndexTree (Abs.ArrayIndexElements pos elements ti) = let rev = reverseIndexTree_ elements ti in 
+                                                                Abs.ArrayIndexElements pos (first rev) (second rev)
+reverseIndexTree (Abs.ArrayIndexElementEmpty pos) = Abs.ArrayIndexElementEmpty pos
+
+reverseIndexTree_ :: Abs.ARRAYINDEXELEMENTS Posn -> Abs.TYPEINDEX Posn -> (Abs.ARRAYINDEXELEMENTS Posn,Abs.TYPEINDEX Posn)
+reverseIndexTree_ (Abs.ArrayIndexElementsSingle pos ti) typeIndex = (Abs.ArrayIndexElementsSingle pos typeIndex,ti)
+reverseIndexTree_ (Abs.ArrayIndexElementsMultiple pos elems ti) typeIndex = let rev = reverseIndexTree_ elems ti in
+                                                                                (Abs.ArrayIndexElementsMultiple pos (first rev) (second rev),typeIndex)
+
 -- counts number of indexed dimension on a indexed array call
 countIndex :: Abs.ARRAYINDEXELEMENT Posn -> Prelude.Integer 
 countIndex (Abs.ArrayIndexElement pos ti) = countIndex_ ti
-countIndex (Abs.ArrayIndexElements pos ti elements) = countIndex_ ti
+countIndex (Abs.ArrayIndexElements pos elements ti) = countIndex_ ti
 countIndex (Abs.ArrayIndexElementEmpty pos) = 0
 
 -- implements the previous func
-countIndex_ :: Abs.TYPEINDEX Posn -> Prelude.Integer 
+countIndex_ :: Abs.TYPEINDEX a -> Prelude.Integer 
 countIndex_ (Abs.TypeOfIndexInt pos ti val) = 1 + countIndex_ ti
 countIndex_ (Abs.TypeOfIndexIntSingle pos val) = 1 
 countIndex_ (Abs.TypeOfIndexVar pos ti val index) = 1 + countIndex_ ti
@@ -608,6 +712,8 @@ countIndex_ node@(Abs.TypeOfIndexBinaryPower pos typeindex exp1 exp2) = 1 + coun
 countIndex_ node@(Abs.TypeOfIndexBinaryPowerSingle pos exp1 exp2 ) = 1
 countIndex_ node@(Abs.TypeOfIndexExpressionCall pos typeindex id exps ) = 1 + countIndex_ typeindex
 countIndex_ node@(Abs.TypeOfIndexExpressionCallSingle pos id exps ) = 1
+countIndex_ node@(Abs.TypeOfIndexExpressionBracket pos typeindex exp ) = 1 + countIndex_ typeindex
+countIndex_ node@(Abs.TypeOfIndexExpressionBracketSingle pos exp ) = 1
 
 -- Checks if array is being indexed
     -- if it is: return primitive type
@@ -811,8 +917,7 @@ executeInitPart node@(Abs.InitializzationPartEmpty pos) env = Abs.Initializzatio
 executeArrayInit :: Abs.ARRAYINIT Posn -> Env -> Abs.ARRAYINIT TCheckResult
 executeArrayInit node@(Abs.ArrayInitSingle pos arrayinit) env = Abs.ArrayInitSingle (checkTypeArrayInit node env) (executeArrayInit arrayinit env)
 executeArrayInit node@(Abs.ArrayInit pos arrayinit1 arrayinit2) env = Abs.ArrayInit (checkTypeArrayInit node env) (executeArrayInit arrayinit1 env) (executeArrayInit arrayinit2 env)
-executeArrayInit node@(Abs.ArrayInitSingleElems pos listelementarray) env = Abs.ArrayInitSingleElems (checkTypeArrayInit node env) (executeListElementArray listelementarray env)
-executeArrayInit node@(Abs.ArrayInitElems pos listelementarray arrayinit) env = Abs.ArrayInitElems (checkTypeArrayInit node env) (executeListElementArray listelementarray env) (executeArrayInit arrayinit env)
+executeArrayInit node@(Abs.ArrayInitElems pos listelementarray) env = Abs.ArrayInitElems (checkTypeArrayInit node env) (executeListElementArray listelementarray env)
 
 executeListElementArray :: Abs.LISTELEMENTARRAY Posn -> Env -> Abs.LISTELEMENTARRAY TCheckResult
 executeListElementArray node@(Abs.ListElementsOfArray pos expr elementlist) env = Abs.ListElementsOfArray (checkListElementsOfArray node env) (executeExpression expr env) (executeListElementArray elementlist env)
@@ -1059,12 +1164,12 @@ executeAssignOp node@(Abs.AssignOperationEqPower pos) env = Abs.AssignOperationE
 
 executeArrayIndexElement :: Abs.ARRAYINDEXELEMENT Posn -> Env -> Abs.ARRAYINDEXELEMENT TCheckResult
 executeArrayIndexElement node@(Abs.ArrayIndexElement pos index) env = Abs.ArrayIndexElement (checkArrayIndexElement node env) (executeTypeTypeIndex index env)
-executeArrayIndexElement node@(Abs.ArrayIndexElements pos index arrayIndex) env = Abs.ArrayIndexElements (checkArrayIndexElement node env) (executeTypeTypeIndex index env) (executeArrayIndexElements arrayIndex env)
+executeArrayIndexElement node@(Abs.ArrayIndexElements pos arrayIndex index) env = Abs.ArrayIndexElements (checkArrayIndexElement node env) (executeArrayIndexElements arrayIndex env) (executeTypeTypeIndex index env) 
 executeArrayIndexElement node@(Abs.ArrayIndexElementEmpty pos) env = Abs.ArrayIndexElementEmpty (checkArrayIndexElement node env)
 
 executeArrayIndexElements :: Abs.ARRAYINDEXELEMENTS Posn -> Env -> Abs.ARRAYINDEXELEMENTS TCheckResult
 executeArrayIndexElements node@(Abs.ArrayIndexElementsSingle pos index) env = Abs.ArrayIndexElementsSingle (checkArrayIndexElements node env) (executeTypeTypeIndex index env)
-executeArrayIndexElements node@(Abs.ArrayIndexElementsMultiple pos index arrayIndex) env = Abs.ArrayIndexElementsMultiple (checkArrayIndexElements node env) (executeTypeTypeIndex index env) (executeArrayIndexElements arrayIndex env)
+executeArrayIndexElements node@(Abs.ArrayIndexElementsMultiple pos arrayIndex index) env = Abs.ArrayIndexElementsMultiple (checkArrayIndexElements node env) (executeArrayIndexElements arrayIndex env) (executeTypeTypeIndex index env) 
 
 executeTypeTypeIndex :: Abs.TYPEINDEX Posn -> Env -> Abs.TYPEINDEX TCheckResult
 executeTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = Abs.TypeOfIndexInt (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeInteger integer env)
@@ -1087,6 +1192,8 @@ executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryPower pos typeindex exp1 exp2) e
 executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryPowerSingle pos exp1 exp2 ) env = Abs.TypeOfIndexBinaryPowerSingle (checkTypeTypeIndex node env) (executeExpression exp1 env) (executeExpression exp2 env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexExpressionCall pos typeindex id exps ) env = Abs.TypeOfIndexExpressionCall (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeIdentVar id env) (executeExpressions exps env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexExpressionCallSingle pos id exps ) env = Abs.TypeOfIndexExpressionCallSingle (checkTypeTypeIndex node env) (executeIdentVar id env) (executeExpressions exps env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexExpressionBracket pos typeindex exp ) env = Abs.TypeOfIndexExpressionBracket (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeExpression exp env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexExpressionBracketSingle pos exp ) env = Abs.TypeOfIndexExpressionBracketSingle (checkTypeTypeIndex node env) (executeExpression exp env)
 
 executeIdentFunc :: Abs.Ident Posn -> Env -> Abs.Ident TCheckResult
 executeIdentFunc node@(Abs.Ident id pos) env = Abs.Ident id (checkTypeIdentFunc node env)
@@ -1140,7 +1247,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
                                                                                                                                                                         then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                         else case index of
                                                                                                                                                                             (Abs.ArrayIndexElement _ _) -> checkErrors (checkArrayIndexElement index env) (TResult env t pos)
-                                                                                                                                                                            (Abs.ArrayIndexElements _ _ elems) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
+                                                                                                                                                                            (Abs.ArrayIndexElements _ elems _) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
                                                                                                                                                              else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
                                                                         -- multiple entries; first is of type array
                                                                         Just ((Variable (Array t dim) pose mode override s):xs) -> case index of
@@ -1155,7 +1262,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
                                                                                                                                                                         then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                         else case index of
                                                                                                                                                                             (Abs.ArrayIndexElement _ _) -> checkErrors (checkArrayIndexElement index env) (TResult env t pos)
-                                                                                                                                                                            (Abs.ArrayIndexElements _ _ elems) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
+                                                                                                                                                                            (Abs.ArrayIndexElements _ elems _) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
                                                                                                                                                                     else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
                                                                         -- 1 entry of type func
                                                                         Just [Function _ _ _ _] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
@@ -1175,7 +1282,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpression pos ident@(Abs.Ident id pos
                                                                                                                                                                                                             then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                             else case index of
                                                                                                                                                                                                                     (Abs.ArrayIndexElement _ _) -> checkErrors (checkArrayIndexElement index env) (TResult env t pos)
-                                                                                                                                                                                                                    (Abs.ArrayIndexElements _ _ elems) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)) 
+                                                                                                                                                                                                                    (Abs.ArrayIndexElements _ elems _) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)) 
                                                                                                                                                                                                     else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: " ++ show posI] 
                                                                                                             ((Variable t pose mode override s):ys) -> if mode == "param" -- if param.. error because it cannot be overwritten
                                                                                                                                                    then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
@@ -1212,7 +1319,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id po
                                                                                                                                                                                                                                                                 then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                                                                                 else case index of
                                                                                                                                                                                                                                                                 (Abs.ArrayIndexElement _ _) -> checkErrors (checkArrayIndexElement index env) (TResult env t pos)
-                                                                                                                                                                                                                                                                (Abs.ArrayIndexElements _ _ elems) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
+                                                                                                                                                                                                                                                                (Abs.ArrayIndexElements _ elems _) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
                                                                                                                                                                                                                                                             else case (checkTypeLvalueExpression next env) of
                                                                                                                                                                                                                                                                 TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                                                                                                                                                 _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
@@ -1232,7 +1339,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id po
                                                                                                                                                                                                                                                                 then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                                                                                 else case index of
                                                                                                                                                                                                                                                                 (Abs.ArrayIndexElement _ _) -> checkErrors (checkArrayIndexElement index env) (TResult env t pos)
-                                                                                                                                                                                                                                                                (Abs.ArrayIndexElements _ _ elems) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
+                                                                                                                                                                                                                                                                (Abs.ArrayIndexElements _ elems _) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
                                                                                                                                                                                                                                                                 else case (checkTypeLvalueExpression next env) of
                                                                                                                                                                                                                                                                     TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                                                                                                                                                     _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
@@ -1257,7 +1364,7 @@ checkTypeLvalueExpression node@(Abs.LvalueExpressions pos ident@(Abs.Ident id po
                                                                                                                                                                                                                                                                     then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                                                                                     else case index of
                                                                                                                                                                                                                                                                     (Abs.ArrayIndexElement _ _) -> checkErrors (checkArrayIndexElement index env) (TResult env t pos)
-                                                                                                                                                                                                                                                                    (Abs.ArrayIndexElements _ _ elems) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
+                                                                                                                                                                                                                                                                    (Abs.ArrayIndexElements _ elems _) -> checkErrors (checkArrayIndexElement index env) (checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env))
                                                                                                                                                                                                                                                                     else case (checkTypeLvalueExpression next env) of
                                                                                                                                                                                                                                                                         TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                                                                                                                                                         _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
@@ -1292,21 +1399,21 @@ checkMultipleIndexElements (Array t dim) (Abs.ArrayIndexElementsSingle pos index
                         if dim == (countIndex (Abs.ArrayIndexElement pos index))
                         then TResult env t pos
                         else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array! Position: " ++ show pos]
-checkMultipleIndexElements (Array t dim) (Abs.ArrayIndexElementsMultiple pos index elems) env = -- array of arrays
+checkMultipleIndexElements (Array t dim) (Abs.ArrayIndexElementsMultiple pos elems index ) env = -- array of arrays
                         if dim == (countIndex (Abs.ArrayIndexElement pos index)) 
                         then case t of
                             (Array _ _) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
                             _ -> TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array! Position: " ++ show pos]
                         else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array! Position: " ++ show pos] 
 checkMultipleIndexElements _ (Abs.ArrayIndexElementsSingle pos index) env = TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array! Position: " ++ show pos] 
-checkMultipleIndexElements _ (Abs.ArrayIndexElementsMultiple pos index elems) env = TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array! Position: " ++ show pos] 
+checkMultipleIndexElements _ (Abs.ArrayIndexElementsMultiple pos elems index ) env = TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array! Position: " ++ show pos] 
 
 checkArrayIndexElements :: Abs.ARRAYINDEXELEMENTS Posn -> Env -> TCheckResult
 checkArrayIndexElements node@(Abs.ArrayIndexElementsSingle pos index) env = let indexTCheck = checkTypeTypeIndex index env in
                                                                                 case indexTCheck of
                                                                                     TResult _ _ _ -> (TResult env (B_type Type_Void ) pos)
                                                                                     TError e -> indexTCheck
-checkArrayIndexElements node@(Abs.ArrayIndexElementsMultiple pos index arrayIndex) env = let indexTCheck = checkTypeTypeIndex index env in
+checkArrayIndexElements node@(Abs.ArrayIndexElementsMultiple pos arrayIndex index) env = let indexTCheck = checkTypeTypeIndex index env in
                                                                                             let arrayIndexTCheck = checkArrayIndexElements arrayIndex env in
                                                                                                 case indexTCheck of
                                                                                                     TResult _ _ _ -> case arrayIndexTCheck of
@@ -1321,7 +1428,7 @@ checkArrayIndexElement node@(Abs.ArrayIndexElement pos index) env = let indexTCh
                                                                         case indexTCheck of
                                                                             TResult _ _ _ -> (TResult env (B_type Type_Void ) pos)
                                                                             TError e -> indexTCheck
-checkArrayIndexElement node@(Abs.ArrayIndexElements pos index arrayIndex) env = let indexTCheck = checkTypeTypeIndex index env in
+checkArrayIndexElement node@(Abs.ArrayIndexElements pos arrayIndex index) env = let indexTCheck = checkTypeTypeIndex index env in
                                                                                     let arrayIndexTCheck = checkArrayIndexElements arrayIndex env in
                                                                                         case indexTCheck of
                                                                                             TResult _ _ _ -> case arrayIndexTCheck of
@@ -1681,33 +1788,34 @@ checkTypeExpression node@(Abs.ExpressionBinaryLess pos exp1 exp2) env = let exp1
                                                                                     if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
                                                                                         then TResult env (B_type Type_Boolean) pos
                                                                                         else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
-checkTypeExpression node@(Abs.ExpressionIdent pos ident@(Abs.Ident id posI) index) env =  case Data.Map.lookup id env of
-                                                                                            Just [Variable (Array t dim) pose mode override s] -> case index of
-                                                                                                                                                Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
-                                                                                                                                                _ ->if dim == (countIndex index) then case index of
-                                                                                                                                                    (Abs.ArrayIndexElement _ _) -> TResult env t pos
-                                                                                                                                                    (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
-                                                                                                                                                    else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
-                                                                                            Just ((Variable (Array t dim) pose mode override s):xs) -> case index of
+checkTypeExpression node@(Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) env =  let index = reverseIndexTree indexing in
+                                                                                            case Data.Map.lookup id env of
+                                                                                                Just [Variable (Array t dim) pose mode override s] -> case index of
                                                                                                                                                     Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                                                     _ ->if dim == (countIndex index) then case index of
                                                                                                                                                         (Abs.ArrayIndexElement _ _) -> TResult env t pos
-                                                                                                                                                        (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
+                                                                                                                                                        (Abs.ArrayIndexElements _ elems ti) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
                                                                                                                                                         else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
-                                                                                            Just [Function _ _ _ _] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
-                                                                                            Just ((Function _ _ _ _):xs) -> let v =findEntryOfType xs "var" in
-                                                                                                                            case v of
-                                                                                                                                [] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
-                                                                                                                                ((Variable (Array t dim) pose mode override s):ys) -> case index of
-                                                                                                                                                                                    Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
-                                                                                                                                                                                    _ ->if dim == (countIndex index) then case index of
-                                                                                                                                                                                        (Abs.ArrayIndexElement _ _) -> TResult env t pos
-                                                                                                                                                                                        (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
-                                                                                                                                                                                        else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
-                                                                                                                                ((Variable t pose mode override s):ys) -> TResult env t pos
-                                                                                            Just [Variable t pose mode override s] -> TResult env t pos
-                                                                                            Just ((Variable t pose mode override s):xs) -> TResult env t pos
-                                                                                            Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
+                                                                                                Just ((Variable (Array t dim) pose mode override s):xs) -> case index of
+                                                                                                                                                        Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
+                                                                                                                                                        _ ->if dim == (countIndex index) then case index of
+                                                                                                                                                            (Abs.ArrayIndexElement _ _) -> TResult env t pos
+                                                                                                                                                            (Abs.ArrayIndexElements _ elems _) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
+                                                                                                                                                            else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
+                                                                                                Just [Function _ _ _ _] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
+                                                                                                Just ((Function _ _ _ _):xs) -> let v =findEntryOfType xs "var" in
+                                                                                                                                case v of
+                                                                                                                                    [] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
+                                                                                                                                    ((Variable (Array t dim) pose mode override s):ys) -> case index of
+                                                                                                                                                                                        Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
+                                                                                                                                                                                        _ ->if dim == (countIndex index) then case index of
+                                                                                                                                                                                            (Abs.ArrayIndexElement _ _) -> TResult env t pos
+                                                                                                                                                                                            (Abs.ArrayIndexElements _ elems _) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
+                                                                                                                                                                                            else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
+                                                                                                                                    ((Variable t pose mode override s):ys) -> TResult env t pos
+                                                                                                Just [Variable t pose mode override s] -> TResult env t pos
+                                                                                                Just ((Variable t pose mode override s):xs) -> TResult env t pos
+                                                                                                Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
 checkTypeExpression node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
                                                                 Just [Function t posf param canOverride] -> checkTypeExpressionCall_ node env [Function t posf param canOverride]
                                                                 Just [Variable _ _ _ _ _] -> mergeErrors (TError ["Function " ++ id ++ " undeclared! Position: " ++ (show posid)]) (checkTypeExpressions exps env)
@@ -1761,13 +1869,13 @@ checkTypeDefault s node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) inde
                                                                                                                             Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                             _ ->if dim == (countIndex index) then case index of
                                                                                                                                 (Abs.ArrayIndexElement _ _) -> TResult env t pos
-                                                                                                                                (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
+                                                                                                                                (Abs.ArrayIndexElements _ elems _) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
                                                                                                                                 else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
                                                                         Just ((Variable (Array t dim) posd mode override s):xs) -> case index of
                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                                 _ ->if dim == (countIndex index) then case index of
                                                                                                                                     (Abs.ArrayIndexElement _ _) -> TResult env t pos
-                                                                                                                                    (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
+                                                                                                                                    (Abs.ArrayIndexElements _ elems _) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
                                                                                                                                     else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
                                                                         Just [Function _ _ _ _] -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
                                                                         Just ((Function _ _ _ _):xs) -> let v =findEntryOfType xs "var" in
@@ -1777,7 +1885,7 @@ checkTypeDefault s node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) inde
                                                                                                                                                                 Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                                                                                                                                 _ ->if dim == (countIndex index) then case index of
                                                                                                                                                                     (Abs.ArrayIndexElement _ _) -> TResult env t pos
-                                                                                                                                                                    (Abs.ArrayIndexElements _ _ elems) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
+                                                                                                                                                                    (Abs.ArrayIndexElements _ elems _) -> checkErrors (TResult env t pos) (checkMultipleIndexElements t elems env)
                                                                                                                                                                     else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
                                                                                                             ((Variable t posd mode override s):ys) -> TResult env t pos
                                                                         Just [Variable t posd mode override s] -> TResult env t pos
@@ -1897,32 +2005,36 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                             let typeCheck = checkTypeTypePart typepart env in
                                                                                                                 let initCheck = checkTypeInitializzationPart initpart env in
                                                                                                                     if typeDim == initDim
-                                                                                                                    then case typeCheck of
-                                                                                                                            TResult env (Pointer t depth) post -> case initCheck of
-                                                                                                                                TResult env (Pointer tI depthI) posi -> if (checkCompatibility (TResult env (Pointer tI ((depthI+1)-(checkDef initpart))) posi) (TResult env (Pointer t depth) post)) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation with incompatible type! Position: "++ show (getPos initCheck)]) identTCheck)
-                                                                                                                                _ -> case initCheck of -- if init part has errors, show it and stop generating other errors
-                                                                                                                                    TError errs -> (checkErrors identTCheck initCheck)
-                                                                                                                                    _ -> if (checkCompatibility initCheck (TResult env t pos) && depth==1) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation with incompatible type! Position: "++ show (getPos initCheck)]) identTCheck)
-                                                                                                                            TResult env (Array t dim) post -> case initCheck of
-                                                                                                                                TResult env (Array ts dims) posi -> if checkCompatibility initCheck typeCheck then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
-                                                                                                                                                                                                                                                                                                                                                                            (Abs.IdentifierList _ _ _) -> "arrays"
-                                                                                                                                                                                                                                                                                                                                                                            (Abs.IdentifierSingle _ _) -> "array")
-                                                                                                                                                                                                                                                                                                                                                                            ++" " ++ getIdsFromIdentList identlist ++" of type " ++ show t ++ " with values of type "++ show ts ++ "! Position: " ++ show (getPos initCheck)]) identTCheck)
-                                                                                                                                _ -> mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
-                                                                                                                                                                                                        (Abs.IdentifierList _ _ _) -> "arrays"
-                                                                                                                                                                                                        (Abs.IdentifierSingle _ _) -> "array") ++" "
-                                                                                                                                                                                                        ++ getIdsFromIdentList identlist ++" of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position: " ++ show (getPos initCheck)]) identTCheck)
-                                                                                                                            TError errs -> TError errs
-                                                                                                                            _ -> case initCheck of 
-                                                                                                                                TError errs -> TError errs -- if init part has errors, show it and stop generating other errors
-                                                                                                                                _ -> if (checkCompatibility initCheck typeCheck) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors identTCheck (mergeErrors initCheck (TError ["Cannot initialize "++ (case identlist of 
-                                                                                                                                                                                                                                                                                                                                    (Abs.IdentifierList _ _ _) -> "variables"
-                                                                                                                                                                                                                                                                                                                                    (Abs.IdentifierSingle _ _) -> "variable")
-                                                                                                                                                                                                                                                                                                                                    ++" "++ getIdsFromIdentList identlist ++" of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position: " ++ show (getPos initCheck)]))
-                                                                                                                    else case initpart of
-                                                                                                                            (Abs.InitializzationPartArray _ arrayInit) -> TError ["Array initialization"++ showInit initpart++" has "++show initDim++(if initDim==1 then " element" else " elements")++", while the declaration prescribes "++show typeDim++(if typeDim==1 then " element!" else " elements!")++" Position: "++show pos]
-                                                                                                                            _ -> TError ["Invalid array initialization part! Position: "++show pos]
-                                                                                                                            ) -- case end            
+                                                                                                                        then
+                                                                                                                            if (case initpart of (Abs.InitializzationPartArray _ arrayInit) -> dimIsOk typepart initpart
+                                                                                                                                                 _ -> True)
+                                                                                                                            then case typeCheck of
+                                                                                                                                    TResult env (Pointer t depth) post -> case initCheck of
+                                                                                                                                        TResult env (Pointer tI depthI) posi -> if (checkCompatibility (TResult env (Pointer tI ((depthI+1)-(checkDef initpart))) posi) (TResult env (Pointer t depth) post)) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation with incompatible type! Position: "++ show (getPos initCheck)]) identTCheck)
+                                                                                                                                        _ -> case initCheck of -- if init part has errors, show it and stop generating other errors
+                                                                                                                                            TError errs -> (checkErrors identTCheck initCheck)
+                                                                                                                                            _ -> if (checkCompatibility initCheck (TResult env t pos) && depth==1) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation with incompatible type! Position: "++ show (getPos initCheck)]) identTCheck)
+                                                                                                                                    TResult env (Array t dim) post -> case initCheck of
+                                                                                                                                        TResult env (Array ts dims) posi -> if checkCompatibility initCheck typeCheck then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
+                                                                                                                                                                                                                                                                                                                                                                                    (Abs.IdentifierList _ _ _) -> "arrays"
+                                                                                                                                                                                                                                                                                                                                                                                    (Abs.IdentifierSingle _ _) -> "array")
+                                                                                                                                                                                                                                                                                                                                                                                    ++" " ++ getIdsFromIdentList identlist ++" of type " ++ show t ++ " with values of type "++ show ts ++ "! Position: " ++ show (getPos initCheck)]) identTCheck)
+                                                                                                                                        _ -> mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
+                                                                                                                                                                                                                (Abs.IdentifierList _ _ _) -> "arrays"
+                                                                                                                                                                                                                (Abs.IdentifierSingle _ _) -> "array") ++" "
+                                                                                                                                                                                                                ++ getIdsFromIdentList identlist ++" of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position: " ++ show (getPos initCheck)]) identTCheck)
+                                                                                                                                    TError errs -> TError errs
+                                                                                                                                    _ -> case initCheck of 
+                                                                                                                                        TError errs -> TError errs -- if init part has errors, show it and stop generating other errors
+                                                                                                                                        _ -> if (checkCompatibility initCheck typeCheck) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors identTCheck (mergeErrors initCheck (TError ["Cannot initialize "++ (case identlist of 
+                                                                                                                                                                                                                                                                                                                                            (Abs.IdentifierList _ _ _) -> "variables"
+                                                                                                                                                                                                                                                                                                                                            (Abs.IdentifierSingle _ _) -> "variable")
+                                                                                                                                                                                                                                                                                                                                            ++" "++ getIdsFromIdentList identlist ++" of type " ++ show (getType typeCheck) ++ " with values of type "++ show (getType initCheck) ++ "! Position: " ++ show (getPos initCheck)]))
+                                                                                                                            else TError ["Invalid array initialization part! Position: "++show pos]          
+                                                                                                                        else   case initpart of
+                                                                                                                                    (Abs.InitializzationPartArray _ arrayInit) -> TError ["Array initialization"++ showInit initpart++" has "++show initDim++(if initDim==1 then " element" else " elements")++", while the declaration prescribes "++show typeDim++(if typeDim==1 then " element!" else " elements!")++" Position: "++show pos]
+                                                                                                                                    _ -> TError ["Invalid array initialization part! Position: "++show pos]
+                                                                                                                                    ) -- case end     
 checkErrors :: TCheckResult -> TCheckResult -> TCheckResult
 checkErrors (TResult env ty pos) (TResult envs tys poss) = TResult envs tys poss
 checkErrors (TResult env ty pos) (TError e) = TError e
@@ -2135,7 +2247,7 @@ checkTypeTypeIndex node@(Abs.TypeOfIndexVar pos typeindex id@(Abs.Ident idi posi
                                                                                                                                                             [] -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
                                                                                                                                                             ((Variable tv _ _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Nothing -> TError["Variable "++ idi ++ " undecleared! Position: " ++ (show pos)]
-                                                                                    Abs.ArrayIndexElements posi tyindex arrindex -> case Data.Map.lookup idi env of
+                                                                                    Abs.ArrayIndexElements posi arrindex tyindex -> case Data.Map.lookup idi env of
                                                                                                                                     Just [Variable (Array t dim) _ _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
                                                                                                                                                                             then checkErrors (checkTypeTypeIndex typeindex env)  (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                             else TError ["Incompatible type for index at: "++ show pos] 
@@ -2187,7 +2299,7 @@ checkTypeTypeIndex node@(Abs.TypeOfIndexVarSingle pos (Abs.Ident id posI) index)
                                                                                                                                                                                                     else TError ["Incompatible type for index at: "++ show pos] 
                                                                                                                                                             ((Variable tv _ _ _ _):ys) -> TError ["Incompatible type for index at: "++ show pos]
                                                                                                                         Nothing -> TError["Variable "++ id ++ " undecleared! Position: " ++ (show pos)]
-                                                                                    Abs.ArrayIndexElements posi tyindex arrindex -> case Data.Map.lookup id env of
+                                                                                    Abs.ArrayIndexElements posi arrindex tyindex -> case Data.Map.lookup id env of
                                                                                                                                     Just [Variable (Array t dim) _ _ _ _] -> if checkCompatibility (TResult env (B_type Type_Integer) pos) (checkMultipleIndexElements t arrindex env)
                                                                                                                                                                             then (TResult env (B_type Type_Integer) pos) 
                                                                                                                                                                             else TError ["Incompatible type for index at: "++ show pos] 
@@ -2263,16 +2375,6 @@ checkTypeTypeIndex node@(Abs.TypeOfIndexBinaryPowerSingle pos exp1 exp2 ) env = 
                                                                                     case expTCheck of
                                                                                                 TResult env (B_type Type_Integer) pos -> expTCheck
                                                                                                 _ -> TError ["Incompatible type for index at: "++ show pos]
-
-
-{-checkTypeTypeIndex node@(Abs.TypeOfIndexBinary pos typeindex def binaryop exp) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinary pos def binaryop exp) env in
-                                                                                    case expTCheck of
-                                                                                        TResult env (B_type Type_Integer) pos -> if checkCompatibility expTCheck (checkTypeTypeIndex typeindex env) then expTCheck else TError ["Incompatible type for index at: "++ show pos]
-                                                                                        _ -> TError ["Incompatible type for index at: "++ show pos]
-checkTypeTypeIndex node@(Abs.TypeOfIndexBinarySingle pos def binaryop exp ) env = let expTCheck = checkTypeExpression (Abs.ExpressionBinary pos def binaryop exp) env in
-                                                                                    case expTCheck of
-                                                                                        TResult env (B_type Type_Integer) pos -> expTCheck
-                                                                                        _ -> TError ["Incompatible type for index at: "++ show pos]-}
 checkTypeTypeIndex node@(Abs.TypeOfIndexExpressionCall pos typeindex (Abs.Ident id posi) exps ) env = case checkTypeExpression (Abs.ExpressionCall pos (Abs.Ident id posi) exps) env of
                                                                                                 TResult _ _ _ ->
                                                                                                                     case Data.Map.lookup id env of
@@ -2381,15 +2483,10 @@ checkTypeParameter node@(Abs.Parameter pos id ty) env = case isArrayDef ty of
                                                                         False -> TResult env (B_type Type_Void) pos 
 
 checkTypeArrayInit :: Abs.ARRAYINIT Posn -> Env -> TCheckResult
-checkTypeArrayInit node@(Abs.ArrayInitSingle pos arrayInit) env = TResult env (Array (getType (checkTypeArrayInit arrayInit env)) 1) pos
-checkTypeArrayInit node@(Abs.ArrayInit pos arrayInit1 arrayInit2) env = if checkCompatibility (checkTypeArrayInit arrayInit1 env) (checkTypeArrayInit arrayInit2 env)
+checkTypeArrayInit node@(Abs.ArrayInitSingle pos arrayInit) env = TResult env (Array (getType (checkTypeArrayInit arrayInit env)) 0) pos
+checkTypeArrayInit node@(Abs.ArrayInit pos arrayInit1 arrayInit2) env = if checkCompatibility (checkTypeArrayInit arrayInit1 env) (TResult env (Array (getType (checkTypeArrayInit arrayInit2 env)) 0) pos)
                                                                             then
-                                                                                TResult env (Array (getType (checkTypeArrayInit arrayInit1 env)) 1) pos
+                                                                                (checkTypeArrayInit arrayInit1 env)
                                                                             else
                                                                                 mergeErrors (TError ["Elements of the array have different type at position: "++show pos]) (checkErrors (checkTypeArrayInit arrayInit1 env) (checkTypeArrayInit arrayInit2 env))
-checkTypeArrayInit node@(Abs.ArrayInitSingleElems pos listelement) env= checkListElementsOfArray listelement env
-checkTypeArrayInit node@(Abs.ArrayInitElems pos listelement arrayInit) env= if checkCompatibility (checkTypeArrayInit arrayInit env) (checkListElementsOfArray listelement env)
-                                                                            then
-                                                                                checkListElementsOfArray listelement env
-                                                                            else
-                                                                                mergeErrors (TError ["Elements of the array have different type at position: "++show pos]) (checkErrors (checkTypeArrayInit arrayInit env) (checkListElementsOfArray listelement env))
+checkTypeArrayInit node@(Abs.ArrayInitElems pos listelement) env= checkListElementsOfArray listelement env

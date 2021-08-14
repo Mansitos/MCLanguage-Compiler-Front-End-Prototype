@@ -93,8 +93,7 @@ data INITPART a
 data ARRAYINIT a
     = ArrayInitSingle {arrayinit_content::a, arrayinit_arrayinit::(ARRAYINIT a)}
     | ArrayInit {arrayinit_content::a, arrayinit_arrayinit1::(ARRAYINIT a), arrayinit_arrayinit2::(ARRAYINIT a)}
-    | ArrayInitSingleElems {arrayinit_content::a, arrayinit_listelementarray::(LISTELEMENTARRAY a) }
-    | ArrayInitElems {arrayinit_content::a, arrayinit_listelementarray::(LISTELEMENTARRAY a), arrayinit_arrayinit::(ARRAYINIT a)}
+    | ArrayInitElems {arrayinit_content::a, arrayinit_listelementarray::(LISTELEMENTARRAY a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data LISTELEMENTARRAY a
@@ -271,13 +270,13 @@ data LVALUEEXPRESSION a
 
 data ARRAYINDEXELEMENT a
     = ArrayIndexElement {arrayindexelement_content::a, arrayindexelement_typeindex::(TYPEINDEX a)}
-    | ArrayIndexElements {arrayindexelement_content::a, arrayindexelement_typeindex::(TYPEINDEX a), arrayindexelement_arrayindexelements::(ARRAYINDEXELEMENTS a)}
+    | ArrayIndexElements {arrayindexelement_content::a, arrayindexelement_arrayindexelements::(ARRAYINDEXELEMENTS a), arrayindexelement_typeindex::(TYPEINDEX a)}
     | ArrayIndexElementEmpty {arrayindexelement_content::a}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data ARRAYINDEXELEMENTS a
   = ArrayIndexElementsSingle {arrayindexelements_content::a, arrayindexelements_typeindex::(TYPEINDEX a)}
-  | ArrayIndexElementsMultiple {arrayindexelements_content::a, arrayindexelements_typeindex::(TYPEINDEX a), arrayindexelements_arrayindexelements::(ARRAYINDEXELEMENTS a)}
+  | ArrayIndexElementsMultiple {arrayindexelements_content::a, arrayindexelements_arrayindexelements::(ARRAYINDEXELEMENTS a), arrayindexelements_typeindex::(TYPEINDEX a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data TYPEINDEX a
@@ -301,8 +300,8 @@ data TYPEINDEX a
     | TypeOfIndexBinaryPowerSingle {typeindex_content::a, typeindex_expressionf::(EXPRESSION a),typeindex_expressionse::(EXPRESSION a)}
     | TypeOfIndexExpressionCall {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_ident::(Ident a), typeindex_expressions::(EXPRESSIONS a)}
     | TypeOfIndexExpressionCallSingle {typeindex_content::a, typeindex_ident::(Ident a), typeindex_expressions::(EXPRESSIONS a)}
-    | TypeOfIndexExpressionBracket {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expression::(EXPRESSION a)}
-    | TypeOfIndexExpressionBracketSingle {typeindex_content::a, typeindex_expression::(EXPRESSION a)}
+    | TypeOfIndexExpressionBracket {typeindex_content::a, typeindex_typeindex::(TYPEINDEX a), typeindex_expression::(EXPRESSION a)} 
+    | TypeOfIndexExpressionBracketSingle {typeindex_content::a, typeindex_expression::(EXPRESSION a)} 
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data Ident a = Ident {valueId::Prelude.String, contentId::a}

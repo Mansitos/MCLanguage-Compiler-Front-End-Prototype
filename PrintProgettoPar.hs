@@ -197,15 +197,14 @@ instance Print (AbsProgettoPar.TYPEPART attr) where
 instance Print (AbsProgettoPar.INITPART attr) where
   prt i = \case
     AbsProgettoPar.InitializzationPart _ expression -> prPrec i 0 (concatD [doc (showString "="), prt 0 expression])
-    AbsProgettoPar.InitializzationPartArray _ arrayinit -> prPrec i 0 (concatD [doc (showString "="), prt 0 arrayinit])
+    AbsProgettoPar.InitializzationPartArray _ arrayinit -> prPrec i 0 (concatD [doc (showString "="), doc (showString "["), prt 0 arrayinit, doc (showString "]")])
     AbsProgettoPar.InitializzationPartEmpty _ -> prPrec i 0 (concatD [])
 
 instance Print (AbsProgettoPar.ARRAYINIT attr) where
   prt i = \case
     AbsProgettoPar.ArrayInitSingle _ arrayinit -> prPrec i 0 (concatD [doc (showString "["), prt 0 arrayinit ,doc (showString "]")])
-    AbsProgettoPar.ArrayInit _ arrayinit1 arrayinit2 -> prPrec i 0 (concatD [doc (showString "["), prt 0 arrayinit1 ,doc (showString ","), prt 0 arrayinit2 , doc (showString "]")])
-    AbsProgettoPar.ArrayInitSingleElems _ listelementarray -> prPrec i 0 (concatD [doc (showString "["), prt 0 listelementarray ,doc (showString "]")])
-    AbsProgettoPar.ArrayInitElems _ listelementarray arrayinit -> prPrec i 0 (concatD [doc (showString "["), prt 0 listelementarray ,doc (showString "],"),prt 0 arrayinit])
+    AbsProgettoPar.ArrayInit _ arrayinit1 arrayinit2 -> prPrec i 0 (concatD [prt 0 arrayinit1 ,doc (showString ","), doc (showString "["), prt 0 arrayinit2 , doc (showString "]")])
+    AbsProgettoPar.ArrayInitElems _ listelementarray -> prPrec i 0 (concatD [prt 0 listelementarray ])
 
 instance Print (AbsProgettoPar.LISTELEMENTARRAY attr) where
   prt i = \case
@@ -386,13 +385,13 @@ instance Print (AbsProgettoPar.LVALUEEXPRESSION attr) where
 instance Print (AbsProgettoPar.ARRAYINDEXELEMENT attr) where
   prt i = \case
     AbsProgettoPar.ArrayIndexElement _ typeindex -> prPrec i 0 (concatD [doc (showString "["), prt 0 typeindex, doc (showString "]")])
-    AbsProgettoPar.ArrayIndexElements _ typeindex arrayindexelements -> prPrec i 0 (concatD [doc (showString "["), prt 0 typeindex, doc (showString "]"), prt 0 arrayindexelements])
+    AbsProgettoPar.ArrayIndexElements _ arrayindexelements typeindex -> prPrec i 0 (concatD [prt 0 arrayindexelements, doc (showString "["), prt 0 typeindex, doc (showString "]")])
     AbsProgettoPar.ArrayIndexElementEmpty _ -> prPrec i 0 (concatD [])
 
 instance Print (AbsProgettoPar.ARRAYINDEXELEMENTS attr) where
   prt i = \case
     AbsProgettoPar.ArrayIndexElementsSingle _ typeindex -> prPrec i 0 (concatD [doc (showString "["), prt 0 typeindex, doc (showString "]")])
-    AbsProgettoPar.ArrayIndexElementsMultiple _ typeindex arrayindexelements -> prPrec i 0 (concatD [doc (showString "["), prt 0 typeindex, doc (showString "]"), prt 0 arrayindexelements])
+    AbsProgettoPar.ArrayIndexElementsMultiple _ arrayindexelements typeindex -> prPrec i 0 (concatD [prt 0 arrayindexelements, doc (showString "["), prt 0 typeindex, doc (showString "]")])
 
 instance Print (AbsProgettoPar.TYPEINDEX attr) where
   prt i = \case
@@ -414,7 +413,7 @@ instance Print (AbsProgettoPar.TYPEINDEX attr) where
     AbsProgettoPar.TypeOfIndexBinaryModuleSingle _ expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 0 expr2])
     AbsProgettoPar.TypeOfIndexBinaryPower _ typeindex expr1 expr2 -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 expr1, doc (showString "**"), prt 0 expr2])
     AbsProgettoPar.TypeOfIndexBinaryPowerSingle _ expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 0 expr2])
-    AbsProgettoPar.TypeOfIndexExpressionCall _ typeindex id_ exps -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 id_, prt 0 exps])
-    AbsProgettoPar.TypeOfIndexExpressionCallSingle _ id_ exps -> prPrec i 0 (concatD [prt 0 id_, prt 0 exps])
-    AbsProgettoPar.TypeOfIndexExpressionBracket _ typeindex exp -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 exp])
-    AbsProgettoPar.TypeOfIndexExpressionBracketSingle _  exp -> prPrec i 0 (concatD [prt 0 exp])
+    AbsProgettoPar.TypeOfIndexExpressionCall _ typeindex id_ exps -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), prt 0 id_, doc (showString "("), prt 0 exps, doc (showString ")")])
+    AbsProgettoPar.TypeOfIndexExpressionCallSingle _ id_ exps -> prPrec i 0 (concatD [prt 0 id_, doc (showString "("), prt 0 exps, doc (showString ")")])
+    AbsProgettoPar.TypeOfIndexExpressionBracket _ typeindex exp -> prPrec i 0 (concatD [prt 0 typeindex, doc (showString ","), doc (showString "("), prt 0 exp, doc (showString ")")])
+    AbsProgettoPar.TypeOfIndexExpressionBracketSingle _  exp -> prPrec i 0 (concatD [doc (showString "("), prt 0 exp, doc (showString ")")])

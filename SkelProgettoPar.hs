@@ -115,8 +115,7 @@ transARRAYINIT :: Show attr => (AbsProgettoPar.ARRAYINIT attr) -> Result
 transARRAYINIT x = case x of
     AbsProgettoPar.ArrayInitSingle _ arrayinit -> failure x
     AbsProgettoPar.ArrayInit _ arrayinit1 arrayinit2 -> failure x
-    AbsProgettoPar.ArrayInitSingleElems _ listelementarray -> failure x
-    AbsProgettoPar.ArrayInitElems _ listelementarray arrayinit -> failure x
+    AbsProgettoPar.ArrayInitElems _ listelementarray -> failure x
 
 transTYPEEXPRESSIONFUNC :: Show attr => (AbsProgettoPar.TYPEEXPRESSIONFUNC attr) -> Result
 transTYPEEXPRESSIONFUNC x = case x of
@@ -292,13 +291,13 @@ transLVALUEEXPRESSION x = case x of
 transARRAYINDEXELEMENT :: Show attr => (AbsProgettoPar.ARRAYINDEXELEMENT attr) -> Result
 transARRAYINDEXELEMENT x = case x of
   AbsProgettoPar.ArrayIndexElement _ typeindex -> failure x
-  AbsProgettoPar.ArrayIndexElements _ typeindex elements -> failure x
+  AbsProgettoPar.ArrayIndexElements _ elements typeindex -> failure x
   AbsProgettoPar.ArrayIndexElementEmpty _ -> failure x
 
 transARRAYINDEXELEMENTS :: Show attr => (AbsProgettoPar.ARRAYINDEXELEMENTS attr) -> Result
 transARRAYINDEXELEMENTS x = case x of 
   AbsProgettoPar.ArrayIndexElementsSingle _ typeindex -> failure x
-  AbsProgettoPar.ArrayIndexElementsMultiple _ typeindex elements -> failure x
+  AbsProgettoPar.ArrayIndexElementsMultiple _ elements typeindex  -> failure x
 
 transTYPEINDEX :: Show attr => (AbsProgettoPar.TYPEINDEX attr) -> Result
 transTYPEINDEX x = case x of

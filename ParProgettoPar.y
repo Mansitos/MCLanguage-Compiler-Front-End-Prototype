@@ -88,8 +88,8 @@ import LexProgettoPar
 %left '&&'
 %nonassoc '!' 
 %nonassoc '==' '*=' '+=' '-=' '**=' '/=' '%=' '!=' '>' '>=' '<' '<='
-%left '+' '-' '%'
-%left '*' '/'
+%left '+' '-' 
+%left '*' '/' '%'
 %right '**'
 %nonassoc UNARY
 
@@ -180,14 +180,13 @@ TYPEPART : ':' TYPEEXPRESSION { Abs.TypePart (tokenPosn $1) $2 }
 
 INITPART :: { Abs.INITPART Posn }
 INITPART : '=' EXPRESSION { Abs.InitializzationPart (tokenPosn $1) $2 }
-         | '=' ARRAYINIT { Abs.InitializzationPartArray (tokenPosn $1) $2 }
+         | '=' '[' ARRAYINIT ']' { Abs.InitializzationPartArray (tokenPosn $1) $3 }
          | {- empty -} { Abs.InitializzationPartEmpty (Pn 0 0 0)}
 
 ARRAYINIT :: { Abs.ARRAYINIT Posn}
           : '[' ARRAYINIT ']' {Abs.ArrayInitSingle (tokenPosn $1) $2 }
-          | '[' ARRAYINIT ',' ARRAYINIT ']' {Abs.ArrayInit (tokenPosn $1) $2 $4}
-          | '['LISTELEMENTARRAY ']' {Abs.ArrayInitSingleElems (tokenPosn $1) $2 }
-          | '['LISTELEMENTARRAY ']' ',' ARRAYINIT {Abs.ArrayInitElems (tokenPosn $1) $2 $5}
+          | ARRAYINIT ',' '[' ARRAYINIT ']' {Abs.ArrayInit (Abs.arrayinit_content $1) $1 $4}
+          | LISTELEMENTARRAY  {Abs.ArrayInitElems (Abs.listelementarray_content $1) $1}
      
 LISTELEMENTARRAY :: { Abs.LISTELEMENTARRAY Posn }
 LISTELEMENTARRAY : EXPRESSION ',' LISTELEMENTARRAY { Abs.ListElementsOfArray (Abs.expression_content $1) $1 $3 }
@@ -327,12 +326,12 @@ LVALUEEXPRESSION : Ident ARRAYINDEXELEMENT ',' LVALUEEXPRESSION { Abs.LvalueExpr
 
 ARRAYINDEXELEMENT :: { Abs.ARRAYINDEXELEMENT Posn }
 ARRAYINDEXELEMENT : '[' TYPEINDEX ']' { Abs.ArrayIndexElement (tokenPosn $1) $2 }
-                  | '[' TYPEINDEX ']' ARRAYINDEXELEMENTS {Abs.ArrayIndexElements (tokenPosn $1) $2 $4}
+                  | ARRAYINDEXELEMENTS '[' TYPEINDEX ']' {Abs.ArrayIndexElements (Abs.arrayindexelements_content $1) $1 $3}
                   | {- empty -} { Abs.ArrayIndexElementEmpty (Pn 0 0 0)}
 
 ARRAYINDEXELEMENTS :: { Abs.ARRAYINDEXELEMENTS Posn }
 ARRAYINDEXELEMENTS : '[' TYPEINDEX ']' { Abs.ArrayIndexElementsSingle (tokenPosn $1) $2 }
-                   | '[' TYPEINDEX ']'ARRAYINDEXELEMENTS { Abs.ArrayIndexElementsMultiple (tokenPosn $1) $2 $4}
+                   | ARRAYINDEXELEMENTS '[' TYPEINDEX ']' { Abs.ArrayIndexElementsMultiple (Abs.arrayindexelements_content $1) $1 $3}
 
 
 TYPEINDEX :: { Abs.TYPEINDEX Posn }
