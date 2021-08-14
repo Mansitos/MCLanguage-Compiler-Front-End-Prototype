@@ -36,4 +36,12 @@ Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 short-cut/lazy eval on bool flags
 
 gestione passaggio parametri? noi abbiamo ref. e val.?
+
+gestione tac array di puntatori, viceversa e cose complesse
+
+bloccare typeindex unary con +,-,!
+
+aggiungere test case significativi
+
+gestire tac rangeexpressions
 -------------
