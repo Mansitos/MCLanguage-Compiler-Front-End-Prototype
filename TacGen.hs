@@ -91,7 +91,7 @@ showAddrContent (AddrString s) = "\"" ++ s ++ "\""
 showAddrContent (AddrInt s) = show s    
 showAddrContent (AddrBool s) = show s   
 showAddrContent (AddrReal s) = show s   
-showAddrContent (AddrChar s) = "\'" ++ show s ++ "\'"    
+showAddrContent (AddrChar s) = show s   
 showAddrContent (AddrAddress s) = s
 showAddrContent (AddrNULL) = "NULL"  
 
@@ -399,29 +399,6 @@ getElem_ [] n r = []
 getElem_ (x:xs) 0 r = r++[x]
 getElem_ (x:xs) n r = getElem_ xs (n-1) (r++[x])
 
-{-createTypeIndex :: [Abs.TYPEINDEX TCheckResult] -> Abs.TYPEINDEX TCheckResult
-createTypeIndex TypeOfIndexInt 
-TypeOfIndexIntSingle 
-TypeOfIndexVar 
-TypeOfIndexVarSingle 
-TypeOfIndexPointer 
-TypeOfIndexPointerSingle 
-TypeOfIndexBinaryPlus 
-TypeOfIndexBinaryPlusSingle 
-TypeOfIndexBinaryMinus 
-TypeOfIndexBinaryMinusSingle 
-TypeOfIndexBinaryProduct 
-TypeOfIndexBinaryProductSingle 
-TypeOfIndexBinaryDivision 
-TypeOfIndexBinaryDivisionSingle 
-TypeOfIndexBinaryModule 
-TypeOfIndexBinaryModuleSingle 
-TypeOfIndexBinaryPower 
-TypeOfIndexBinaryPowerSingle 
-TypeOfIndexExpressionCall 
-TypeOfIndexExpressionCallSingle 
-TypeOfIndexExpressionBracket 
-TypeOfIndexExpressionBracketSingle -}
 
 ------------------------------------------------------------------------------------------------
 -- TAC GENERATION FUNCTIONS --------------------------------------------------------------------
@@ -487,7 +464,7 @@ genTacStatement (Abs.AssignmentStatement resres@(TResult _ t _) lval assignOp ex
                                                                                                                                 _ -> case head lTac of
                                                                                                                                     TacComment _ -> (buildAssignTac assignOp leftValAddrs (code (lvalueexpression_content (sel1 leftVal))) exprAddr t) 
                                                                                                                                     _ -> (code (lvalueexpression_content (sel1 leftVal)))++(buildAssignTac assignOp leftValAddrs [] exprAddr t) in
-                                                                                                            ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++        -- expression (rval) evaluation tac code
+                                                                                                            ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++   -- expression (rval) evaluation tac code
                                                                                                                                             assignTac)                                     -- assignements tac (list)                    
                                                                                                                                             []) (sel1 leftVal) (genTacAssignOp assignOp) (sel1 rightVal)),newC,(sel3 rightVal),AddrNULL)
 genTacStatement (Abs.ConditionalStatement res condition) n l k (w,j) tres = let newL = newLabel "else" k in 
@@ -654,6 +631,28 @@ genTacTypeIndex (Abs.TypeOfIndexInt res@(TResult env t pos) typeIndex val@(Abs.I
                                                                                                                                                                                      comment,
                                                                                                                                                                                      TAC [TacAssignBinaryOp temp2 (buildOp t "plus") temp (head (sel4 typeIndexTac)) t] []
                                                                                                                                                                                     ]) (sel1 typeIndexTac) (Abs.Integer value (TAC [][])),(sel2 typeIndexTac)+2,k,[temp2]++sel4 typeIndexTac)
+genTacTypeIndex (Abs.TypeOfIndexPointerSingle res@(TResult env t pos) unary def ) n l k (w,j) d s p = let exprTac = genTacExpression (Abs.ExpressionUnary res unary def) n l k (w,j) res in
+                                                                                                        let defTac = genTacDefault def n l k (w,j) res in 
+                                                                                                            let temp = newTemp (sel2 exprTac) in
+                                                                                                                    let comment = TAC (buildArrayCommentsNoInteger [temp] s d t) [] in
+                                                                                                                        (Abs.TypeOfIndexPointerSingle (mergeTacs [
+                                                                                                                                                                        (expression_content (sel1 exprTac)),
+                                                                                                                                                                        (TAC [TacAssignBinaryOp temp (buildOp t "product") (sel4 exprTac) (AddrInt (if p==(-1) then (buildPosArrayCNoInteger (getElem s p) d) *d else (buildPosArrayCNoInteger s d))) t] []),
+                                                                                                                                                                        comment
+                                                                                                                                                                    ]) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 exprTac)+1,(sel3 exprTac),[temp])
+genTacTypeIndex (Abs.TypeOfIndexPointer res@(TResult env t pos) typeindex unary def) n l k (w,j) d s p = let typeindexTac = genTacTypeIndex typeindex n l k (w,j) d s (p+1) in
+                                                                                                            let exprTac = genTacExpression (Abs.ExpressionUnary res unary def) (sel2 typeindexTac) l (sel3 typeindexTac) (w,j) res in
+                                                                                                                let defTac = genTacDefault def n l k (w,j) res in 
+                                                                                                                    let temp = newTemp (sel2 exprTac) in
+                                                                                                                        let temp2 = newTemp ((sel2 exprTac)+1) in
+                                                                                                                            let comment = TAC (buildArrayCommentsNoInteger [temp] s d t) [] in
+                                                                                                                                (Abs.TypeOfIndexPointer (mergeTacs [
+                                                                                                                                                                        (typeindex_content (sel1 typeindexTac)),
+                                                                                                                                                                        (expression_content (sel1 exprTac)),
+                                                                                                                                                                        (TAC [TacAssignBinaryOp temp (buildOp t "product") (sel4 exprTac) (AddrInt (if p==(-1) then (buildPosArrayCNoInteger (getElem s p) d) *d else (buildPosArrayCNoInteger s d))) t] []),
+                                                                                                                                                                        comment,
+                                                                                                                                                                        (TAC [TacAssignBinaryOp temp2 (buildOp t "plus") (head (sel4 typeindexTac)) temp t] [])
+                                                                                                                                                                    ]) (sel1 typeindexTac) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 exprTac)+1,(sel3 exprTac),sel4 typeindexTac++[temp2])
 genTacTypeIndex (Abs.TypeOfIndexBinaryPlusSingle res@(TResult env t pos) expr1 expr2) n l k (w,j) d s p = let expr1Tac = genTacExpression expr1 n l k (w,j) res in 
                                                                                                             let expr2Tac = genTacExpression expr2 (sel2 expr1Tac) l (sel3 expr1Tac) (w,j) res in
                                                                                                                 let temp = newTemp (sel2 expr2Tac) in
@@ -1404,10 +1403,10 @@ genTacArrayInit (Abs.ArrayInit res arrayInit1 arrayInit2) n l k (w,j) = let arra
 
 genTacListElementOfArray :: Abs.LISTELEMENTARRAY TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.LISTELEMENTARRAY TAC,Prelude.Integer,Prelude.Integer,[Address])
 genTacListElementOfArray (Abs.ListElementOfArray res exp)  n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) res in
-                                                                            (Abs.ListElementOfArray (TAC [][]) (sel1 expTac),n,k,[sel4 expTac])
+                                                                            (Abs.ListElementOfArray (TAC (code (expression_content (sel1 expTac))) []) (sel1 expTac),(sel2 expTac),(sel3 expTac),[sel4 expTac])
 genTacListElementOfArray (Abs.ListElementsOfArray res exp listelement)  n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) res in
-                                                                                        let listelementTac = genTacListElementOfArray listelement n l k (w,j) in
-                                                                                        (Abs.ListElementOfArray (TAC [][]) (sel1 expTac),n,k,[sel4 expTac]++(sel4 listelementTac))
+                                                                                        let listelementTac = genTacListElementOfArray listelement (sel2 expTac) l (sel3 expTac) (w,j) in
+                                                                                        (Abs.ListElementsOfArray (TAC ((code (expression_content (sel1 expTac))) ++ (code (listelementarray_content (sel1 listelementTac)))) []) (sel1 expTac) (sel1 listelementTac),(sel2 listelementTac),(sel3 listelementTac),[sel4 expTac]++(sel4 listelementTac))
 
 genTacExpression :: Abs.EXPRESSION TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> TCheckResult -> (Abs.EXPRESSION TAC,Prelude.Integer,Prelude.Integer,Address)
 genTacExpression (Abs.ExpressionInteger res value@(Abs.Integer val resi))       n l k (w,j) tres = (Abs.ExpressionInteger (TAC [] []) (Abs.Integer val (TAC [] []))  ,n,k, AddrInt val)
