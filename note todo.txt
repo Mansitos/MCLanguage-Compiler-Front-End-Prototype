@@ -27,6 +27,8 @@ serve l'entry di x di tipo intero			-
 aggiornare posizioni indici - done
 nel typechecker viene assegnata la pos sbagliata nel tcheckresult delle variabili? - done
 >> le guardie dei for devono essere const!(param) - done
+bloccare typeindex unary con +,-,! - done
+gestire tac rangeexpressions - done
 -----------
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
@@ -39,9 +41,5 @@ gestione passaggio parametri? noi abbiamo ref. e val.?
 
 gestione tac array di puntatori, viceversa e cose complesse
 
-bloccare typeindex unary con +,-,!
-
 aggiungere test case significativi
-
-gestire tac rangeexpressions
 -------------
