@@ -85,6 +85,10 @@ mergeTacFromList_f :: [TAC] -> [TACEntry]
 mergeTacFromList_f ((TAC entries fs):xs) = fs ++ mergeTacFromList_f xs
 mergeTacFromList_f [] = []
 
+isElseLabel :: Label -> Prelude.Bool     
+isElseLabel (Label (x:xs)) = (x=='e')
+isElseLabel _ = False
+
 -- Given an Address, return the string of it's content. Used in printing.
 showAddrContent :: Address -> Prelude.String 
 showAddrContent (AddrString s) = "\"" ++ s ++ "\""
@@ -1250,6 +1254,34 @@ genTacBlock (Abs.BlockStatement res statements) n l k (w,j) = let statsTac = gen
 
 genTacConditionalStatement :: Abs.CONDITIONALSTATE TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.CONDITIONALSTATE TAC,Prelude.Integer,Prelude.Integer)
 genTacConditionalStatement (Abs.ConditionalStatementSimpleThen res exp state elseState) n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) res in -- res è il giusto tcheck? TODO
+                                                                                                        let statTac = genTacStatement state (sel2 expTac) l ((sel3 expTac)+1) (w,j) res in                
+                                                                                                            let expAddr = sel4 expTac in
+                                                                                                                let nextL = case exp of
+                                                                                                                            (Abs.ExpressionBinaryOr _ _ _) -> newLabel "true_or" (sel3 expTac)
+                                                                                                                            --(Abs.ExpressionBinaryAnd _ _ _) ->
+                                                                                                                            in
+                                                                                                                               case elseState of 
+                                                                                                                                   -- if EXPR then CODE
+                                                                                                                                   (Abs.ElseStateEmpty _)  -> ((Abs.ConditionalStatementSimpleThen (mergeTacs [(expression_content (sel1 expTac)),             -- guard code eval. tac
+                                                                                                                                                                                                               --(TAC [TacConditionalJump l False expAddr] []),     -- conditional jump if-false on guard
+                                                                                                                                                                                                               (TAC [TacLabel nextL] []),
+                                                                                                                                                                                                               (statement_content (sel1 statTac)),             -- if_true code
+                                                                                                                                                                                                               (TAC [TacLabel l] [])])                            -- if_false label jump (guard jump destination)
+                                                                                                                                                                                                               (sel1 expTac) (sel1 statTac) (Abs.ElseStateEmpty (TAC [] []))),(sel2 statTac),(sel3 statTac)) 
+                                                                                                                                   -- if EXPR then CODE else CODE  
+                                                                                                                                   (Abs.ElseState _ elsestats) -> let elseStatesTac = genTacStatement elsestats (sel2 statTac) l (sel3 statTac) (w,j) res in
+                                                                                                                                                                       let nextLab = newLabel "next" (sel3 elseStatesTac) in
+                                                                                                                                                                           ((Abs.ConditionalStatementSimpleThen (mergeTacs [(expression_content (sel1 expTac)),            -- guard code eval. tac
+                                                                                                                                                                                                                           --(TAC [TacConditionalJump l False expAddr] []),     -- conditional jump if-false on guard
+                                                                                                                                                                                                                           (TAC [TacLabel nextL] []),
+                                                                                                                                                                                                                           (statement_content (sel1 statTac)),             -- if_true code
+                                                                                                                                                                                                                           (TAC [TacJump nextLab] []),                        -- jump to end of if label (next label)
+                                                                                                                                                                                                                           (TAC [TacLabel l] []),                             -- if_false label jump (guard jump destination)
+                                                                                                                                                                                                                           (statement_content (sel1 elseStatesTac)),       -- else code tac
+                                                                                                                                                                                                                           (TAC [TacLabel nextLab] [])])                      -- next (end of if) label
+                                                                                                                                                                                                                           (sel1 expTac) (sel1 statTac) (Abs.ElseState (TAC [] []) (sel1 elseStatesTac)),(sel2 elseStatesTac),(sel3 elseStatesTac)+1)) -- if expr then ... else ...
+
+{-genTacConditionalStatement (Abs.ConditionalStatementSimpleThen res exp state elseState) n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) res in -- res è il giusto tcheck? TODO
                                                                                                         let statTac = genTacStatement state (sel2 expTac) l (sel3 expTac) (w,j) res in                
                                                                                                             let expAddr = sel4 expTac in
                                                                                                                 case elseState of 
@@ -1270,6 +1302,7 @@ genTacConditionalStatement (Abs.ConditionalStatementSimpleThen res exp state els
                                                                                                                                                                                                             (statement_content (sel1 elseStatesTac)),       -- else code tac
                                                                                                                                                                                                             (TAC [TacLabel nextLab] [])])                      -- next (end of if) label
                                                                                                                                                                                                             (sel1 expTac) (sel1 statTac) (Abs.ElseState (TAC [] []) (sel1 elseStatesTac)),(sel2 elseStatesTac),(sel3 elseStatesTac)+1)) -- if expr then ... else ...
+-}
 genTacConditionalStatement (Abs.ConditionalStatementSimpleWThen res exp b@(Abs.BlockStatement _ statements) elseState) n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) res in -- res è il giusto tcheck? TODO
                                                                                                                                        let statTacs = genTacStatements statements (sel2 expTac) l (sel3 expTac) (w,j) in
                                                                                                                                            let expAddr = sel4 expTac in 
@@ -1459,13 +1492,48 @@ genTacExpression (Abs.ExpressionBinaryPower res@(TResult env t pos) expr1 expr2)
                                                                                                     let temp = newTemp n in
                                                                                                         (Abs.ExpressionBinaryPower (merge2Tacs (merge2Tacs (expression_content (sel1 expr1Tac)) (expression_content (sel1 expr2Tac))) (TAC [TacAssignBinaryOp temp (buildOp t "power") (sel4 expr1Tac) (sel4 expr2Tac) t] [])) (sel1 expr1Tac) (sel1 expr2Tac),(sel2 expr2Tac),(sel3 expr2Tac),temp)
 genTacExpression (Abs.ExpressionBinaryAnd res@(TResult env t pos) expr1 expr2) n l k (w,j) tres = let expr1Tac = genTacExpression expr1 (n+1) l k (w,j) tres in 
-                                                                                                let expr2Tac = genTacExpression expr2 (sel2 expr1Tac) l (sel3 expr1Tac) (w,j) tres in
-                                                                                                    let temp = newTemp n in
-                                                                                                        (Abs.ExpressionBinaryAnd (merge2Tacs (merge2Tacs (expression_content (sel1 expr1Tac)) (expression_content (sel1 expr2Tac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromExpr expr1) (getTypeFromExpr expr2) "and") (sel4 expr1Tac) (sel4 expr2Tac) t] [])) (sel1 expr1Tac) (sel1 expr2Tac),(sel2 expr2Tac),(sel3 expr2Tac),temp)
+                                                                                                    let expr2Tac = genTacExpression expr2 (sel2 expr1Tac) l (sel3 expr1Tac) (w,j) tres in
+                                                                                                        let temp = newTemp n in
+                                                                                                            (Abs.ExpressionBinaryAnd (merge2Tacs (merge2Tacs (expression_content (sel1 expr1Tac)) (expression_content (sel1 expr2Tac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromExpr expr1) (getTypeFromExpr expr2) "and") (sel4 expr1Tac) (sel4 expr2Tac) t] [])) (sel1 expr1Tac) (sel1 expr2Tac),(sel2 expr2Tac),(sel3 expr2Tac),temp)
+genTacExpression (Abs.ExpressionBinaryOr res@(TResult env t pos) expr1 expr2) n l k (w,j) tres = let trueL = newLabel "true_or" (k) in
+                                                                                                    let expr1Tac = genTacExpression expr1 (n+1) trueL k (w,j) tres in 
+                                                                                                        let expr2Tac = genTacExpression expr2 (sel2 expr1Tac) l (sel3 expr1Tac) (w,j) tres in -- A OR B     | TacConditionalJump    {destination::Label, flag::Prelude.Bool, first::Address}    
+                                                                                                            let temp = newTemp n in
+                                                                                                                let addrLeft = (sel4 expr1Tac) in
+                                                                                                                    let addrRight = (sel4 expr2Tac) in
+                                                                                                                        if isElseLabel l
+                                                                                                                        then case (sel1 expr2Tac) of
+                                                                                                                            (Abs.ExpressionBinaryOr _ _ _ ) -> ((Abs.ExpressionBinaryOr (mergeTacs [(expression_content (sel1 expr1Tac)),
+                                                                                                                                                                                                    (TAC [TacConditionalJump trueL True addrLeft,TacComment "1"] []),
+                                                                                                                                                                                                    (expression_content (sel1 expr2Tac)),
+                                                                                                                                                                                                    (TAC [TacConditionalJump trueL True addrRight,TacComment "2"] [])
+                                                                                                                                                                                                    ]) (sel1 expr1Tac) (sel1 expr2Tac)),(sel2 expr2Tac),(sel3 expr2Tac),temp)
+                                                                                                                            -- (Abs.ExpressionBinaryAnd _ _ _) -> 
+                                                                                                                            (Abs.ExpressionBracket _ _) -> ((Abs.ExpressionBinaryOr (mergeTacs [(expression_content (sel1 expr1Tac)),
+                                                                                                                                                                                                  (TAC [TacConditionalJump trueL True addrLeft,TacComment "1"] []),
+                                                                                                                                                                                                  (expression_content (sel1 expr2Tac)),
+                                                                                                                                                                                                  (TAC [TacConditionalJump trueL True addrRight,TacComment "2"] [])
+                                                                                                                                                                                                  ]) (sel1 expr1Tac) (sel1 expr2Tac)),(sel2 expr2Tac),(sel3 expr2Tac),temp)
+                                                                                                                            _                               -> ((Abs.ExpressionBinaryOr (mergeTacs [(expression_content (sel1 expr1Tac)),
+                                                                                                                                                                                                     (expression_content (sel1 expr2Tac)),
+                                                                                                                                                                                                     (TAC [TacConditionalJump l False addrRight,TacComment "4"] [])
+                                                                                                                                                                                                     ]) (sel1 expr1Tac) (sel1 expr2Tac)),(sel2 expr2Tac),(sel3 expr2Tac),temp)
+                                                                                                                        else ((Abs.ExpressionBinaryOr (mergeTacs [(expression_content (sel1 expr1Tac)),
+                                                                                                                                                                  (TAC [TacConditionalJump trueL True addrLeft,TacComment "5"] []),
+                                                                                                                                                                  (expression_content (sel1 expr2Tac)),
+                                                                                                                                                                  (TAC [TacConditionalJump trueL True addrRight,TacComment "6"] [])
+                                                                                                                                                                  ]) (sel1 expr1Tac) (sel1 expr2Tac)),(sel2 expr2Tac),(sel3 expr2Tac),temp)
+
+{- BACKUP   
+genTacExpression (Abs.ExpressionBinaryAnd res@(TResult env t pos) expr1 expr2) n l k (w,j) tres = let expr1Tac = genTacExpression expr1 (n+1) l k (w,j) tres in 
+                                                                                                            let expr2Tac = genTacExpression expr2 (sel2 expr1Tac) l (sel3 expr1Tac) (w,j) tres in
+                                                                                                                let temp = newTemp n in
+                                                                                                                    (Abs.ExpressionBinaryAnd (merge2Tacs (merge2Tacs (expression_content (sel1 expr1Tac)) (expression_content (sel1 expr2Tac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromExpr expr1) (getTypeFromExpr expr2) "and") (sel4 expr1Tac) (sel4 expr2Tac) t] [])) (sel1 expr1Tac) (sel1 expr2Tac),(sel2 expr2Tac),(sel3 expr2Tac),temp)
 genTacExpression (Abs.ExpressionBinaryOr res@(TResult env t pos) expr1 expr2) n l k (w,j) tres = let expr1Tac = genTacExpression expr1 (n+1) l k (w,j) tres in 
-                                                                                                let expr2Tac = genTacExpression expr2 (sel2 expr1Tac) l (sel3 expr1Tac) (w,j) tres in
-                                                                                                    let temp = newTemp n in
-                                                                                                        (Abs.ExpressionBinaryOr (merge2Tacs (merge2Tacs (expression_content (sel1 expr1Tac)) (expression_content (sel1 expr2Tac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromExpr expr1) (getTypeFromExpr expr2) "or") (sel4 expr1Tac) (sel4 expr2Tac) t] [])) (sel1 expr1Tac) (sel1 expr2Tac),(sel2 expr2Tac),(sel3 expr2Tac),temp)
+                                                                                                            let expr2Tac = genTacExpression expr2 (sel2 expr1Tac) l (sel3 expr1Tac) (w,j) tres in
+                                                                                                                let temp = newTemp n in
+                                                                                                                    (Abs.ExpressionBinaryOr (merge2Tacs (merge2Tacs (expression_content (sel1 expr1Tac)) (expression_content (sel1 expr2Tac))) (TAC [TacAssignRelOp temp (buildROp (getTypeFromExpr expr1) (getTypeFromExpr expr2) "or") (sel4 expr1Tac) (sel4 expr2Tac) t] [])) (sel1 expr1Tac) (sel1 expr2Tac),(sel2 expr2Tac),(sel3 expr2Tac),temp)
+-}           
 genTacExpression (Abs.ExpressionBinaryEq res@(TResult env t pos) expr1 expr2) n l k (w,j) tres = let expr1Tac = genTacExpression expr1 (n+1) l k (w,j) tres in 
                                                                                                 let expr2Tac = genTacExpression expr2 (sel2 expr1Tac) l (sel3 expr1Tac) (w,j) tres in
                                                                                                     let temp = newTemp n in
