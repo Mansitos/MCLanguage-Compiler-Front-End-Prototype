@@ -1,4 +1,5 @@
--- Progetto LC 2021 -- Mansi/Cagnoni UNIUD --
+-- Progetto Linguaggi e Compilatori parte 3 - UNIUD 2021
+-- Andrea Mansi & Christian Cagnoni
 
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module TypeChecker where
@@ -34,7 +35,7 @@ data TCheckResult
 --- SHOW ISTANCES FOR ENV DATA TYPES ------------------------------------------------------------
 -------------------------------------------------------------------------------------------------
 
--- Start env: it includes the pre-defined functiosn/procedures required
+-- Starting env: it includes the pre-defined functions/procedures required
 startEnv = fromList [("readChar",[Function {funType = (B_type Type_Char), funPosition = (Pn 0 0 0), funParameters = [], canOverride = False}]),
                      ("readInt",[Function {funType = (B_type Type_Integer), funPosition = (Pn 0 0 0), funParameters = [], canOverride = False}]),
                      ("readReal",[Function {funType = (B_type Type_Real), funPosition = (Pn 0 0 0), funParameters = [], canOverride = False}]),
@@ -103,9 +104,8 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
 
                                                                                         _ -> False
 
--- t = destra
--- tC = sinistra
-
+-- Checks if type A is compatible with type B during explicit casting operations
+-- Semantic: can A be casted to type B is required?
 checkCastCompatibility :: TCheckResult -> TCheckResult -> Bool
 checkCastCompatibility (TResult env t pos) (TResult envs ts poss) = case t of
                                                                         B_type Type_Integer -> case ts of
@@ -132,10 +132,8 @@ checkCastCompatibility (TResult env t pos) (TResult envs ts poss) = case t of
                                                                         Array _ _ -> False
                                                                         Pointer _ _ -> False
                                                                         
-                                                                        
-
 -- Given Type A and B (from TCheckResults) it returns the one which is more generic.
--- Semantic: Which type is more generic; a or b?
+-- Semantic: Which type is more generic; A or B?
 --      Examples: int int -> int
 --                int real -> real 
 --                real int -> real
@@ -171,7 +169,7 @@ mergeErrors (TError e1) (TError e2) = TError (e1++e2)
 mergeErrors (TError e1) _ = TError e1
 mergeErrors _ (TError e2) = TError e2
 
--- Returns the type of a EnvEntry of the Environment -> Variable or Function entry
+-- Returns the type of an EnvEntry of the Environment -> Variable or Function entry
 getTypeEnvEntry :: [EnvEntry] -> Type
 getTypeEnvEntry [] = B_type Type_Void
 getTypeEnvEntry (x:xs) = case x of 
@@ -179,39 +177,37 @@ getTypeEnvEntry (x:xs) = case x of
                             (Function t pos parameters canOverride) -> t
 
 -- Called when an environment update is needed.
--- It creates the right new env-entry when called with different types of statements
--- Example: if called with a "Abs node of type funciton statements" it creates a new env-entry for that function,
+-- It creates the right new env-entry when called with different types of statements.
+-- Example: if called with an "Abs node of type funciton statements" it creates a new env-entry for that function,
 --          this is done by calling the required functions for getting the required infos for the entry: id, type, etc.
 updateEnv :: (Abs.STATEMENTS Posn) -> Env -> Env
 updateEnv node@(Abs.ListStatements pos stat stats) env = case stat of
                                                                 -- Variables
                                                                 Abs.VariableDeclarationStatement pos varType vardec -> let ty = getVarType vardec in -- getting variable type (int etc.)
-                                                                                                                         (let varMode = getVarMode varType in -- getting variable mode (const etc.)
-                                                                                                                            (let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
-                                                                                                                                (let posns = getVariableDeclStatPos vardec in
+                                                                                                                        let varMode = getVarMode varType in -- getting variable mode (const etc.)
+                                                                                                                            let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
+                                                                                                                                let posns = getVariableDeclStatPos vardec in
                                                                                                                                     let sizes = getListDimFromType (vardecid_typepart (vardeclist_vardecid vardec)) in
-                                                                                                                                        if (checkIfCanOverride ids env "var") -- check if vars can be overrided (yes if inside a new block)
-                                                                                                                                        then updateEnvFromListOfVarIds ids env posns varMode ty sizes -- updating env for each declared var.
-                                                                                                                                        else updateEnvFromListOfVarIds ids env posns varMode ty sizes)))
+                                                                                                                                        updateEnvFromListOfVarIds ids env posns varMode ty sizes -- updating env for each declared var. (override check is done inside updateEnvFromListOfVarIds)                                                                
                                                                 -- Functions and Procedures
                                                                 Abs.ProcedureStatement posf id params stats -> let parameters = getParamList params in
                                                                                                                 let fid = getIdFromIdent id in
                                                                                                                     let fpos = getPosFromIdent id in
-                                                                                                                        if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
+                                                                                                                        if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (treu if defined inside a new block)
                                                                                                                         then insertWith (++) fid [Function (B_type Type_Void) fpos parameters False] env
                                                                                                                         else env -- it was already defined
                                                                 Abs.FunctionStatement posf id params ty stats -> let parameters = getParamList params in
                                                                                                                     let fty = getTypeFromTypeExpF ty in
                                                                                                                         let fid = getIdFromIdent id in 
                                                                                                                             let fpos = getPosFromIdent id in
-                                                                                                                                if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (defined inside a new block)
+                                                                                                                                if (checkIfCanOverride [fid] env "func") -- check if the func can be overrided (true if defined inside a new block)
                                                                                                                                 then insertWith (++) fid [Function fty fpos parameters False] env
                                                                                                                                 else env -- it was already defined
                                                                 -- generic case
                                                                 _ -> env 
 updateEnv node@(Abs.EmptyStatement pos) env = env
 
--- Update the env for Conditional if-then-else statement
+-- Update the env for Conditional if-then-else-statement
 updateEnvCondStat :: (Abs.CONDITIONALSTATE Posn) -> Env -> Env
 updateEnvCondStat (Abs.ConditionalStatementCtrlThen pos ctrlState state elseState) env  = case ctrlState of
                     Abs.CtrlDecStateVar cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False []] env
@@ -221,7 +217,7 @@ updateEnvCondStat (Abs.ConditionalStatementCtrlWThen pos ctrlState b elseState) 
                     Abs.CtrlDecStateConst cpos id typepart exp -> insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "const" False []] env
 updateEnvCondStat _ env  = env
 
--- Update the env for while statement
+-- Update the env for while-statement
 updateEnvWhileStat :: (Abs.WHILESTATEMENT Posn) -> Env -> Env
 updateEnvWhileStat (Abs.WhileStateCtrlDo pos ctrl state) env  = case ctrl of
                     Abs.CtrlDecStateVar cpos id typepart exp -> let newEnv = insertWith (++) (getIdFromIdent id) [Variable (getTypePart typepart) (getPosFromIdent id) "var" False []] env in insertWith (++) "while" [] newEnv
@@ -232,11 +228,13 @@ updateEnvWhileStat (Abs.WhileStateCtrlWDo pos ctrl b) env  = case ctrl of
 updateEnvWhileStat (Abs.WhileStateSimpleDo pos expr state) env  = insertWith (++) "while" [] env
 updateEnvWhileStat (Abs.WhileStateSimpleWDo pos expr b) env  = insertWith (++) "while" [] env
 
+-- Update the env for for-statement
 updateEnvForStat :: Abs.FORSTATEMENT Posn -> Env -> Env
 updateEnvForStat (Abs.ForStateIndexDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = let newEnv = insertWith (++) id [Variable (B_type Type_Integer) posi "param" False []] env in insertWith (++) "for" [] newEnv
 updateEnvForStat (Abs.ForStateIndexWDo pos indexVar@(Abs.IndexVarDeclaration posv ident@(Abs.Ident id posi)) rangeexp state) env = let newEnv = insertWith (++) id [Variable (B_type Type_Integer) posi "param" False []] env in insertWith (++) "for" [] newEnv
 updateEnvForStat _ env = insertWith (++) "for" [] env
 
+-- Update the env for do-while-statement
 updateEnvDoWhileStat :: Abs.DOSTATEMENT Posn -> Env -> Env
 updateEnvDoWhileStat (Abs.DoWhileState _ _ _) env = insertWith (++) "dowhile" [] env
 
@@ -269,7 +267,8 @@ updateIfCanOverride_ ((str,entry:entries):xs) = case entry of
 updateIfCanOverride_ ((str,[]):xs) = ((str,[]):xs)
 updateIfCanOverride_ [] = []
 
--- Given a list of variable ids, returns true if they can be overrided (false if at least one of them CANNOT be overrided)
+-- Given a list of variable or functions ids, returns true if they can be overrided (false if at least one of them CANNOT be overrided)
+-- The string ("var" or "func") specifies if vars or funcs are checked!
 checkIfCanOverride :: [Prelude.String] -> Env -> Prelude.String -> Bool
 checkIfCanOverride (x:xs) env t = case Data.Map.lookup x env of
     Just (entry:entries) -> case findEntryOfType (entry:entries) t of
@@ -279,14 +278,21 @@ checkIfCanOverride (x:xs) env t = case Data.Map.lookup x env of
     Nothing -> True && (checkIfCanOverride xs env t)
 checkIfCanOverride [] env _ = True
 
+-- Check if function can be overrided
+checkFuncOverride :: Abs.Ident Posn -> Env -> TCheckResult
+checkFuncOverride (Abs.Ident id pos) env = if (checkIfCanOverride [id] env "func")
+                                           then TResult env (B_type Type_Void) pos 
+                                           else TError ["Cannot redefine function " ++ id ++ "! Position: " ++ show pos]
+
 ------------------------------------------------------------------------------------------------------
---- FUNCTIONS FOR GETTING INFOS FROM FUNCTIONS-DECLARATIONS FOR ENV ENTRY ----------------------------
+--- GENERIC FUNCTIONS --------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------
 
 -- Given an Ident node of the ABS, returns the string of the identifier
 getIdFromIdent :: Abs.Ident Posn -> Prelude.String
 getIdFromIdent (Abs.Ident s _) = s 
 
+-- Given an Ident node of the ABS, returns the position (Posn)
 getPosFromIdent :: Abs.Ident Posn -> Posn
 getPosFromIdent (Abs.Ident s pos) = pos
 
@@ -320,31 +326,12 @@ checkDuplicatedParametersInFunDecl :: [Prelude.String] -> Prelude.Bool
 checkDuplicatedParametersInFunDecl (x:xs) = isInList x xs || checkDuplicatedParametersInFunDecl xs
 checkDuplicatedParametersInFunDecl [] = False
 
--- Check if function can be overrided
-checkFuncOverride :: Abs.Ident Posn -> Env -> TCheckResult
-checkFuncOverride (Abs.Ident id pos) env = if (checkIfCanOverride [id] env "func")
-                                           then TResult env (B_type Type_Void) pos 
-                                           else TError ["Cannot redefine function " ++ id ++ "! Position: " ++ show pos]
-
-------------------------------------------------------------------------------------------------------
---- FUNCTIONS FOR POINTERS  --------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------
-
--- Given a primitive type, builds a pointer of that type
-buildPointerOfType :: Type -> Prelude.Integer -> Type
-buildPointerOfType t n = Pointer t n
-
--- Given a pointer symbol, counts how many are them
--- Example: **** -> 4
-countPointers :: Abs.POINTER Posn -> Prelude.Integer
-countPointers (Abs.PointerSymbol pos po) = 1 + countPointers po
-countPointers (Abs.PointerSymbolSingle pos) = 1
-
 -- Return true if the given string is in the given string list
 isInList :: Prelude.String -> [Prelude.String] -> Prelude.Bool
 isInList id (x:xs) = id == x || isInList id xs
 isInList id [] = False
 
+-- Given a primitive type, changes the type after a casting
 changeType :: TCheckResult -> Abs.PRIMITIVETYPE Posn -> TCheckResult
 changeType (TResult env (Array _ _) pos) pt = TError ["Incompatibility type for casting at "++ show pos]
 changeType (TResult env (Pointer _ _) pos) pt = TError ["Incompatibility type for casting at "++ show pos]
@@ -353,19 +340,19 @@ changeType tcheck@(TResult env t pos) pt = if checkCompatibility tcheck (TResult
                                             else TError ["Incompatibility type for casting at "++ show pos]
 changeType (TError e) _ = TError e
 
+-- Checks if cast is present
 isThereCast :: Abs.DEFAULT Posn -> Bool
 isThereCast (Abs.ExpressionCastD _ _ _) = True
 isThereCast (Abs.ExpressionUnaryD pos unary def) = isThereCast def
 isThereCast _ = False
 
+-- Returns the cast type
 getTypeCast :: Abs.DEFAULT Posn -> Abs.PRIMITIVETYPE Posn
 getTypeCast (Abs.ExpressionCastD pos def t) = t
 getTypeCast (Abs.ExpressionUnaryD pos unary def) = getTypeCast def
 getTypeCast _ = Abs.PrimitiveTypeVoid (Pn 0 0 0)
--------------------------------------------------------------------------------------------------------
---- FUNCTIONS FOR GETTING INFOS FROM VAR-DECLARATIONS FOR ENV ENTRY -----------------------------------
--------------------------------------------------------------------------------------------------------
 
+-- Pretty printer of the array initialization part (used in errors strings)
 showInit :: Abs.INITPART Posn -> Prelude.String
 showInit (Abs.InitializzationPartArray _ arrayInit) = let p = Pn 0 0 0 in
                                                         getInitPart (PrintProgettoPar.printTree (Abs.StartCode p (Abs.ListStatements p 
@@ -524,7 +511,6 @@ dimIsOk_ ty@(Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInitSingle _ a
                                                                                                                     then dimIsOk_ (getChild expf) arrayInit
                                                                                                                     else False
 dimIsOk_ _ _ = False
-
 
 
 getInitPart :: Prelude.String -> Prelude.String -> Prelude.String -> Prelude.String

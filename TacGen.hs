@@ -1,4 +1,5 @@
--- Cagnoni/Mansi UNIUD Progetto LC3
+-- Progetto Linguaggi e Compilatori parte 3 - UNIUD 2021
+-- Andrea Mansi & Christian Cagnoni
 
 -- Pragma for implementing touples
 {-# LANGUAGE MultiParamTypeClasses #-} 
