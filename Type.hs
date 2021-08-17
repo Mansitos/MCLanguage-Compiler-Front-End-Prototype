@@ -1,3 +1,6 @@
+-- Progetto Linguaggi e Compilatori parte 3 - UNIUD 2021
+-- Christian Cagnoni & Andrea Mansi
+
 module Type where
 
 -- Data definitions for Basic and Composed types

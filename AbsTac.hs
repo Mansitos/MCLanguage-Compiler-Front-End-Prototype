@@ -1,4 +1,6 @@
--- Progetto LC Mansi Cagnoni UNIUD
+-- Progetto Linguaggi e Compilatori parte 3 - UNIUD 2021
+-- Christian Cagnoni & Andrea Mansi
+
 module AbsTac where
 
 import AbsProgettoPar as Abs
@@ -8,10 +10,10 @@ data TAC = TAC {code::[TACEntry],funcs::[TACEntry]}
     deriving (Eq, Ord, Show, Read)
 
 data TACEntry
-    = TacAssignUnaryOp      {getAddr:: Address, unaryOp  :: TacUnaryOp,  first::Address, assignType::Type}                    --        x = + y
-    | TacAssignBinaryOp     {getAddr:: Address, binaryOp :: TacBinaryOp, first::Address, second :: Address, assignType::Type} --        x = y + z
-    | TacAssignRelOp        {getAddr:: Address, relOp    :: TacRelOp,    first::Address, second :: Address, assignType::Type} --        x = y < z
-    | TacAssignNullOp       {getAddr:: Address,                          first::Address,                    assignType::Type} --        x = y
+    = TacAssignUnaryOp      {getAddr:: Address, unaryOp  :: TacUnaryOp,  first::Address, assignType::Type}                        --   x = + y
+    | TacAssignBinaryOp     {getAddr:: Address, binaryOp :: TacBinaryOp, first::Address, second :: Address, assignType::Type}     --   x = y + z
+    | TacAssignRelOp        {getAddr:: Address, relOp    :: TacRelOp,    first::Address, second :: Address, assignType::Type}     --   x = y < z
+    | TacAssignNullOp       {getAddr:: Address,                          first::Address,                    assignType::Type}     --   x = y
     | TacProcCall           {getAddr:: Address}
     | TacFuncCall           {getAddr:: Address, first::Address,retType::Type}-- todo
     | TacFuncCallLeft       {getAddr:: Address}
@@ -27,8 +29,6 @@ data TACEntry
     | TacComment            Prelude.String  -- for comments on TAC print
     | TacError              Prelude.String  -- array index out of bounds and function control reach
     | ExitTac               -- last tac entry (end of generation)
-    -- arrays?
-    -- pointers?
   deriving (Eq, Ord, Show, Read)
 
 data TacUnaryOp     = Pos | Neg | Not | Point  
@@ -108,16 +108,5 @@ data Address = AddrString   {content_addr_string :: Prelude.String}
              | AddrReal     {content_addr_real :: Prelude.Double}
              | AddrChar     {content_addr_char :: Prelude.Char}
              | AddrAddress  {content_addr_addr :: Prelude.String} -- used for vars; params; temps.
-             | AddrNULL     {} -- for internal use only
+             | AddrNULL     {}
     deriving (Eq, Ord, Show, Read)
-
-
-    {-data Value a
-    = IntVal {intVal::AbsProgettoPar.Integer a}
-    | BoolVal {boolVal::AbsProgettoPar.Boolean a}
-    | RealVal {realVal::AbsProgettoPar.Real a}
-    | CharVal {charVal::AbsProgettoPar.Char a}
-    | StringVal {stringVal::AbsProgettoPar.String a}
-    deriving (C.Eq, C.Ord, C.Show, C.Read)-}
-
-{- TODO: Show del tac tree -}

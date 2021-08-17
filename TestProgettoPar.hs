@@ -1,4 +1,5 @@
--- Progetto LC 2021 -- Mansi/Cagnoni UNIUD --
+-- Progetto Linguaggi e Compilatori parte 3 - UNIUD 2021
+-- Christian Cagnoni & Andrea Mansi
 
 module Main where
 
@@ -51,8 +52,8 @@ run v p s =
     Right tree -> do
       putStrLn "\n[Parsing]"
       putStrLn "\n   Parse Successful! :) "
-      let includeDebugInfo = False in -- flag for complete or pretty printing
-        let start_env = startEnv in   -- (Data.Map.fromList []) in -- substitute with startEnv for including pre-defined functions
+      let includeDebugInfo = False in   -- flag for complete or pretty printing (if True more output/informations are printed!)
+        let start_env = startEnv in     -- (Data.Map.fromList []) in -- substitute with startEnv for including pre-defined functions
           let typecheckRes = TypeChecker.executeTypeChecking tree start_env in 
             let tacgeneration = TacGen.genTAC typecheckRes in
               ------------------------------------------------------------------------
@@ -73,7 +74,7 @@ run v p s =
                 else do -- pretty print with no debug infos
                   putStrLn ("\n[Input Code]\n\n" ++ s)
                   putStrLn ("\n[Linearized tree]\n\n" ++ printTree tree)
-                  if (printTree tree == printTree (case (p (myLexer (printTree tree))) of -- CHECK IF LINEARIZED CODE IS LEGAL SYNTAX
+                  if (printTree tree == printTree (case (p (myLexer (printTree tree))) of -- CHECKS IF LINEARIZED CODE IS LEGAL SYNTAX
                                                     Left e -> (Abs.StartCode (Pn 0 0 0) (Abs.EmptyStatement (Pn 0 0 0)))
                                                     Right newTree -> newTree))
                     then putStrLn "\n Serialization of abstract syntax tree produced legal concrete syntax!" 
@@ -129,6 +130,7 @@ showTypeCheckResultStatements (Abs.ListStatements result statement statements) s
                                                                                                       _ -> (showTypeCheckResultStatements statements spacer flag)
 showTypeCheckResultStatements (Abs.EmptyStatement result) spacer flag = ""   -- gestione empty
 
+-- Print a TError (returns the err string)
 printErr :: TCheckResult -> String
 printErr (TError (x:xs)) = " " ++ x ++"\n"++ printErr (TError xs)
 printErr _ = ""
@@ -221,7 +223,7 @@ buildCastOperator tfrom tto = "convert-" ++ show tfrom ++ "-to-" ++ show tto
 --- Preprocessing of the input for multiple pointers compatibility "$$$$$$$" ---------------------
 --------------------------------------------------------------------------------------------------
 
--- PreProcessing for pointer compatibility
+-- PreProcessing for multiple pointer without spaces compatibility
 pointersSyntaxPreprocessing :: String -> String -> String
 pointersSyntaxPreprocessing [] output = output
 pointersSyntaxPreprocessing (x:xs) output= if x=='$'
