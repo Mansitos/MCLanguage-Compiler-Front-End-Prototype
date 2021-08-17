@@ -29,13 +29,12 @@ nel typechecker viene assegnata la pos sbagliata nel tcheckresult delle variabil
 >> le guardie dei for devono essere const!(param) - done
 bloccare typeindex unary con +,-,! - done
 gestire tac rangeexpressions - done
+short-cut/lazy eval on bool flags - done
 -----------
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 
 ------------
-
-short-cut/lazy eval on bool flags
 
 gestione passaggio parametri? noi abbiamo ref. e val.?
 
