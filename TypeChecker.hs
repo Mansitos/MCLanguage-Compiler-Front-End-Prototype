@@ -372,6 +372,8 @@ getListDimFromExpF (Abs.TypeExpressionFunction _ typeexp) = getListDimFromTypeEx
 getListDimFromTypeExp :: Abs.TYPEEXPRESSION a -> [Prelude.Integer]
 getListDimFromTypeExp (Abs.TypeExpressionArraySimple _ range expf) = getListDimFromRange range ++ getListDimFromExpF expf
 getListDimFromTypeExp (Abs.TypeExpressionArray _ range expf) = getListDimFromRange range ++ getListDimFromExpF expf
+getListDimFromTypeExp (Abs.TypeExpressionPointer _ prim _) = []
+getListDimFromTypeExp (Abs.TypeExpressionPointerOfArray _ typeexpf _) = getListDimFromExpF typeexpf
 getListDimFromTypeExp _ = []
 
 getListDimFromRange :: Abs.RANGEEXP a -> [Prelude.Integer]
@@ -1002,8 +1004,11 @@ executeExpression node@(Abs.ExpressionChar pos value) env = Abs.ExpressionChar (
 executeExpression node@(Abs.ExpressionString pos value) env = Abs.ExpressionString (checkTypeExpression 0 node env) (executeString value env)
 executeExpression node@(Abs.ExpressionReal pos value) env = Abs.ExpressionReal (checkTypeExpression 0 node env) (executeReal value env)
 executeExpression node@(Abs.ExpressionBracket pos exp) env = Abs.ExpressionBracket (checkTypeExpression 0 node env) (executeExpression exp env)
-executeExpression node@(Abs.ExpressionCast pos def tipo) env = Abs.ExpressionCast (checkTypeExpression 0 node env) (executeDefault def env) (executePrimitiveType tipo env)
-executeExpression node@(Abs.ExpressionUnary pos unary def) env = Abs.ExpressionUnary (checkTypeExpression 0 node env) (executeUnaryOp unary env) (executeDefault def env)
+executeExpression node@(Abs.ExpressionCast pos def tipo) env = Abs.ExpressionCast (checkTypeExpression 0 node env) (executeDefault 0 def env) (executePrimitiveType tipo env)
+executeExpression node@(Abs.ExpressionUnary pos unary def) env = let d = case unary of
+                                                                            Abs.UnaryOperationPointer _ -> 1
+                                                                            _ -> 0 in
+                                                                                Abs.ExpressionUnary (checkTypeExpression 0 node env) (executeUnaryOp unary env) (executeDefault d def env)
 executeExpression node@(Abs.ExpressionBinaryPlus pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
                                                                         let rightExecute = (executeExpression exp2 env) in
                                                                                 let leftType = getTypeFromExpressionTResult leftExecute in
@@ -1155,16 +1160,19 @@ executeUnaryOp node@(Abs.UnaryOperationNegative pos) env = Abs.UnaryOperationNeg
 executeUnaryOp node@(Abs.UnaryOperationNot pos) env = Abs.UnaryOperationNot (checkTypeUnaryOp node env)
 executeUnaryOp node@(Abs.UnaryOperationPointer pos) env = Abs.UnaryOperationPointer (checkTypeUnaryOp node env)
 
-executeDefault :: Abs.DEFAULT Posn -> Env -> Abs.DEFAULT TCheckResult
-executeDefault node@(Abs.ExpressionIntegerD pos value) env = Abs.ExpressionIntegerD (checkTypeDefault 0 node env) (executeInteger value env)
-executeDefault node@(Abs.ExpressionBooleanD pos value) env = Abs.ExpressionBooleanD (checkTypeDefault 0 node env) (executeBoolean value env)
-executeDefault node@(Abs.ExpressionCharD pos value) env = Abs.ExpressionCharD (checkTypeDefault 0 node env) (executeChar value env)
-executeDefault node@(Abs.ExpressionStringD pos value) env = Abs.ExpressionStringD (checkTypeDefault 0 node env) (executeString value env)
-executeDefault node@(Abs.ExpressionRealD pos value) env = Abs.ExpressionRealD (checkTypeDefault 0 node env) (executeReal value env)
-executeDefault node@(Abs.ExpressionBracketD pos exp) env = Abs.ExpressionBracketD (checkTypeDefault 0 node env) (executeExpression exp env)
-executeDefault node@(Abs.ExpressionCastD pos def ty) env = Abs.ExpressionCastD (checkTypeDefault 0 node env) (executeDefault def env) (executePrimitiveType ty env)
-executeDefault node@(Abs.ExpressionUnaryD pos unary def) env = Abs.ExpressionUnaryD (checkTypeDefault 0 node env) (executeUnaryOp unary env) (executeDefault def env)
-executeDefault node@(Abs.ExpressionIdentD pos id index) env = Abs.ExpressionIdentD (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement index env)
+executeDefault :: Prelude.Integer -> Abs.DEFAULT Posn -> Env -> Abs.DEFAULT TCheckResult
+executeDefault d node@(Abs.ExpressionIntegerD pos value) env = Abs.ExpressionIntegerD (checkTypeDefault 0 node env) (executeInteger value env)
+executeDefault d node@(Abs.ExpressionBooleanD pos value) env = Abs.ExpressionBooleanD (checkTypeDefault 0 node env) (executeBoolean value env)
+executeDefault d node@(Abs.ExpressionCharD pos value) env = Abs.ExpressionCharD (checkTypeDefault 0 node env) (executeChar value env)
+executeDefault d node@(Abs.ExpressionStringD pos value) env = Abs.ExpressionStringD (checkTypeDefault 0 node env) (executeString value env)
+executeDefault d node@(Abs.ExpressionRealD pos value) env = Abs.ExpressionRealD (checkTypeDefault 0 node env) (executeReal value env)
+executeDefault d node@(Abs.ExpressionBracketD pos exp) env = Abs.ExpressionBracketD (checkTypeDefault 0 node env) (executeExpression exp env)
+executeDefault d node@(Abs.ExpressionCastD pos def ty) env = Abs.ExpressionCastD (checkTypeDefault 0 node env) (executeDefault d def env) (executePrimitiveType ty env)
+executeDefault d node@(Abs.ExpressionUnaryD pos unary def) env = let dd = case unary of
+                                                                            Abs.UnaryOperationPointer _ -> d+1
+                                                                            _ -> 0 in
+                                                                                Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
+executeDefault d node@(Abs.ExpressionIdentD pos id index) env = Abs.ExpressionIdentD (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement index env)
 
 executeLValue :: Abs.LVALUEEXPRESSION Posn -> Env -> Abs.LVALUEEXPRESSION TCheckResult
 executeLValue node@(Abs.LvalueExpression pos id ident) env = Abs.LvalueExpression (checkTypeLvalueExpression 0 node env) (executeIdentVar id env) (executeArrayIndexElement ident env)
@@ -1194,8 +1202,14 @@ executeTypeTypeIndex node@(Abs.TypeOfIndexInt pos typeindex integer) env = Abs.T
 executeTypeTypeIndex node@(Abs.TypeOfIndexIntSingle pos integer) env = Abs.TypeOfIndexIntSingle (checkTypeTypeIndex node env) (executeInteger integer env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexVar pos typeindex id index) env = Abs.TypeOfIndexVar (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeIdentVar id env) (executeArrayIndexElement index env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexVarSingle pos id index) env = Abs.TypeOfIndexVarSingle (checkTypeTypeIndex node env) (executeIdentVar id env) (executeArrayIndexElement index env)
-executeTypeTypeIndex node@(Abs.TypeOfIndexPointer pos typeindex unaryop def) env = Abs.TypeOfIndexPointer (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeUnaryOp unaryop env) (executeDefault def env)
-executeTypeTypeIndex node@(Abs.TypeOfIndexPointerSingle pos unaryop def) env = Abs.TypeOfIndexPointerSingle (checkTypeTypeIndex node env) (executeUnaryOp unaryop env) (executeDefault def env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexPointer pos typeindex unaryop def) env = let d = case unaryop of
+                                                                                            Abs.UnaryOperationPointer _ -> 1
+                                                                                            _ -> 0 in
+                                                                                                Abs.TypeOfIndexPointer (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeUnaryOp unaryop env) (executeDefault d def env)
+executeTypeTypeIndex node@(Abs.TypeOfIndexPointerSingle pos unaryop def) env = let d = case unaryop of
+                                                                                            Abs.UnaryOperationPointer _ -> 1
+                                                                                            _ -> 0 in
+                                                                                                Abs.TypeOfIndexPointerSingle (checkTypeTypeIndex node env) (executeUnaryOp unaryop env) (executeDefault d def env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryPlus pos typeindex exp1 exp2) env = Abs.TypeOfIndexBinaryPlus (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeExpression exp1 env) (executeExpression exp2 env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryPlusSingle pos exp1 exp2 ) env = Abs.TypeOfIndexBinaryPlusSingle (checkTypeTypeIndex node env) (executeExpression exp1 env) (executeExpression exp2 env)
 executeTypeTypeIndex node@(Abs.TypeOfIndexBinaryMinus pos typeindex exp1 exp2) env = Abs.TypeOfIndexBinaryMinus (checkTypeTypeIndex node env) (executeTypeTypeIndex typeindex env) (executeExpression exp1 env) (executeExpression exp2 env)
@@ -2140,7 +2154,7 @@ checkTypeDefault d node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) inde
                                                                                                                         else TError ["Operator $ cannot be applied here! Positon: "++show posI]
                                                                         Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
 checkTypeDefault d node@(Abs.ExpressionCastD pos def ty) env = let tipoTCheck = checkPrimitiveType ty env in
-                                                                   let defTCheck = checkTypeDefault 0 def env in
+                                                                   let defTCheck = checkTypeDefault d def env in
                                                                        case defTCheck of
                                                                            TResult _ _ _ -> if (checkCastCompatibility defTCheck tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++ show pos]
                                                                            _ -> mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) defTCheck
@@ -2333,10 +2347,7 @@ checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env =  TResult env (Ar
 
 checkTypeTypeExpressionFunc :: Abs.TYPEEXPRESSIONFUNC Posn -> Env -> TCheckResult
 checkTypeTypeExpressionFunc node@(Abs.TypeExpressionArrayOfPointer pos typeexpressionfunc) env = TResult env (getTypeExprF node) pos
-checkTypeTypeExpressionFunc node@(Abs.TypeExpressionFunction pos typeexpression) env = case typeexpression of
-                                                                                        Abs.TypeExpressionArray {} -> TError ["Type Expression not allowed here! Position: " ++ show pos]
-                                                                                        Abs.TypeExpressionArraySimple {} -> TError ["Type Expression not allowed here! Position: " ++ show pos]
-                                                                                        _ ->TResult env (getTypeExprF node) pos
+checkTypeTypeExpressionFunc node@(Abs.TypeExpressionFunction pos typeexpression) env = TResult env (getTypeExprF node) pos
 
 
 checkTypeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> TCheckResult

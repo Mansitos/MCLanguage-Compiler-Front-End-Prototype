@@ -108,31 +108,31 @@ showAddrContent (AddrNULL) = "NULL"
 buildTacEntriesForVarsDecl :: [Address] -> [Address] -> Type -> Prelude.Integer -> Prelude.Integer -> [TACEntry]
 ------------------------------------------------------   
 buildTacEntriesForVarsDecl [x] [r] (Pointer t p) dim n = case r of  -- single, pointer
-    AddrNULL -> [TacPointDeref (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))]
-    _ -> [TacPointDeref (buildArrayId x n dim) r]
+    AddrNULL -> [TacPointRef (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))]
+    _ -> [TacPointRef (buildArrayId x n dim) r]
 buildTacEntriesForVarsDecl [x] [r] (Array t d) dim n = buildTacEntriesForVarsDecl [x] [r] t dim n
 buildTacEntriesForVarsDecl [x] [r] ty dim n = case r of     -- single, not pointer
     AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty) ty]
     _ -> [TacAssignNullOp (buildArrayId x n dim) r ty]
 ------------------------------------------------------ 
 buildTacEntriesForVarsDecl [x] (r:rs) (Pointer t p) dim n = case r of -- TODO
-    AddrNULL -> [TacPointDeref (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim)
-    _ -> [TacPointDeref (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim)
+    AddrNULL -> [TacPointRef (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim)
+    _ -> [TacPointRef (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim)
 buildTacEntriesForVarsDecl [x] (r:rs) (Array t d) dim n = buildTacEntriesForVarsDecl [x] (r:rs) t dim n
 buildTacEntriesForVarsDecl [x] (r:rs) ty dim n = case r of
     AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty) ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
     _ -> [TacAssignNullOp (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim)
 ------------------------------------------------------ 
 buildTacEntriesForVarsDecl (x:xs) [r] (Pointer t p) dim n = case r of -- multiple, pointers
-    AddrNULL -> [TacPointDeref (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))] ++ buildTacEntriesForVarsDecl xs [r] (Pointer t p) dim n
-    _ -> [TacPointDeref (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl xs [r] (Pointer t p) dim n
+    AddrNULL -> [TacPointRef (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))] ++ buildTacEntriesForVarsDecl xs [r] (Pointer t p) dim n
+    _ -> [TacPointRef (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl xs [r] (Pointer t p) dim n
 buildTacEntriesForVarsDecl (x:xs) [r] (Array t d) dim n = buildTacEntriesForVarsDecl (x:xs) [r] t dim n
 buildTacEntriesForVarsDecl (x:xs) [r] ty dim n = case r of -- multiple, not pointers
     AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty)  ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
     _ -> [TacAssignNullOp (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
 ------------------------------------------------------ 
 -- TODO versione pointers
-buildTacEntriesForVarsDecl (x:xs) (r:rs) (Pointer t p) dim n =  [TacPointDeref (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) (Pointer t p) dim 0
+buildTacEntriesForVarsDecl (x:xs) (r:rs) (Pointer t p) dim n =  [TacPointRef (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) (Pointer t p) dim 0
 buildTacEntriesForVarsDecl (x:xs) (r:rs) (Array t d) dim n = buildTacEntriesForVarsDecl (x:xs) (r:rs) t dim n
 buildTacEntriesForVarsDecl (x:xs) (r:rs) ty dim n =  [TacAssignNullOp (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) ty dim 0
 
@@ -306,11 +306,14 @@ buildAssignTac _ [] _ _ _ = []
 
 generateDimForArray_ :: Abs.TYPEEXPRESSIONFUNC TCheckResult -> Prelude.Integer
 generateDimForArray_ (Abs.TypeExpressionFunction _ typeexp) = generateDimForArray typeexp
+generateDimForArray_ (Abs.TypeExpressionArrayOfPointer _ typeexpf) = generateDimForArray_ typeexpf
 
 generateDimForArray :: Abs.TYPEEXPRESSION TCheckResult -> Prelude.Integer
 generateDimForArray (Abs.TypeExpression _ prim) = generateDimForArrayPrim prim
 generateDimForArray (Abs.TypeExpressionArraySimple _ _ typeexp) = generateDimForArray_ typeexp
-generateDimForArray _ = 1 -- TODO 
+generateDimForArray (Abs.TypeExpressionArray _ _ typeexp) = generateDimForArray_ typeexp
+generateDimForArray (Abs.TypeExpressionPointer _ prim _) = 2 * generateDimForArrayPrim prim
+generateDimForArray (Abs.TypeExpressionPointerOfArray _ typeexp _) = 2 * generateDimForArray_ typeexp
 
 generateDimForArrayPrim :: Abs.PRIMITIVETYPE TCheckResult -> Prelude.Integer
 generateDimForArrayPrim (Abs.PrimitiveTypeVoid _ ) = 0
@@ -322,7 +325,12 @@ generateDimForArrayPrim (Abs.PrimitiveTypeChar _ ) = 1
 
 findArray :: [EnvEntry] -> [EnvEntry]
 findArray ((Variable ty@(Array _ _) pos mode override s):xs) = [Variable ty pos mode override s]
-findArray (x:xs) = findArray xs
+findArray (x:xs) = case x of
+                    Variable (Pointer t depth) pos mode override s -> let finder = findArray [Variable t pos mode override s] in
+                                                                        case finder of
+                                                                            [] -> findArray xs
+                                                                            _ -> [x]
+                    Variable t pos mode override s -> findArray xs
 findArray [] = []
 
 generateDimForArrayFromType :: Type -> Prelude.Integer
@@ -333,6 +341,7 @@ generateDimForArrayFromType (B_type Type_Real) = 8
 generateDimForArrayFromType (B_type Type_String) = 8
 generateDimForArrayFromType (B_type Type_Char) = 1
 generateDimForArrayFromType (Array t _) = generateDimForArrayFromType t
+generateDimForArrayFromType (Pointer t _) = 2 * generateDimForArrayFromType t
 
 buildInitArray :: Address -> Prelude.Integer -> [Address]
 buildInitArray a 1 = [a]
@@ -346,9 +355,9 @@ buildPosArrayNoInteger _ _ _ n = ([],n-2)
 buildArrayCommentsNoInteger :: [Address] -> [Prelude.Integer] -> Prelude.Integer -> Type -> [TACEntry]
 buildArrayCommentsNoInteger (i:is) (p:ps) dim t = let result = buildPosArrayCNoInteger (p:ps) dim in 
                                                     let product = buildProductComment ps in
-                                                        [TacComment (product++"sizeof("++show t++")="++show result)]                                                        
+                                                        [TacComment (product++"sizeof("++showReal t++")="++show result)]                                                        
 buildArrayCommentsNoInteger (i:is) [] dim t = let result = (buildPosArrayCNoInteger [] dim)*dim in 
-                                                [TacComment ("sizeof("++show t++")="++show result)]                                                           
+                                                [TacComment ("sizeof("++showReal t++")="++show result)]                                                           
 buildArrayCommentsNoInteger _ _ _ _ = []
 
 buildPosArrayCNoInteger :: [Prelude.Integer] -> Prelude.Integer -> Prelude.Integer
@@ -371,10 +380,15 @@ buildPosArrayC :: [Address] -> [Prelude.Integer] -> Prelude.Integer -> Prelude.I
 buildPosArrayC (i:is) (p:ps) dim = ((content_addr_int i)-1) * (buildPosArray_ ps) * dim 
 buildPosArrayC _ _ _ = 1
 
+showReal :: Type -> Prelude.String
+showReal (Array t _) = show t
+showReal (Pointer t _) = "&anything"
+showReal t = show t
+
 buildArrayComments :: [Address] -> [Prelude.Integer] -> Prelude.Integer -> Type -> [TACEntry]
 buildArrayComments (i:is) (p:ps) dim t = let result = buildPosArrayC (i:is) (p:ps) dim in
                                             let product = buildProductComment ps in
-                                                [TacComment ((show ((content_addr_int i)-1))++"*"++product++"sizeof("++show t++")="++show result)] ++ buildArrayComments is ps dim t
+                                                [TacComment ((show ((content_addr_int i)-1))++"*"++product++"sizeof("++showReal t++")="++show result)] ++ buildArrayComments is ps dim t
 buildArrayComments _ _ _ _ = []
 
 buildProductComment :: [Prelude.Integer] -> Prelude.String
@@ -415,6 +429,11 @@ removeDuplicates (x:xs) zs = case x of
                                 TacLabel {} -> if x `elem` zs then removeDuplicates xs zs  else removeDuplicates xs (zs++[x])
                                 _ -> removeDuplicates xs (zs++[x])
 removeDuplicates [] zs = zs
+
+getRealTacType :: Type -> Type
+getRealTacType (Array t _) =  t
+getRealTacType (Pointer t _) =  t
+getRealTacType t = t
 
 ------------------------------------------------------------------------------------------------
 -- TAC GENERATION FUNCTIONS --------------------------------------------------------------------
@@ -1491,13 +1510,13 @@ genTacExpression (Abs.ExpressionCast res def tipo)                              
                                                                                                                                                    [TacCastConversion temp (sel4 defTac) fromType toType]) -- Tac instruction for conversion (cast)
                                                                                                                                                    []) (sel1 defTac) (sel1 tipoTac)),(sel2 tipoTac)+1,(sel3 tipoTac),temp)
 genTacExpression (Abs.ExpressionUnary res@(TResult env ty pos) unary def)       n l k (w,j) str = let defTac = genTacDefault def (n+1) l k (w,j) in 
-                                                                                                let defAddr = sel4 defTac in
-                                                                                                    let temp = newTemp n in
-                                                                                                        case unary of 
-                                                                                                            UnaryOperationPositive _ -> (Abs.ExpressionUnary (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Pos defAddr ty] [])  ) (Abs.UnaryOperationPositive (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
-                                                                                                            UnaryOperationNegative _ -> (Abs.ExpressionUnary (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Neg defAddr ty] [])  ) (Abs.UnaryOperationNegative (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
-                                                                                                            UnaryOperationNot      _ -> (Abs.ExpressionUnary (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Not defAddr ty] [])  ) (Abs.UnaryOperationNot (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
-                                                                                                            UnaryOperationPointer  _ -> (Abs.ExpressionUnary (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Point defAddr ty] [])) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp)
+                                                                                                    let defAddr = sel4 defTac in
+                                                                                                        let temp = newTemp n in
+                                                                                                            case unary of 
+                                                                                                                Abs.UnaryOperationPositive _ -> (Abs.ExpressionUnary (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Pos defAddr ty] [])  ) (Abs.UnaryOperationPositive (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
+                                                                                                                Abs.UnaryOperationNegative _ -> (Abs.ExpressionUnary (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Neg defAddr ty] [])  ) (Abs.UnaryOperationNegative (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
+                                                                                                                Abs.UnaryOperationNot      _ -> (Abs.ExpressionUnary (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Not defAddr ty] [])  ) (Abs.UnaryOperationNot (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
+                                                                                                                Abs.UnaryOperationPointer  _ -> (Abs.ExpressionUnary (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Point defAddr ty] [])) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp)
 genTacExpression (Abs.ExpressionBinaryPlus res@(TResult env t pos) expr1 expr2) n l k (w,j) str = let expr1Tac = genTacExpression expr1 (n+1) l k (w,j) str in 
                                                                                                 let expr2Tac = genTacExpression expr2 (sel2 expr1Tac) l (sel3 expr1Tac) (w,j) str in
                                                                                                     let temp = newTemp n in
@@ -1652,6 +1671,32 @@ genTacTipo (Abs.PrimitiveTypeString _) n l k (w,j) = ((Abs.PrimitiveTypeString (
 genTacTipo (Abs.PrimitiveTypeChar _) n l k (w,j)   = ((Abs.PrimitiveTypeChar   (TAC [] [])),n,k) 
 genTacTipo (Abs.TypeArray _ prim) n l k (w,j)      = ((Abs.TypeArray (TAC [] []) (sel1 (genTacTipo prim n l k (w,j)))),n,k)
 
+{-
+
+var x:[1..2]int$=[1,2];
+var y:int;
+y=$x[1];
+y=$x[2];
+var z:[1..2]int$$=[x[1],x[2]];
+y = $$z[1];
+y = $$z[2];
+
+var x:([1..2]int)$;//=[1,2];
+var y:([]int)$;//=[1,2];
+var z:int;
+z=$x[1+1];
+z=$x[2];
+
+var x:([1..2]int)$$;
+var z:int;
+z=$ $ x[1];
+
+var x : ([1 .. 2] int) $;
+var z : int;
+z = $ x [1];
+
+-}
+
 genTacDefault :: Abs.DEFAULT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.DEFAULT TAC,Prelude.Integer,Prelude.Integer,Address)
 genTacDefault (Abs.ExpressionIntegerD res value@(Abs.Integer val resi))       n l k (w,j) = (Abs.ExpressionIntegerD (TAC [] []) (Abs.Integer val   (TAC [] [])),n,k, AddrInt val)
 genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_true resi))      n l k (w,j) = (Abs.ExpressionBooleanD (TAC [] []) (Abs.Boolean_true  (TAC [] [])),n,k, AddrBool True)
@@ -1671,12 +1716,12 @@ genTacDefault (Abs.ExpressionCastD res def tipo)                              n 
                                                                                                                                                 [TacCastConversion temp (sel4 defTac) fromType toType]) -- Tac instruction for conversion (cast)
                                                                                                                                                 []) (sel1 defTac) (sel1 tipoTac)),(sel2 tipoTac)+1,(sel3 tipoTac),temp) 
 genTacDefault (Abs.ExpressionUnaryD res@(TResult env ty pos) unary def)       n l k (w,j) = let defTac = genTacDefault def (n+1) l k (w,j) in 
-                                                                                            let temp = newTemp n in
-                                                                                                case unary of 
-                                                                                                    UnaryOperationPositive _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Pos (sel4 defTac) ty] [])) (Abs.UnaryOperationPositive (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
-                                                                                                    UnaryOperationNegative _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Neg (sel4 defTac) ty] [])) (Abs.UnaryOperationNegative (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
-                                                                                                    UnaryOperationNot      _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Not (sel4 defTac) ty] [])) (Abs.UnaryOperationNot (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
-                                                                                                    UnaryOperationPointer  _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Point (sel4 defTac) ty] [])) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp)
+                                                                                                let temp = newTemp n in
+                                                                                                    case unary of 
+                                                                                                        Abs.UnaryOperationPositive _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Pos (sel4 defTac) ty] [])) (Abs.UnaryOperationPositive (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
+                                                                                                        Abs.UnaryOperationNegative _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Neg (sel4 defTac) ty] [])) (Abs.UnaryOperationNegative (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
+                                                                                                        Abs.UnaryOperationNot      _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Not (sel4 defTac) ty] [])) (Abs.UnaryOperationNot (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
+                                                                                                        Abs.UnaryOperationPointer  _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Point (sel4 defTac) ty] [])) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp)
 genTacDefault (Abs.ExpressionIdentD res@(TResult env _ _) ident@(Abs.Ident id resI) index)  n l k (w,j) = case Data.Map.lookup id env of
                                                                                                                     Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
                                                                                                                                               (x@(Variable _ posv _ _ _):xs) -> case index of
@@ -1698,6 +1743,19 @@ genTacDefault (Abs.ExpressionIdentD res@(TResult env _ _) ident@(Abs.Ident id re
                                                                                                                                                                                                                                                                                             let leftAddrArray = buildArrayIdNoInteger leftAddr (newTemp ((sel2 typeIndexTac)-1)) in
                                                                                                                                                                                                                                                                                                 let temp = newTemp (sel2 typeIndexTac) in
                                                                                                                                                                                                                                                                                                     ((Abs.ExpressionIdentD (TAC ((code (typeindex_content (sel1 typeIndexTac)))++[TacAssignNullOp temp leftAddrArray t]) []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElement (TAC [] []) (sel1 typeIndexTac))),(sel2 typeIndexTac)+1,(sel3 typeIndexTac),temp)                                                                         
+                                                                                                                                                                                                                        [Variable ty@(Pointer t _) posv _ _ s] -> let realT = getRealTacType t in
+                                                                                                                                                                                                                                                                    let typeIndexTac = genTacTypeIndex typeindex n l k (w,j) 0 [] (-1) in
+                                                                                                                                                                                                                                                                        let dim = generateDimForArrayFromType t in
+                                                                                                                                                                                                                                                                            let leftAddr = buildIDAddr posv id in
+                                                                                                                                                                                                                                                                                if (isIntegerAddress (sel4 typeIndexTac)) 
+                                                                                                                                                                                                                                                                                    then
+                                                                                                                                                                                                                                                                                        let comment = buildArrayComments (sel4 typeIndexTac) s dim t in
+                                                                                                                                                                                                                                                                                            let temp = newTemp (sel2 typeIndexTac) in
+                                                                                                                                                                                                                                                                                                ((Abs.ExpressionIdentD (TAC ([TacAssignBinaryOp temp AddrIntAdd leftAddr (AddrInt (buildPosArrayC (sel4 typeIndexTac) s dim)) (Pointer t 0)]++comment) []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElement (TAC [] []) (sel1 typeIndexTac))),(sel2 typeIndexTac)+1,(sel3 typeIndexTac),temp)
+                                                                                                                                                                                                                                                                                    else
+                                                                                                                                                                                                                                                                                        let typeIndexTac = genTacTypeIndex typeindex n l k (w,j) dim s (-1) in
+                                                                                                                                                                                                                                                                                            let temp = newTemp (sel2 typeIndexTac) in
+                                                                                                                                                                                                                                                                                                ((Abs.ExpressionIdentD (TAC ((code (typeindex_content (sel1 typeIndexTac)))++[TacAssignBinaryOp temp AddrIntAdd leftAddr (head (sel4 typeIndexTac)) (Pointer t 0)]) []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElement (TAC [] []) (sel1 typeIndexTac))),(sel2 typeIndexTac)+1,(sel3 typeIndexTac),temp)
                                                                                                                                                                                     (Abs.ArrayIndexElements _ arrayIndex typeindex ) -> case findArray (x:xs) of
                                                                                                                                                                                                                                     [Variable ty@(Array t _) posv _ _ s] -> let realT = getRealTypeFromArray t in
                                                                                                                                                                                                                                                                                 let typeIndexTac = genTacTypeIndex typeindex n l k (w,j) 0 [] (-1) in
