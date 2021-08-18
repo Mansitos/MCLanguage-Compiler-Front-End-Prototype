@@ -1,9 +1,10 @@
-if true then {
-	var x : int;
-	x;}
-x;
+// Example code for if-then-else
 
-if var x:int = 3 then {x;}
+var x:int;
+var y:int = readInt();
 
-if 5==5 then x;
-x;
+if (y>x) then {
+  writeString("y was greater!");
+}else{
+  writeString("y was greater!");
+}

@@ -841,7 +841,7 @@ executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = let 
                                                                                         let rightType = (getTypeFromExpressionTResult exprExecute) in
                                                                                             if (rightType == (B_type Type_Integer))
                                                                                                 then if (leftType == (B_type Type_Real))
-                                                                                                      then (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeReal pos)) env))   -- right needs an implicit cast to real to be explicited!
+                                                                                                      then (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) (executeExpression (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeReal pos)) env))   -- right needs an implicit cast to real to be explicited!
                                                                                                       else (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) exprExecute )   -- no implicit casts to be explicited!
                                                                                                 else (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) exprExecute)  -- no implicit cats to be explicited! (you cannot cast the lval; only rval can be casted to be matched with lval type!)
 executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeVarType tipo env) (executeVarDecList vardec env)
@@ -2039,7 +2039,7 @@ checkTypeDefault d node@(Abs.ExpressionBracketD pos exp) env = let expTCheck = c
                                                                 case expTCheck of
                                                                     TError e -> expTCheck
                                                                     TResult env (Pointer te depthe) pose -> TResult env (if depthe-d==0 then te else Pointer te (depthe-d))pose
-                                                                    TResult env _ pose -> TError ["Operator $ cannot be applied here! Position: "++show pos]
+                                                                    TResult env _ pose -> if d==0 then expTCheck else TError ["Operator $ cannot be applied here! Position: "++show pos]
 checkTypeDefault d node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) index) env = case Data.Map.lookup id env of
                                                                         Just [Variable (Pointer t depth) posd mode override s] -> if d==0
                                                                                                                                     then

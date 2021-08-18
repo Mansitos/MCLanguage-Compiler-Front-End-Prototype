@@ -1,14 +1,21 @@
+// TypeChecker test for func/proc calls (with compile-time errors!)
+
 var a,b,c:int = 5;
+
 function sum(x:int,y:int,z:int):int{
 	return x+y+z;
 }
 
+// Valid calls:
 sum(a,b,c);
 sum(a,a,a);
 sum(1,2,c);
 sum(1+2,a+b+c,sum(1,1,1));
+
+// Invalid calls:
 sum();
 sum(1);
-sum(1+1,a,a);
+sum(a,a);
 sum(1,2,3,4);
+
 

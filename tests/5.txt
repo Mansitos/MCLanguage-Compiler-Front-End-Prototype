@@ -1,13 +1,18 @@
+// Static Scoping (with compile-time errors!)
+
 var x : int;
+
 function foo():int{
-    var i:int;
-    var o:char;
-    o;
-    function foo2():char{
-        var u:string;
-        o;
-	proc foo3():void{x;}
+	var i:int;
+	var o:int;
+	i = i+x+o;
+	var x:int = 10; // it can be overrided inside a new block
+
+	function foo2():char{
+		var u:int = i+o+x;
 	}
-    }
-var z : int;
-var u : int;
+
+	var z:int = u;     // err: u is no more visible!
+	var i:int;	   // err: i already defined inside foo() env!
+}
+i = 10;    // err: i no more visible!

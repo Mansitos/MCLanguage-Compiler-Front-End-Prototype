@@ -1,9 +1,9 @@
-var x : int;
-x = + - 1;
-x;
+// Example code for arrays TAC
 
-function foo(x:int):int {}
-foo();
-foo(5);
-foo(true);
-x;
+var array:[1..5]int = [1,2,3,4,5];
+var matrix:[1..3,1..3]int = [1,2,3,4,5,6,7,8,9];   // array of dim:2
+
+var default:[1..4]real;   // it will be initialized at default values
+
+// an array of length 3 (dim:1) where each element is an array of length 2 (dim:1)
+var array_of_arrays:[1..3][1..2]string = [["a1","b1"],["a2","b2"],["a3","b3"]];

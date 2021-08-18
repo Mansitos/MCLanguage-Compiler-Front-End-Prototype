@@ -1,9 +1,15 @@
-var arr1:[1..10]int = [1,2,3,4,5,6,7,8,9,10];
-var arr2:[1..10][1..10]int;
-arr1[1] = 100;
+// TypeChecker test for func/proc calls (with compile-time errors!)
+
+// remember that arrays indexing starts from 1!
+
+var arr1:[1..10]int = [1,2,3,4,5,6,7,8,9,10];	
+var arr2:[1..10][1..10]int;	// default values will be assigned
+arr1[1] = 42;
 arr2[5][5] = arr1[5];
-arr2[1][1][1] = 10; 	// errore indexing
-arr1[1,5] = 10; 	// errore indexing
 var y:int = arr1[5];
 y = arr2[1][1];
-y = arr2[10,10][10,10]; // errore indexing
+
+y = arr2[1,1][1,42];    // errore indexing
+arr2[1][1][1] = 42;     // errore indexing
+arr1[1,5] = 42;         // errore indexing
+var arr3:[1..5]int = [1,2];       // errore inizializzazione

@@ -1,13 +1,12 @@
-var x : int;
-{
-  var y : int;
-  y;
-  x;
-  {
-    y;
-    var z:char;
-  }
-  x;
-  z;
-  }
-x;
+// Example code with no compile errors! 
+
+var x:int = 10;
+var y:int = x+5;
+var z:real = x;    // an explicit cast to real will be added by the typechecker
+
+proc foo(input:int):void{
+	var temp:int = input+x;
+	writeInt(temp);
+}
+
+for i in 1..10 do foo(y);

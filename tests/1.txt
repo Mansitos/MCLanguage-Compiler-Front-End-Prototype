@@ -1,12 +1,8 @@
-var x:int = 3;
-x;
+// Simple code example
 
-var y:int = 10;
+var x:int = 42;
+var iterations:int = 10;
 
-x=x+y;
-x=x+(x*y);
-
-{
-	var x:int = 30;
-	x=x+1;
+for i in 1..iterations do {
+	x+=1;
 }

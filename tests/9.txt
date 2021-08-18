@@ -1,12 +1,12 @@
-var x:real;
-x = 1+1;
-x = 1.0+1;
-x = 1+1.0;
-x = 1.0+1.0;
+// Example of do-while
 
-var y:int;
-y = 1+1;
-y = 1.0+1;
-y = 1+1.0;
-y = 1.0+1.0;
-y;
+var x:int = 42;
+var f:int;
+
+do { x += 1;
+     f = readInt();
+   }
+while ((x<100) || (f > 42));
+
+writeString ("End of execution!!!");
+

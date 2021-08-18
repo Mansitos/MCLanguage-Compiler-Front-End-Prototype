@@ -1,9 +1,13 @@
-var y:int = 5;
-var z:real = y;
-var sum:real = y+z;
-y=z;
-z=y;
-y = true;
-y = 1.0;
+// TypeChecker test for declarations and assignments (with compile-time errors!)
 
+// OK statements
+var x:int = 1;
+var y:real = 1; // implicit-casting (int compatible with real)
+y = x;
+var i:bool = (x>(x+1));
 
+// ERROR statements
+
+var z:bool = 1; // cannot assign int to bool
+x = y;          // cannot assign real to int
+var str:string = true;
