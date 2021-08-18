@@ -322,6 +322,7 @@ generateDimForArrayPrim (Abs.PrimitiveTypeInt  _ ) = 4
 generateDimForArrayPrim (Abs.PrimitiveTypeReal _ ) = 8
 generateDimForArrayPrim (Abs.PrimitiveTypeString _ ) = 8
 generateDimForArrayPrim (Abs.PrimitiveTypeChar _ ) = 1
+generateDimForArrayPrim (Abs.TypeArray _ prim) = generateDimForArrayPrim prim
 
 findArray :: [EnvEntry] -> [EnvEntry]
 findArray ((Variable ty@(Array _ _) pos mode override s):xs) = [Variable ty pos mode override s]
@@ -691,7 +692,7 @@ genTacTypeIndex (Abs.TypeOfIndexInt res@(TResult env t pos) typeIndex val@(Abs.I
                                                                                                                                                                                      TAC [TacAssignBinaryOp temp2 (buildOp t "plus") temp (head (sel4 typeIndexTac)) t] []
                                                                                                                                                                                     ]) (sel1 typeIndexTac) (Abs.Integer value (TAC [][])),(sel2 typeIndexTac)+2,k,[temp2]++sel4 typeIndexTac)
 genTacTypeIndex (Abs.TypeOfIndexPointerSingle res@(TResult env t pos) unary def ) n l k (w,j) d s p = let exprTac = genTacExpression (Abs.ExpressionUnary res unary def) n l k (w,j) "" in
-                                                                                                        let defTac = genTacDefault def n l k (w,j) in 
+                                                                                                        let defTac = genTacDefault def n l k (w,j) 0 in 
                                                                                                             let temp = newTemp (sel2 exprTac) in
                                                                                                                     let comment = TAC (buildArrayCommentsNoInteger [temp] s d t) [] in
                                                                                                                         (Abs.TypeOfIndexPointerSingle (mergeTacs [
@@ -701,7 +702,7 @@ genTacTypeIndex (Abs.TypeOfIndexPointerSingle res@(TResult env t pos) unary def 
                                                                                                                                                                     ]) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 exprTac)+1,(sel3 exprTac),[temp])
 genTacTypeIndex (Abs.TypeOfIndexPointer res@(TResult env t pos) typeindex unary def) n l k (w,j) d s p = let typeindexTac = genTacTypeIndex typeindex n l k (w,j) d s (p+1) in
                                                                                                             let exprTac = genTacExpression (Abs.ExpressionUnary res unary def) (sel2 typeindexTac) l (sel3 typeindexTac) (w,j) "" in
-                                                                                                                let defTac = genTacDefault def n l k (w,j) in 
+                                                                                                                let defTac = genTacDefault def n l k (w,j) 0 in 
                                                                                                                     let temp = newTemp (sel2 exprTac) in
                                                                                                                         let temp2 = newTemp ((sel2 exprTac)+1) in
                                                                                                                             let comment = TAC (buildArrayCommentsNoInteger [temp] s d t) [] in
@@ -1501,7 +1502,7 @@ genTacExpression (Abs.ExpressionChar res value@(Abs.Char val resi))             
 genTacExpression (Abs.ExpressionString res value@(Abs.String val resi))         n l k (w,j) str = (Abs.ExpressionString  (TAC [] []) (Abs.String val (TAC [] []))   ,n,k, AddrString val)
 genTacExpression (Abs.ExpressionReal res value@(Abs.Real val resi))             n l k (w,j) str = (Abs.ExpressionReal    (TAC [] []) (Abs.Real val (TAC [] []))     ,n,k, AddrReal val)
 genTacExpression (Abs.ExpressionBracket res exp)                                n l k (w,j) str = let exprTac = genTacExpression exp n l k (w,j) str in (Abs.ExpressionBracket (expression_content (sel1 exprTac)) (sel1 exprTac),(sel2 exprTac),(sel3 exprTac),(sel4 exprTac))
-genTacExpression (Abs.ExpressionCast res def tipo)                              n l k (w,j) str = let defTac = genTacDefault def n l k (w,j) in
+genTacExpression (Abs.ExpressionCast res def tipo)                              n l k (w,j) str = let defTac = genTacDefault def n l k (w,j) 0 in
                                                                                                         let tipoTac = genTacTipo tipo (sel2 defTac) l (sel3 defTac) (w,j) in
                                                                                                             let temp = newTemp (sel2 tipoTac) in
                                                                                                                 let fromType = getTypeFromDefault def in
@@ -1509,7 +1510,7 @@ genTacExpression (Abs.ExpressionCast res def tipo)                              
                                                                                                                         ((Abs.ExpressionCast (TAC ((code (default_content (sel1 defTac))) ++ -- tac of default (left part)
                                                                                                                                                    [TacCastConversion temp (sel4 defTac) fromType toType]) -- Tac instruction for conversion (cast)
                                                                                                                                                    []) (sel1 defTac) (sel1 tipoTac)),(sel2 tipoTac)+1,(sel3 tipoTac),temp)
-genTacExpression (Abs.ExpressionUnary res@(TResult env ty pos) unary def)       n l k (w,j) str = let defTac = genTacDefault def (n+1) l k (w,j) in 
+genTacExpression (Abs.ExpressionUnary res@(TResult env ty pos) unary def)       n l k (w,j) str = let defTac = genTacDefault def (n+1) l k (w,j) 1 in 
                                                                                                     let defAddr = sel4 defTac in
                                                                                                         let temp = newTemp n in
                                                                                                             case unary of 
@@ -1671,43 +1672,17 @@ genTacTipo (Abs.PrimitiveTypeString _) n l k (w,j) = ((Abs.PrimitiveTypeString (
 genTacTipo (Abs.PrimitiveTypeChar _) n l k (w,j)   = ((Abs.PrimitiveTypeChar   (TAC [] [])),n,k) 
 genTacTipo (Abs.TypeArray _ prim) n l k (w,j)      = ((Abs.TypeArray (TAC [] []) (sel1 (genTacTipo prim n l k (w,j)))),n,k)
 
-{-
-
-var x:[1..2]int$=[1,2];
-var y:int;
-y=$x[1];
-y=$x[2];
-var z:[1..2]int$$=[x[1],x[2]];
-y = $$z[1];
-y = $$z[2];
-
-var x:([1..2]int)$;//=[1,2];
-var y:([]int)$;//=[1,2];
-var z:int;
-z=$x[1+1];
-z=$x[2];
-
-var x:([1..2]int)$$;
-var z:int;
-z=$ $ x[1];
-
-var x : ([1 .. 2] int) $;
-var z : int;
-z = $ x [1];
-
--}
-
-genTacDefault :: Abs.DEFAULT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.DEFAULT TAC,Prelude.Integer,Prelude.Integer,Address)
-genTacDefault (Abs.ExpressionIntegerD res value@(Abs.Integer val resi))       n l k (w,j) = (Abs.ExpressionIntegerD (TAC [] []) (Abs.Integer val   (TAC [] [])),n,k, AddrInt val)
-genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_true resi))      n l k (w,j) = (Abs.ExpressionBooleanD (TAC [] []) (Abs.Boolean_true  (TAC [] [])),n,k, AddrBool True)
-genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_false resi))     n l k (w,j) = (Abs.ExpressionBooleanD (TAC [] []) (Abs.Boolean_false (TAC [] [])),n,k, AddrBool False)
-genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_True resi))      n l k (w,j) = (Abs.ExpressionBooleanD (TAC [] []) (Abs.Boolean_True  (TAC [] [])),n,k, AddrBool True)
-genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_False resi))     n l k (w,j) = (Abs.ExpressionBooleanD (TAC [] []) (Abs.Boolean_False (TAC [] [])),n,k, AddrBool False)
-genTacDefault (Abs.ExpressionCharD res value@(Abs.Char val resi))             n l k (w,j) = (Abs.ExpressionCharD    (TAC [] []) (Abs.Char val      (TAC [] [])),n,k, AddrChar val)
-genTacDefault (Abs.ExpressionStringD res value@(Abs.String val resi))         n l k (w,j) = (Abs.ExpressionStringD  (TAC [] []) (Abs.String val    (TAC [] [])),n,k, AddrString val)
-genTacDefault (Abs.ExpressionRealD res value@(Abs.Real val resi))             n l k (w,j) = (Abs.ExpressionRealD    (TAC [] []) (Abs.Real val      (TAC [] [])),n,k, AddrReal val)
-genTacDefault (Abs.ExpressionBracketD res exp)                                n l k (w,j) = let exprTac = genTacExpression exp n l k (w,j) "" in (Abs.ExpressionBracketD (expression_content (sel1 exprTac)) (sel1 exprTac),(sel2 exprTac),(sel3 exprTac), (sel4 exprTac))
-genTacDefault (Abs.ExpressionCastD res def tipo)                              n l k (w,j) = let defTac = genTacDefault def n l k (w,j) in
+genTacDefault :: Abs.DEFAULT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> Prelude.Integer -> (Abs.DEFAULT TAC,Prelude.Integer,Prelude.Integer,Address)
+genTacDefault (Abs.ExpressionIntegerD res value@(Abs.Integer val resi))       n l k (w,j) d = (Abs.ExpressionIntegerD (TAC [] []) (Abs.Integer val   (TAC [] [])),n,k, AddrInt val)
+genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_true resi))      n l k (w,j) d = (Abs.ExpressionBooleanD (TAC [] []) (Abs.Boolean_true  (TAC [] [])),n,k, AddrBool True)
+genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_false resi))     n l k (w,j) d = (Abs.ExpressionBooleanD (TAC [] []) (Abs.Boolean_false (TAC [] [])),n,k, AddrBool False)
+genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_True resi))      n l k (w,j) d = (Abs.ExpressionBooleanD (TAC [] []) (Abs.Boolean_True  (TAC [] [])),n,k, AddrBool True)
+genTacDefault (Abs.ExpressionBooleanD res value@(Abs.Boolean_False resi))     n l k (w,j) d = (Abs.ExpressionBooleanD (TAC [] []) (Abs.Boolean_False (TAC [] [])),n,k, AddrBool False)
+genTacDefault (Abs.ExpressionCharD res value@(Abs.Char val resi))             n l k (w,j) d = (Abs.ExpressionCharD    (TAC [] []) (Abs.Char val      (TAC [] [])),n,k, AddrChar val)
+genTacDefault (Abs.ExpressionStringD res value@(Abs.String val resi))         n l k (w,j) d = (Abs.ExpressionStringD  (TAC [] []) (Abs.String val    (TAC [] [])),n,k, AddrString val)
+genTacDefault (Abs.ExpressionRealD res value@(Abs.Real val resi))             n l k (w,j) d = (Abs.ExpressionRealD    (TAC [] []) (Abs.Real val      (TAC [] [])),n,k, AddrReal val)
+genTacDefault (Abs.ExpressionBracketD res exp)                                n l k (w,j) d = let exprTac = genTacExpression exp n l k (w,j) "" in (Abs.ExpressionBracketD (expression_content (sel1 exprTac)) (sel1 exprTac),(sel2 exprTac),(sel3 exprTac), (sel4 exprTac))
+genTacDefault (Abs.ExpressionCastD res def tipo)                              n l k (w,j) d = let defTac = genTacDefault def n l k (w,j) d in
                                                                                                     let tipoTac = genTacTipo tipo (sel2 defTac) l (sel3 defTac) (w,j) in
                                                                                                         let temp = newTemp (sel2 tipoTac) in
                                                                                                             let fromType = getTypeFromDefault def in
@@ -1715,14 +1690,14 @@ genTacDefault (Abs.ExpressionCastD res def tipo)                              n 
                                                                                                                     ((Abs.ExpressionCastD (TAC ((code (default_content (sel1 defTac))) ++ -- tac of default (left part)
                                                                                                                                                 [TacCastConversion temp (sel4 defTac) fromType toType]) -- Tac instruction for conversion (cast)
                                                                                                                                                 []) (sel1 defTac) (sel1 tipoTac)),(sel2 tipoTac)+1,(sel3 tipoTac),temp) 
-genTacDefault (Abs.ExpressionUnaryD res@(TResult env ty pos) unary def)       n l k (w,j) = let defTac = genTacDefault def (n+1) l k (w,j) in 
+genTacDefault (Abs.ExpressionUnaryD res@(TResult env ty pos) unary def)       n l k (w,j) d = let defTac = genTacDefault def (n+1) l k (w,j) (d+1) in 
                                                                                                 let temp = newTemp n in
                                                                                                     case unary of 
-                                                                                                        Abs.UnaryOperationPositive _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Pos (sel4 defTac) ty] [])) (Abs.UnaryOperationPositive (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
-                                                                                                        Abs.UnaryOperationNegative _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Neg (sel4 defTac) ty] [])) (Abs.UnaryOperationNegative (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
-                                                                                                        Abs.UnaryOperationNot      _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Not (sel4 defTac) ty] [])) (Abs.UnaryOperationNot (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
-                                                                                                        Abs.UnaryOperationPointer  _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Point (sel4 defTac) ty] [])) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp)
-genTacDefault (Abs.ExpressionIdentD res@(TResult env _ _) ident@(Abs.Ident id resI) index)  n l k (w,j) = case Data.Map.lookup id env of
+                                                                                                        Abs.UnaryOperationPositive _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Pos (sel4 defTac) (if d==0 then ty else (Pointer ty 0))] [])) (Abs.UnaryOperationPositive (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
+                                                                                                        Abs.UnaryOperationNegative _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Neg (sel4 defTac) (if d==0 then ty else (Pointer ty 0))] [])) (Abs.UnaryOperationNegative (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
+                                                                                                        Abs.UnaryOperationNot      _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Not (sel4 defTac) (if d==0 then ty else (Pointer ty 0))] [])) (Abs.UnaryOperationNot (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp) 
+                                                                                                        Abs.UnaryOperationPointer  _ -> (Abs.ExpressionUnaryD (merge2Tacs (default_content (sel1 defTac)) (TAC [TacAssignUnaryOp temp Point (sel4 defTac) (if d==0 then ty else (Pointer ty 0))] [])) (Abs.UnaryOperationPointer (TAC [] [])) (sel1 defTac),(sel2 defTac),(sel3 defTac),temp)
+genTacDefault (Abs.ExpressionIdentD res@(TResult env _ _) ident@(Abs.Ident id resI) index)  n l k (w,j) d = case Data.Map.lookup id env of
                                                                                                                     Just (entry:entries) -> case findEntryOfType (entry:entries) "var" of
                                                                                                                                               (x@(Variable _ posv _ _ _):xs) -> case index of
                                                                                                                                                                                     (Abs.ArrayIndexElementEmpty _) -> ((Abs.ExpressionIdentD (TAC [] []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] []))),n,k,buildIDAddr posv id)
@@ -1775,8 +1750,8 @@ genTacDefault (Abs.ExpressionIdentD res@(TResult env _ _) ident@(Abs.Ident id re
                                                                                                                                                                                                                                                                                                                 let leftAddrArray = buildArrayIdNoInteger leftAddr (newTemp ((sel2 arrayIndexTac)-1)) in
                                                                                                                                                                                                                                                                                                                         let temp = newTemp (sel2 arrayIndexTac) in
                                                                                                                                                                                                                                                                                                                             ((Abs.ExpressionIdentD (TAC ((code (arrayindexelements_content (sel1 arrayIndexTac)))++[TacAssignNullOp temp leftAddrArray realT]) []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElements (TAC [] [])  (sel1 arrayIndexTac) (sel1 typeIndexTac))),(sel2 arrayIndexTac)+1,(sel3 arrayIndexTac),temp)
-genTacDefault (Abs.ExpressionCallD res@(TResult env _ _) ident@(Abs.Ident id resI) exps)    n l k (w,j) = case Data.Map.lookup id env of
-                                                                                                        Just (entry:entries) -> case findEntryOfType (entry:entries) "func" of
+genTacDefault (Abs.ExpressionCallD res@(TResult env _ _) ident@(Abs.Ident id resI) exps)    n l k (w,j) d = case Data.Map.lookup id env of
+                                                                                                         Just (entry:entries) -> case findEntryOfType (entry:entries) "func" of
                                                                                                             ((Function ty pos _ _):xs) -> let funcReturn = newTemp n in
                                                                                                                                             let funcAddr = buildIDAddr pos id in
                                                                                                                                             case exps of

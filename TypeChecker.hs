@@ -546,6 +546,14 @@ isVoidF__ :: Abs.PRIMITIVETYPE Posn -> Prelude.Bool
 isVoidF__ (Abs.PrimitiveTypeVoid _) = True
 isVoidF__ _ = False
 
+isPointerWArray :: Abs.TYPEPART Posn -> Prelude.Bool
+isPointerWArray (Abs.TypePart _ typeexp) = isPointerWArray_ typeexp
+
+isPointerWArray_ :: Abs.TYPEEXPRESSION Posn -> Prelude.Bool
+isPointerWArray_ (Abs.TypeExpressionPointer _ ty _) = True
+isPointerWArray_ (Abs.TypeExpressionPointerOfArray _ ty _) = True
+isPointerWArray_ _ = False
+
 isArrayDef :: Abs.TYPEEXPRESSIONFUNC Posn -> Prelude.Bool
 isArrayDef (Abs.TypeExpressionArrayOfPointer _ ty) = isArrayDef ty
 isArrayDef (Abs.TypeExpressionFunction _ ty) = isArrayDef_ ty
@@ -2245,10 +2253,10 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                         let initDim = getDimFromInit initpart in 
                                                                                                             let typeCheck = checkTypeTypePart typepart env in
                                                                                                                 let initCheck = checkTypeInitializzationPart initpart env in
-                                                                                                                    if typeDim == initDim
+                                                                                                                    if typeDim == initDim || isPointerWArray typepart
                                                                                                                         then
                                                                                                                             if (case initpart of (Abs.InitializzationPartArray _ arrayInit) -> dimIsOk typepart initpart
-                                                                                                                                                 _ -> True)
+                                                                                                                                                 _ -> True) || isPointerWArray typepart
                                                                                                                             then case typeCheck of
                                                                                                                                     TResult env (Pointer t depth) post -> case initCheck of
                                                                                                                                         TResult env (Pointer tI depthI) posi -> if (checkCompatibility (TResult env (Pointer tI ((depthI+1)-(checkDef initpart))) posi) (TResult env (Pointer t depth) post)) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation with incompatible type! Position: "++ show (getPos initCheck)]) identTCheck)
