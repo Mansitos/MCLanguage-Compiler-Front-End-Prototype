@@ -2302,12 +2302,12 @@ checkIdentifierList node@(Abs.IdentifierList pos ident@(Abs.Ident id posI) ident
                                                                                                             _ -> mergeErrors identTCheck identListTCheck
 
 checkIdentifierList node@(Abs.IdentifierSingle pos ident@(Abs.Ident id posI)) env = case Data.Map.lookup id env of
-                                                                                    Just [Variable ty posv mode override s] -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posv]
-                                                                                    Just (Variable ty posv mode override s:xs) -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posv]
+                                                                                    Just [Variable ty posv mode override s] -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posI]
+                                                                                    Just (Variable ty posv mode override s:xs) -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posI]
                                                                                     Just [Function ty posv param canOverride] -> TResult env (B_type Type_Void) pos
                                                                                     Just (Function ty posv param canOverride:xs) -> case findEntryOfType xs "var" of
                                                                                                                                     [] -> TResult env (B_type Type_Void) pos
-                                                                                                                                    (Variable ty posv mode override s):xs -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posv]
+                                                                                                                                    (Variable ty posv mode override s):xs -> if override then TResult env (B_type Type_Void) pos else TError ["Variable "++ id ++" is already defined at "++ show posI]
                                                                                     Nothing -> TResult env (B_type Type_Void) pos
 
 checkTypeTypePart :: Abs.TYPEPART Posn -> Env -> TCheckResult
