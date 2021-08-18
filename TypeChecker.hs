@@ -1777,7 +1777,7 @@ checkTypeExpression d node@(Abs.ExpressionBracket pos exp) env = let expTCheck =
                                                                     case expTCheck of
                                                                         TError e -> expTCheck
                                                                         TResult env (Pointer te depthe) pose -> TResult env (if depthe-d==0 then te else Pointer te (depthe-d))pose
-                                                                        TResult env _ pose -> TError ["Operator $ cannot be applied here! Position: "++show pos]
+                                                                        TResult env _ pose -> if d==0 then expTCheck else TError ["Operator $ cannot be applied here! Position: "++show pos]
 checkTypeExpression d node@(Abs.ExpressionCast pos def tipo) env = let tipoTCheck@(TResult _ tyTo _) = checkPrimitiveType tipo env in
                                                                     let defTCheck = checkTypeDefault d def env in
                                                                         case defTCheck of
