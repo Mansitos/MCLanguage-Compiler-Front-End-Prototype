@@ -408,6 +408,7 @@ updateTac :: [TACEntry] -> Label -> [TACEntry]
 updateTac [TacConditionalJump dest flag first] l = [TacConditionalJump l False first]
 updateTac ((TacConditionalJump dest flag first):[x]) l = [TacConditionalJump l False first]++[x]
 updateTac (x:xs) l = [x]++updateTac xs l
+updateTac [] l = []
 
 removeDuplicates ::  [TACEntry] -> [TACEntry] -> [TACEntry]
 removeDuplicates (x:xs) zs = case x of
