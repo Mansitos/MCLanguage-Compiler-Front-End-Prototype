@@ -288,6 +288,7 @@ transLVALUEEXPRESSION :: Show attr => (AbsProgettoPar.LVALUEEXPRESSION attr) -> 
 transLVALUEEXPRESSION x = case x of
   AbsProgettoPar.LvalueExpressions _ ident arrayindexelement lvalueexpression -> failure x
   AbsProgettoPar.LvalueExpression _ ident arrayindexelement -> failure x
+  AbsProgettoPar.LvalueExpressionDeref _ lvalues -> failure x
 
 transARRAYINDEXELEMENT :: Show attr => (AbsProgettoPar.ARRAYINDEXELEMENT attr) -> Result
 transARRAYINDEXELEMENT x = case x of

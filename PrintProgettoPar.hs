@@ -383,6 +383,7 @@ instance Print (AbsProgettoPar.LVALUEEXPRESSION attr) where
   prt i = \case
     AbsProgettoPar.LvalueExpressions _ id_ arrayindexelement lvalueexpression -> prPrec i 0 (concatD [prt 0 id_, prt 0 arrayindexelement, doc (showString ","), prt 0 lvalueexpression])
     AbsProgettoPar.LvalueExpression _ id_ arrayindexelement -> prPrec i 0 (concatD [prt 0 id_, prt 0 arrayindexelement])
+    AbsProgettoPar.LvalueExpressionDeref _ lvalues -> prPrec i 0 (concatD [doc (showString "$"), prt 0 lvalues])
 
 instance Print (AbsProgettoPar.ARRAYINDEXELEMENT attr) where
   prt i = \case

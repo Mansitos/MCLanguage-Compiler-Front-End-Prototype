@@ -269,6 +269,7 @@ data BINARYOP a
 data LVALUEEXPRESSION a
     = LvalueExpressions {lvalueexpression_content::a, lvalueexpression_ident::(Ident a), lvalueexpression_arrayindexelement::(ARRAYINDEXELEMENT a), lvalueexpression_lvaluexpression::(LVALUEEXPRESSION a)}
     | LvalueExpression  {lvalueexpression_content::a, lvalueexpression_ident::(Ident a), lvalueexpression_arrayindexelement::(ARRAYINDEXELEMENT a)}
+    | LvalueExpressionDeref {lvalueexpression_content::a, lvalueexpression_lvalueexpression::(LVALUEEXPRESSION a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data ARRAYINDEXELEMENT a

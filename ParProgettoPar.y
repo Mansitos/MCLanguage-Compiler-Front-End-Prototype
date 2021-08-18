@@ -323,6 +323,7 @@ UNARYOP : '+' { Abs.UnaryOperationPositive (tokenPosn $1)}
 LVALUEEXPRESSION :: { Abs.LVALUEEXPRESSION Posn }
 LVALUEEXPRESSION : Ident ARRAYINDEXELEMENT ',' LVALUEEXPRESSION { Abs.LvalueExpressions (Abs.contentId $1) $1 $2 $4 }
                  | Ident ARRAYINDEXELEMENT { Abs.LvalueExpression (Abs.contentId $1) $1 $2 }
+                 | '$' LVALUEEXPRESSION {Abs.LvalueExpressionDeref (tokenPosn $1) $2}
 
 ARRAYINDEXELEMENT :: { Abs.ARRAYINDEXELEMENT Posn }
 ARRAYINDEXELEMENT : '[' TYPEINDEX ']' { Abs.ArrayIndexElement (tokenPosn $1) $2 }
