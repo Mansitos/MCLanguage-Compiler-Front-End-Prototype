@@ -23,7 +23,7 @@ data TACEntry
     | TacCastConversion     {getAddr::Address, first:: Address, fromType::Type, toType::Type}
     | TacJump               Label
     | TacLabel              Label
-    | TacPointDeref         {getAddr::Address,first::Address}
+    | TacPointRef           {getAddr::Address,first::Address}
     | TacConditionalJump    {destination::Label, flag::Prelude.Bool, first::Address}                                        -- if first goto lab
     | TacRelConditionalJump {destination::Label, flag::Prelude.Bool, relOp::TacRelOp, first::Address, second::Address}      -- if x rel y goto lab
     | TacComment            Prelude.String  -- for comments on TAC print
@@ -34,7 +34,7 @@ data TACEntry
 data TacUnaryOp     = Pos | Neg | Not | Point  
     deriving (Eq, Ord, Read)
 
-data TacBinaryOp    = IntAdd | RealAdd | IntSub | RealSub | IntMul | RealMul | IntDiv | RealDiv | IntMod | RealMod | IntPow | RealPow 
+data TacBinaryOp    = IntAdd | RealAdd | IntSub | RealSub | IntMul | RealMul | IntDiv | RealDiv | IntMod | RealMod | IntPow | RealPow | AddrIntAdd
     deriving (Eq, Ord, Read)
                     
 data TacRelOp       = EqInt | EqReal | EqString | EqChar | EqBool
@@ -51,7 +51,7 @@ instance Show TacUnaryOp where
         Pos          -> "pos"
         Neg          -> "neg"
         Not          -> "not"
-        Point        -> "&"
+        Point        -> "$"
 
 instance Show TacBinaryOp where
     show op = case op of
@@ -65,7 +65,8 @@ instance Show TacBinaryOp where
         RealDiv ->  "div_real"
         IntMod  ->  "mod_int"
         IntPow  ->  "pow_int"
-        RealPow ->  "pow_real"        
+        RealPow ->  "pow_real" 
+        AddrIntAdd -> "address_add_int"       
 
 instance Show TacRelOp where
     show op = case op of
