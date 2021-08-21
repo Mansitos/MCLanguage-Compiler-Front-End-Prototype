@@ -186,7 +186,7 @@ updateEnv node@(Abs.ListStatements pos stat stats) env = case stat of
                                                                                                                         let varMode = getVarMode varType in -- getting variable mode (const etc.)
                                                                                                                             let ids = (getVariableDeclStatNames vardec) in -- getting id or ids of declared variables
                                                                                                                                 let posns = getVariableDeclStatPos vardec in
-                                                                                                                                    let sizes = getListDimFromType (vardecid_typepart (vardeclist_vardecid vardec)) in
+                                                                                                                                    let sizes = getListDimFromType (vardecid_typepart (vardeclist_vardecid vardec)) (vardecid_initpart (vardeclist_vardecid vardec)) env in
                                                                                                                                         updateEnvFromListOfVarIds ids env posns varMode ty sizes -- updating env for each declared var. (override check is done inside updateEnvFromListOfVarIds)                                                                
                                                                 -- Functions and Procedures
                                                                 Abs.ProcedureStatement posf id params stats -> let parameters = getParamList params in
@@ -362,19 +362,55 @@ showInit (Abs.InitializzationPartArray _ arrayInit) = let p = Pn 0 0 0 in
                                                                     ) [] []
 showInit _ = ""                                                                  
 
-getListDimFromType :: Abs.TYPEPART a -> [Prelude.Integer]
-getListDimFromType (Abs.TypePart _ typeexp) = getListDimFromTypeExp typeexp
+getListDimFromType :: Abs.TYPEPART a -> Abs.INITPART a -> Env -> [Prelude.Integer]
+getListDimFromType (Abs.TypePart _ typeexp) init env = getListDimFromTypeExp typeexp init env
 
-getListDimFromExpF :: Abs.TYPEEXPRESSIONFUNC a -> [Prelude.Integer]
-getListDimFromExpF (Abs.TypeExpressionArrayOfPointer _ _) = []
-getListDimFromExpF (Abs.TypeExpressionFunction _ typeexp) = getListDimFromTypeExp typeexp
+getListDimFromExpF :: Abs.TYPEEXPRESSIONFUNC a -> Abs.INITPART a -> Env -> [Prelude.Integer]
+getListDimFromExpF (Abs.TypeExpressionArrayOfPointer _ _) init env = []
+getListDimFromExpF (Abs.TypeExpressionFunction _ typeexp) init env = getListDimFromTypeExp typeexp init env
 
-getListDimFromTypeExp :: Abs.TYPEEXPRESSION a -> [Prelude.Integer]
-getListDimFromTypeExp (Abs.TypeExpressionArraySimple _ range expf) = getListDimFromRange range ++ getListDimFromExpF expf
-getListDimFromTypeExp (Abs.TypeExpressionArray _ range expf) = getListDimFromRange range ++ getListDimFromExpF expf
-getListDimFromTypeExp (Abs.TypeExpressionPointer _ prim _) = []
-getListDimFromTypeExp (Abs.TypeExpressionPointerOfArray _ typeexpf _) = getListDimFromExpF typeexpf
-getListDimFromTypeExp _ = []
+getListDimFromTypeExp :: Abs.TYPEEXPRESSION a -> Abs.INITPART a -> Env-> [Prelude.Integer]
+getListDimFromTypeExp (Abs.TypeExpressionArraySimple _ range expf) init env = getListDimFromRange range ++ getListDimFromExpF expf init env
+getListDimFromTypeExp (Abs.TypeExpressionArray _ range expf) init env = getListDimFromRange range ++ getListDimFromExpF expf init env
+getListDimFromTypeExp (Abs.TypeExpressionPointer _ prim _) init env = []
+getListDimFromTypeExp (Abs.TypeExpressionPointerOfArray _ typeexpf _) init env = getListDimFromExpF typeexpf init env
+getListDimFromTypeExp (Abs.TypeExpression _ prim) init env = getListDimFromPrimitive prim init env
+
+getListDimFromPrimitive :: Abs.PRIMITIVETYPE a -> Abs.INITPART a -> Env -> [Prelude.Integer]
+getListDimFromPrimitive (Abs.TypeArray _ prim) init env = case init of
+                                                        Abs.InitializzationPartEmpty _ -> [1]
+                                                        Abs.InitializzationPart _ exp -> getExpDim exp env
+                                                        Abs.InitializzationPartArray _ arrayInit -> getArrayInitDim arrayInit
+getListDimFromPrimitive _ init env = []
+
+getArrayInitDim :: Abs.ARRAYINIT a -> [Prelude.Integer]
+getArrayInitDim (Abs.ArrayInitElems _ listelem) = [countListElem listelem]
+getArrayInitDim (Abs.ArrayInitSingle _ arrayInit) = [1]++getArrayInitDim arrayInit
+getArrayInitDim node@(Abs.ArrayInit _ arrayInit1 arrayInit2) = let dim = [countListInit node] in
+                                                                    dim ++ getArrayInitDim arrayInit1 ++ getArrayInitDim arrayInit2
+
+
+countListElem :: Abs.LISTELEMENTARRAY a -> Prelude.Integer
+countListElem (Abs.ListElementOfArray _ exp) = 1
+countListElem (Abs.ListElementsOfArray _ exp listEl) = 1 + countListElem listEl
+
+getExpDim :: Abs.EXPRESSION a -> Env -> [Prelude.Integer]
+getExpDim (Abs.ExpressionBracket _ exp) env = getExpDim exp env
+getExpDim (Abs.ExpressionIdent _ ident@(Abs.Ident id _) index) env = case Data.Map.lookup id env of
+                                                                        Just (e:es) -> case findEntryOfType (e:es) "var" of
+                                                                                        [] -> [1]
+                                                                                        [Variable (Array t dim) _ _ _ s] -> case index of 
+                                                                                                                                Abs.ArrayIndexElementEmpty _ -> s
+                                                                                                                                Abs.ArrayIndexElement _ exp -> [head s]
+                                                                                                                                Abs.ArrayIndexElements _ exps exp  -> getNElemsDim s (1+(countSquares exps))
+                                                                                        _ -> [1]
+
+                                                                        Nothing -> [1]
+
+getNElemsDim :: [Prelude.Integer] -> Prelude.Integer -> [Prelude.Integer]
+getNElemsDim [] n = []
+getNElemsDim (x:xs) 0 = (x:xs)
+getNElemsDim (x:xs) n = getNElemsDim xs (n-1)
 
 getListDimFromRange :: Abs.RANGEEXP a -> [Prelude.Integer]
 getListDimFromRange (Abs.RangeExpression _ exp1 exp2 range) = case exp1 of
@@ -405,6 +441,7 @@ getDimFromTypeExp (Abs.TypeExpressionArray _ range expf) = let next = getDimFrom
                                                                     if next==0 
                                                                         then getDimFromRange range
                                                                         else getDimFromRange range * getDimFromExpF expf
+ 
 getDimFromTypeExp _ = 0
 
 getDimFromRange :: Abs.RANGEEXP a -> Prelude.Integer
@@ -420,27 +457,71 @@ getDimFromRange (Abs.RangeExpressionSingle _ exp1 exp2) = case exp1 of
                                                                                                             _ -> 0
                                                             _ -> 0
 
-getDimFromInit :: Abs.INITPART a -> Prelude.Integer
-getDimFromInit (Abs.InitializzationPartArray _ arrayInit) = getDimFromArrayInit arrayInit
-getDimFromInit _ = 0
+getDimFromInit :: Abs.INITPART a -> Env -> Prelude.Integer
+getDimFromInit (Abs.InitializzationPartArray _ arrayInit) env = getDimFromArrayInit arrayInit env
+getDimFromInit (Abs.InitializzationPart _ exp) env = getDimFromInit_ exp env
+getDimFromInit _ env = 0
 
-getDimFromArrayInit :: Abs.ARRAYINIT a -> Prelude.Integer
-getDimFromArrayInit (Abs.ArrayInitElems _ listelement) = getDimFromListElement listelement
-getDimFromArrayInit (Abs.ArrayInitSingle _ arrayInit) = getDimFromArrayInit arrayInit
-getDimFromArrayInit (Abs.ArrayInit _ arrayInit1 arrayInit2) = getDimFromArrayInit arrayInit1 + getDimFromArrayInit arrayInit2
+getNElems :: [Prelude.Integer] -> Prelude.Integer -> Prelude.Integer
+getNElems (s:sizes) 0 = 1
+getNElems [] 0 = 1
+getNElems (s:sizes) d = s*(getNElems sizes (d-1))
 
-getDimFromListElement :: Abs.LISTELEMENTARRAY a -> Prelude.Integer
-getDimFromListElement (Abs.ListElementsOfArray _ exp listelement) = 1 + getDimFromListElement listelement
-getDimFromListElement (Abs.ListElementOfArray _ exp) = 1
+getDimFromInit_ :: Abs.EXPRESSION a -> Env -> Prelude.Integer
+getDimFromInit_ (Abs.ExpressionIdent _ (Abs.Ident id _) index) env = case index of
+                                                                        Abs.ArrayIndexElementEmpty _ -> case Data.Map.lookup id env of
+                                                                                                            Just (e:es) -> case findEntryOfType (e:es) "var" of
+                                                                                                                            [] -> 0
+                                                                                                                            [Variable tv@(Array t dim) posv modev override sv] -> getNElems sv (toInteger (length sv))
+                                                                                                                            [Variable tv posv modev override sv] -> 0
+                                                                                                            Nothing -> 0
+                                                                        Abs.ArrayIndexElement _ exp -> case Data.Map.lookup id env of
+                                                                                                        Just (e:es) -> case findEntryOfType (e:es) "var" of
+                                                                                                                        [] -> 0
+                                                                                                                        [Variable tv@(Array t dim) posv modev override sv] -> getNElems sv 1
+                                                                                                                        [Variable tv posv modev override sv] -> 0
+                                                                                                        Nothing -> 0
+                                                                        Abs.ArrayIndexElements _ exps exp  -> case Data.Map.lookup id env of
+                                                                                                        Just (e:es) -> case findEntryOfType (e:es) "var" of
+                                                                                                                        [] -> 0
+                                                                                                                        [Variable tv@(Array t dim) posv modev override sv] -> getNElems sv (1+(countSquares exps))
+                                                                                                                        [Variable tv posv modev override sv] -> 0
+                                                                                                        Nothing -> 0
+getDimFromInit_ _ env = 0
+
+countSquares :: Abs.ARRAYINDEXELEMENTS a -> Prelude.Integer
+countSquares (Abs.ArrayIndexElementsMultiple _ exps exp) = 1 + countSquares exps
+countSquares (Abs.ArrayIndexElementsSingle _ exp) = 1
+
+getDimFromArrayInit :: Abs.ARRAYINIT a -> Env -> Prelude.Integer
+getDimFromArrayInit (Abs.ArrayInitElems _ listelement) env = getDimFromListElement listelement env
+getDimFromArrayInit (Abs.ArrayInitSingle _ arrayInit) env = getDimFromArrayInit arrayInit env
+getDimFromArrayInit (Abs.ArrayInit _ arrayInit1 arrayInit2) env = getDimFromArrayInit arrayInit1 env + getDimFromArrayInit arrayInit2 env
+
+getDimFromListElement :: Abs.LISTELEMENTARRAY a -> Env -> Prelude.Integer
+getDimFromListElement (Abs.ListElementsOfArray _ exp listelement) env = let trueDim = getDimFromInit_ exp env in
+                                                                            case trueDim of
+                                                                                0 -> 1 + getDimFromListElement listelement env
+                                                                                _ -> trueDim + getDimFromListElement listelement env
+getDimFromListElement (Abs.ListElementOfArray _ exp) env = let trueDim = getDimFromInit_ exp env in
+                                                                case trueDim of
+                                                                    0 -> 1 
+                                                                    _ -> trueDim
 
 countListEl :: Abs.ARRAYINIT a -> Prelude.Integer
 countListEl (Abs.ArrayInitElems _ listelement) = 1 
 countListEl (Abs.ArrayInitSingle _ arrayInit) = countListEl arrayInit
 countListEl (Abs.ArrayInit _ arrayInit1 arrayInit2) = countListEl arrayInit1 + countListEl arrayInit2
 
-countListEl_ :: Abs.LISTELEMENTARRAY a -> Prelude.Integer
-countListEl_ (Abs.ListElementsOfArray _ el elems) = 1 + countListEl_ elems
-countListEl_ (Abs.ListElementOfArray _ el) = 1
+countListEl_ :: Abs.LISTELEMENTARRAY a -> Env -> Prelude.Integer
+countListEl_ (Abs.ListElementsOfArray _ el elems) env = let trueDim = getDimFromInit_ el env in
+                                                        case trueDim of
+                                                            0 -> 1 + countListEl_ elems env
+                                                            _ -> trueDim + countListEl_ elems env
+countListEl_ (Abs.ListElementOfArray _ el) env = let trueDim = getDimFromInit_ el env in
+                                                case trueDim of
+                                                    0 -> 1 
+                                                    _ -> trueDim 
 
 countListInit :: Abs.ARRAYINIT a -> Prelude.Integer
 countListInit (Abs.ArrayInit _ arrayInit1 arrayInit2) = countListInit arrayInit1 + 1
@@ -451,45 +532,100 @@ getChild :: Abs.TYPEEXPRESSIONFUNC a -> Abs.TYPEEXPRESSION a
 getChild (Abs.TypeExpressionArrayOfPointer _ expf) = getChild expf
 getChild (Abs.TypeExpressionFunction _ exp) = exp
 
-executeInitCheck :: Abs.ARRAYINIT a -> Abs.TYPEEXPRESSION a -> Prelude.Bool
-executeInitCheck (Abs.ArrayInitSingle _ arrayInit) (Abs.TypeExpressionArraySimple _ range expf) = dimIsOk_ (getChild expf) arrayInit
-executeInitCheck (Abs.ArrayInit _ arrayInit1 arrayInit2) ty@(Abs.TypeExpressionArraySimple _ range expf) = (executeInitCheck arrayInit1 ty) && dimIsOk_ (getChild expf) arrayInit2
-executeInitCheck (Abs.ArrayInitSingle _ arrayInit) (Abs.TypeExpressionArray _ range expf) = dimIsOk_ (getChild expf) arrayInit
-executeInitCheck (Abs.ArrayInit _ arrayInit1 arrayInit2) ty@(Abs.TypeExpressionArray _ range expf) = (executeInitCheck arrayInit1 ty) && dimIsOk_ (getChild expf) arrayInit2
-executeInitCheck _ _ = False
+executeInitCheck :: Abs.ARRAYINIT a -> Abs.TYPEEXPRESSION a -> Env -> Prelude.Bool
+executeInitCheck (Abs.ArrayInitSingle _ arrayInit) (Abs.TypeExpressionArraySimple _ range expf) env = dimIsOk_ (getChild expf) arrayInit env
+executeInitCheck (Abs.ArrayInit _ arrayInit1 arrayInit2) ty@(Abs.TypeExpressionArraySimple _ range expf) env = (executeInitCheck arrayInit1 ty env) && dimIsOk_ (getChild expf) arrayInit2 env
+executeInitCheck (Abs.ArrayInitSingle _ arrayInit) (Abs.TypeExpressionArray _ range expf) env = dimIsOk_ (getChild expf) arrayInit env
+executeInitCheck (Abs.ArrayInit _ arrayInit1 arrayInit2) ty@(Abs.TypeExpressionArray _ range expf) env = (executeInitCheck arrayInit1 ty env) && dimIsOk_ (getChild expf) arrayInit2 env
+executeInitCheck _ _ env = False
 
-dimIsOk :: Abs.TYPEPART a -> Abs.INITPART a -> Prelude.Bool
-dimIsOk (Abs.TypePart _ typeexp) (Abs.InitializzationPartArray _ arrayInit) = dimIsOk_ typeexp arrayInit
-dimIsOk _ _ = True
+checkSquares :: Abs.TYPEPART a -> Abs.INITPART a -> Env -> Prelude.Bool
+checkSquares (Abs.TypePart _ typeexp) (Abs.InitializzationPartArray _ arrayInit) env = case typeexp of
+                                                                                        Abs.TypeExpression _ prim -> checkSquares_ prim arrayInit env
+                                                                                        _ -> False
+checkSquares _ _ env = True
 
-dimIsOk_ :: Abs.TYPEEXPRESSION a -> Abs.ARRAYINIT a -> Prelude.Bool
-dimIsOk_ (Abs.TypeExpressionArraySimple _ range expf) init@(Abs.ArrayInitElems _ listelement) = let next = getDimFromExpF expf in
+checkSquares_ :: Abs.PRIMITIVETYPE a -> Abs.ARRAYINIT a -> Env -> Prelude.Bool
+checkSquares_ (Abs.TypeArray _ prim) init@(Abs.ArrayInitElems _ listelement) env = case prim of
+                                                                                    Abs.TypeArray {} -> False
+                                                                                    _ -> True
+checkSquares_ (Abs.TypeArray _ prim) init@(Abs.ArrayInitSingle _ arrayInit) env = case prim of
+                                                                                    Abs.TypeArray _ primm -> checkSquares_ prim arrayInit env
+                                                                                    _ -> False
+checkSquares_ (Abs.TypeArray _ prim) init@(Abs.ArrayInit _ arrayInit1 arrayInit2) env = case prim of
+                                                                                            Abs.TypeArray {} -> checkSquares_ prim arrayInit1 env && checkSquares_ prim arrayInit2 env
+                                                                                            _ -> False
+
+isInitPrim :: Abs.INITPART a -> Env -> Prelude.Bool
+isInitPrim (Abs.InitializzationPartArray _ _) env = False
+isInitPrim (Abs.InitializzationPart _ exp) env = isInitExp exp env
+isInitPrim _ _ = True
+
+completeIndex :: Type -> Abs.ARRAYINDEXELEMENTS a -> Prelude.Bool
+completeIndex (Array t dim) (Abs.ArrayIndexElementsSingle _ _) = case t of
+                                                                    Array {} -> False
+                                                                    _ -> True
+completeIndex (Array t dim) (Abs.ArrayIndexElementsMultiple _ exps _) = case t of
+                                                                            Array {} -> False
+                                                                            _ -> True && completeIndex t exps
+completeIndex _ _ = False
+
+isInitExp :: Abs.EXPRESSION a -> Env -> Prelude.Bool
+isInitExp (Abs.ExpressionIdent _ (Abs.Ident id _) index) env = case Data.Map.lookup id env of
+                                                                Just (e:es) -> case findEntryOfType (e:es) "var" of
+                                                                                [] -> True
+                                                                                [Variable t _ _ _ _] -> case t of
+                                                                                                            Array ta dim -> case index of
+                                                                                                                                Abs.ArrayIndexElementEmpty _ -> False
+                                                                                                                                Abs.ArrayIndexElement _ exp -> case ta of
+                                                                                                                                                                    Array {} -> False
+                                                                                                                                                                    _ -> True
+                                                                                                                                Abs.ArrayIndexElements _ exps exp -> completeIndex ta exps
+                                                                                                            _ -> True
+                                                                Nothing -> True
+isInitExp (Abs.ExpressionCall _ (Abs.Ident id _) _) env = case Data.Map.lookup id env of
+                                                            Just (e:es) -> case findEntryOfType (e:es) "func" of
+                                                                            [] -> True
+                                                                            [Function t _ _ _] -> case t of
+                                                                                                    Array _ _ -> False
+                                                                                                    _ -> True
+                                                            Nothing -> True
+isInitExp _ env = True
+
+dimIsOk :: Abs.TYPEPART a -> Abs.INITPART a -> Env -> Prelude.Bool
+dimIsOk (Abs.TypePart _ typeexp) (Abs.InitializzationPartArray _ arrayInit) env = dimIsOk_ typeexp arrayInit env
+dimIsOk _ _ env = True
+
+dimIsOk_ :: Abs.TYPEEXPRESSION a -> Abs.ARRAYINIT a -> Env -> Prelude.Bool
+dimIsOk_ (Abs.TypeExpressionArraySimple _ range expf) init@(Abs.ArrayInitElems _ listelement) env = let next = getDimFromExpF expf in
                                                                                                     let rangeDim = getDimFromRange range in
-                                                                                                        let listEl = countListEl_ listelement in
+                                                                                                        let listEl = countListEl_ listelement env in
                                                                                                             if next==0
                                                                                                                 then
                                                                                                                     if rangeDim == listEl 
                                                                                                                         then True
                                                                                                                         else False
                                                                                                                 else 
-                                                                                                                    False
-dimIsOk_ ty@(Abs.TypeExpressionArraySimple _ range expf) init@(Abs.ArrayInit _ arrayInit1 arrayInit2) = let listEl = countListInit init in
+                                                                                                                    if rangeDim*next == listEl 
+                                                                                                                        then True
+                                                                                                                        else False
+dimIsOk_ ty@(Abs.TypeExpressionArraySimple _ range expf) init@(Abs.ArrayInit _ arrayInit1 arrayInit2) env = let listEl = countListInit init in
                                                                                                             let rangeDim = getDimFromRange range in
                                                                                                                 if listEl==rangeDim
-                                                                                                                    then let isOkInit1 = executeInitCheck arrayInit1 ty in
-                                                                                                                            isOkInit1 && dimIsOk_ (getChild expf) arrayInit2
+                                                                                                                    then let isOkInit1 = executeInitCheck arrayInit1 ty env in
+                                                                                                                            isOkInit1 && dimIsOk_ (getChild expf) arrayInit2 env
                                                                                                                     else False
-dimIsOk_ ty@(Abs.TypeExpressionArraySimple _ range expf) init@(Abs.ArrayInitSingle _ arrayInit) = let next = getDimFromExpF expf in
+dimIsOk_ ty@(Abs.TypeExpressionArraySimple _ range expf) init@(Abs.ArrayInitSingle _ arrayInit) env = let next = getDimFromExpF expf in
                                                                                                     if next==0
-                                                                                                        then dimIsOk_ (getChild expf) arrayInit
+                                                                                                        then dimIsOk_ (getChild expf) arrayInit env
                                                                                                         else let listEl = countListInit init in
                                                                                                                 let rangeDim = getDimFromRange range in
                                                                                                                     if listEl==rangeDim
-                                                                                                                        then dimIsOk_ (getChild expf) arrayInit
+                                                                                                                        then dimIsOk_ (getChild expf) arrayInit env
                                                                                                                         else False
-dimIsOk_ (Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInitElems _ listelement) = let next = getDimFromExpF expf in
+dimIsOk_ (Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInitElems _ listelement) env = let next = getDimFromExpF expf in
                                                                                             let rangeDim = getDimFromRange range in
-                                                                                                let listEl = countListEl_ listelement in
+                                                                                                let listEl = countListEl_ listelement env in
                                                                                                     if next==0
                                                                                                         then
                                                                                                             if rangeDim == listEl 
@@ -497,21 +633,21 @@ dimIsOk_ (Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInitElems _ liste
                                                                                                                 else False
                                                                                                         else 
                                                                                                             False
-dimIsOk_ ty@(Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInit _ arrayInit1 arrayInit2) = let listEl = countListInit init in
+dimIsOk_ ty@(Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInit _ arrayInit1 arrayInit2) env = let listEl = countListInit init in
                                                                                                     let rangeDim = getDimFromRange range in
                                                                                                         if listEl==rangeDim
-                                                                                                            then let isOkInit1 = executeInitCheck arrayInit1 ty in
-                                                                                                                    isOkInit1 && dimIsOk_ (getChild expf) arrayInit2
+                                                                                                            then let isOkInit1 = executeInitCheck arrayInit1 ty env in
+                                                                                                                    isOkInit1 && dimIsOk_ (getChild expf) arrayInit2 env
                                                                                                             else False
-dimIsOk_ ty@(Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInitSingle _ arrayInit) = let next = getDimFromExpF expf in
+dimIsOk_ ty@(Abs.TypeExpressionArray _ range expf) init@(Abs.ArrayInitSingle _ arrayInit) env = let next = getDimFromExpF expf in
                                                                                                 if next==0
-                                                                                                    then dimIsOk_ (getChild expf) arrayInit
+                                                                                                    then dimIsOk_ (getChild expf) arrayInit env
                                                                                                     else let listEl = countListInit init in
                                                                                                             let rangeDim = getDimFromRange range in
                                                                                                                 if listEl==rangeDim
-                                                                                                                    then dimIsOk_ (getChild expf) arrayInit
+                                                                                                                    then dimIsOk_ (getChild expf) arrayInit env
                                                                                                                     else False
-dimIsOk_ _ _ = False
+dimIsOk_ _ _ env = False
 
 
 getInitPart :: Prelude.String -> Prelude.String -> Prelude.String -> Prelude.String
@@ -553,6 +689,17 @@ isPointerWArray_ :: Abs.TYPEEXPRESSION Posn -> Prelude.Bool
 isPointerWArray_ (Abs.TypeExpressionPointer _ ty _) = True
 isPointerWArray_ (Abs.TypeExpressionPointerOfArray _ ty _) = True
 isPointerWArray_ _ = False
+
+isPrimitiveArray ::  Abs.TYPEPART Posn -> Prelude.Bool
+isPrimitiveArray (Abs.TypePart _ typeexp) = isPrimitiveArray_ typeexp
+
+isPrimitiveArray_ :: Abs.TYPEEXPRESSION Posn -> Prelude.Bool
+isPrimitiveArray_ (Abs.TypeExpression _ ty) = isPrimitiveArray__ ty
+isPrimitiveArray_ _ = False
+
+isPrimitiveArray__ :: Abs.PRIMITIVETYPE Posn -> Prelude.Bool
+isPrimitiveArray__ (Abs.TypeArray _ ty) = True
+isPrimitiveArray__ _ = False
 
 isArrayDef :: Abs.TYPEEXPRESSIONFUNC Posn -> Prelude.Bool
 isArrayDef (Abs.TypeExpressionArrayOfPointer _ ty) = isArrayDef ty
@@ -639,7 +786,7 @@ getTypeFromPrimitive (Abs.TypeArray _ prim) =  (Type.Array (getTypeFromPrimitive
 
 -- Returns array dimension
 getArrayDimFunc :: Abs.PRIMITIVETYPE Posn -> Prelude.Integer
-getArrayDimFunc (Abs.TypeArray _ ty) = 1 + getArrayDimFunc ty
+getArrayDimFunc (Abs.TypeArray _ ty) = 1 
 getArrayDimFunc _ = 1
 
 -- Counts array length from rangeexpression
@@ -1159,7 +1306,7 @@ executeExpression node@(Abs.ExpressionBinaryLess pos exp1 exp2) env = let leftEx
                                                                                                  else if (rightType == (B_type Type_Integer))
                                                                                                         then (Abs.ExpressionBinaryLess (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
                                                                                                         else (Abs.ExpressionBinaryLess (checkTypeExpression 0 node env) leftExecute rightExecute) 
-executeExpression node@(Abs.ExpressionIdent pos id index) env = Abs.ExpressionIdent (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement index env)
+executeExpression node@(Abs.ExpressionIdent pos id index) env = Abs.ExpressionIdent (checkTypeExpression 0 node env) (executeIdentVar id env) (executeArrayIndexElement index env)
 executeExpression node@(Abs.ExpressionCall pos id exps) env = Abs.ExpressionCall (checkTypeExpression 0 node env) (executeIdentFunc id env) (executeExpressions exps env) 
 
 executeUnaryOp :: Abs.UNARYOP Posn -> Env -> Abs.UNARYOP TCheckResult
@@ -1180,7 +1327,7 @@ executeDefault d node@(Abs.ExpressionUnaryD pos unary def) env = let dd = case u
                                                                             Abs.UnaryOperationPointer _ -> d+1
                                                                             _ -> 0 in
                                                                                 Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
-executeDefault d node@(Abs.ExpressionIdentD pos id index) env = Abs.ExpressionIdentD (checkTypeIdentVar id env) (executeIdentVar id env) (executeArrayIndexElement index env)
+executeDefault d node@(Abs.ExpressionIdentD pos id index) env = Abs.ExpressionIdentD (checkTypeDefault 0 node env) (executeIdentVar id env) (executeArrayIndexElement index env)
 
 executeLValue :: Abs.LVALUEEXPRESSION Posn -> Env -> Abs.LVALUEEXPRESSION TCheckResult
 executeLValue node@(Abs.LvalueExpression pos id ident) env = Abs.LvalueExpression (checkTypeLvalueExpression 0 node env) (executeIdentVar id env) (executeArrayIndexElement ident env)
@@ -2250,12 +2397,12 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                                                     True -> TError ["Type void is not allowed as type for variable declaration! Position: "++show pos]
                                                                                                                                     False -> checkErrors identTCheck (checkTypeTypePart typepart env)
                                                                                                 _ ->let typeDim = getDimFromType typepart in
-                                                                                                        let initDim = getDimFromInit initpart in 
+                                                                                                        let initDim = getDimFromInit initpart env in 
                                                                                                             let typeCheck = checkTypeTypePart typepart env in
                                                                                                                 let initCheck = checkTypeInitializzationPart initpart env in
-                                                                                                                    if typeDim == initDim || isPointerWArray typepart
+                                                                                                                    if typeDim == initDim || isPointerWArray typepart || isPrimitiveArray typepart || (checkCompatibility initCheck typeCheck && isInitPrim initpart env)
                                                                                                                         then
-                                                                                                                            if (case initpart of (Abs.InitializzationPartArray _ arrayInit) -> dimIsOk typepart initpart
+                                                                                                                            if (case initpart of (Abs.InitializzationPartArray _ arrayInit) -> dimIsOk typepart initpart env || (isPrimitiveArray typepart && checkSquares typepart initpart env)
                                                                                                                                                  _ -> True) || isPointerWArray typepart
                                                                                                                             then case typeCheck of
                                                                                                                                     TResult env (Pointer t depth) post -> case initCheck of
@@ -2351,7 +2498,9 @@ checkPrimitiveType node@(Abs.PrimitiveTypeInt pos) env = TResult env (B_type Typ
 checkPrimitiveType node@(Abs.PrimitiveTypeReal pos) env = TResult env (B_type Type_Real) pos
 checkPrimitiveType node@(Abs.PrimitiveTypeString pos) env = TResult env (B_type Type_String) pos
 checkPrimitiveType node@(Abs.PrimitiveTypeChar pos) env = TResult env (B_type Type_Char) pos
-checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env =  TResult env (Array (getArrayPrimitiveType primitivetype) (getArrayDimFunc primitivetype)) pos
+checkPrimitiveType node@(Abs.TypeArray pos primitivetype) env =  let primType = (checkPrimitiveType primitivetype env) in
+                                                                    case primType of
+                                                                        TResult envr t posr -> TResult env (Array t (getArrayDimFunc primitivetype)) pos
 
 checkTypeTypeExpressionFunc :: Abs.TYPEEXPRESSIONFUNC Posn -> Env -> TCheckResult
 checkTypeTypeExpressionFunc node@(Abs.TypeExpressionArrayOfPointer pos typeexpressionfunc) env = TResult env (getTypeExprF node) pos
@@ -2359,9 +2508,7 @@ checkTypeTypeExpressionFunc node@(Abs.TypeExpressionFunction pos typeexpression)
 
 
 checkTypeTypeExpression :: Abs.TYPEEXPRESSION Posn -> Env -> TCheckResult
-checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = let checkArray = checkPrimitiveType primitiveType env in case checkArray of
-                                                                                                                                    TResult env (Array _ _) posa -> TError ["Array declaration without size specification is not allowed! Position: "++ show pos]
-                                                                                                                                    _ -> checkArray
+checkTypeTypeExpression node@(Abs.TypeExpression pos primitiveType) env = let checkArray = checkPrimitiveType primitiveType env in checkArray
 checkTypeTypeExpression node@(Abs.TypeExpressionArraySimple pos rangeexp typeexpression) env = let rangeExpTCheck = checkRangeExpType rangeexp env in
                                                                                                 case rangeExpTCheck of
                                                                                                     TResult env (Array t dim) posr -> mergeErrors (TError ["Malformed/invalid range expression in array declaration! Position: "++ show pos]) rangeExpTCheck

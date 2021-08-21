@@ -100,6 +100,14 @@ showAddrContent (AddrChar s) = show s
 showAddrContent (AddrAddress s) = s
 showAddrContent (AddrNULL) = "NULL"  
 
+buildTacEntriesForVarsDecl_ :: [Address] -> [Address] -> Type -> Prelude.Integer -> Prelude.Integer -> Prelude.Integer -> ([TACEntry],Prelude.Integer)
+buildTacEntriesForVarsDecl_ [x] [r] (Array t d) dim n c = buildTacEntriesForVarsDecl_ [x] [r] t dim n c
+buildTacEntriesForVarsDecl_ [x] [r] t dim n c = let temp = newTemp c in
+                                                    ([TacAssignNullOp temp (buildArrayId r n dim) t]++(buildTacEntriesForVarsDecl [x] [temp] t dim n),c+1)
+buildTacEntriesForVarsDecl_ [x] (r:rs) (Array t d) dim n c = buildTacEntriesForVarsDecl_ [x] (r:rs) t dim n c
+buildTacEntriesForVarsDecl_ [x] (r:rs) t dim n c = let temp = newTemp c in
+                                                        let next = (buildTacEntriesForVarsDecl_ [x] rs t dim (n+dim) (c+1)) in 
+                                                            ([TacAssignNullOp temp (buildArrayId r n dim) t]++(buildTacEntriesForVarsDecl [x] [temp] t dim n)++(sel1 next),sel2 next)
 -- Given a list of variable addresses and the value (address) of RightInitialization builds the list of TAC codes for each init/decl.
 -- Example: var x,y,z:int = 5
 --      the list of address are the address for x,y,z
@@ -113,6 +121,8 @@ buildTacEntriesForVarsDecl [x] [r] (Pointer t p) dim n = case r of  -- single, p
 buildTacEntriesForVarsDecl [x] [r] (Array t d) dim n = buildTacEntriesForVarsDecl [x] [r] t dim n
 buildTacEntriesForVarsDecl [x] [r] ty dim n = case r of     -- single, not pointer
     AddrNULL -> [TacAssignNullOp (buildArrayId x n dim) (genDefaultInitAddr ty) ty]
+    AddrAddress addr -> case addr of
+                        _ -> [TacAssignNullOp (buildArrayId x n dim) r ty]
     _ -> [TacAssignNullOp (buildArrayId x n dim) r ty]
 ------------------------------------------------------ 
 buildTacEntriesForVarsDecl [x] (r:rs) (Pointer t p) dim n = case r of -- TODO
@@ -155,6 +165,11 @@ genDefaultInitAddr ty = case ty of
     B_type Type_Real     -> AddrReal  0.0
     Array t _            -> genDefaultInitAddr t
     Pointer t _          -> AddrNULL
+
+genAbsoluteType :: Type -> Type
+genAbsoluteType (Array t dim) = genAbsoluteType t
+genAbsoluteType (Pointer t dim) = genAbsoluteType t
+genAbsoluteType t = t
 
 -- Given a EXPRESSION node, return it's type
 getTypeFromExpr :: Abs.EXPRESSION TCheckResult -> Type
@@ -436,6 +451,74 @@ getRealTacType (Array t _) =  t
 getRealTacType (Pointer t _) =  t
 getRealTacType t = t
 
+isAndOrOp :: Abs.EXPRESSION a -> Prelude.Bool
+isAndOrOp (Abs.ExpressionBinaryAnd _ _ _) = True
+isAndOrOp (Abs.ExpressionBinaryOr _ _ _) = True
+isAndOrOp (Abs.ExpressionBracket _ exp ) = isAndOrOp exp
+isAndOrOp (Abs.ExpressionBinaryEq _ exp1 exp2) = isAndOrOp exp1 || isAndOrOp exp2
+isAndOrOp (Abs.ExpressionBinaryNotEq _ exp1 exp2) = isAndOrOp exp1 || isAndOrOp exp2
+isAndOrOp (Abs.ExpressionBinaryGratherEq _ exp1 exp2) = isAndOrOp exp1 || isAndOrOp exp2
+isAndOrOp (Abs.ExpressionBinaryGrather _ exp1 exp2) = isAndOrOp exp1 || isAndOrOp exp2
+isAndOrOp (Abs.ExpressionBinaryLessEq _ exp1 exp2) = isAndOrOp exp1 || isAndOrOp exp2
+isAndOrOp (Abs.ExpressionBinaryLess _ exp1 exp2) = isAndOrOp exp1 || isAndOrOp exp2
+isAndOrOp (Abs.ExpressionUnary _ _ def) = isAndOrOp_ def
+isAndOrOp (Abs.ExpressionCast _ def _) = isAndOrOp_ def
+isAndOrOp _ = False
+
+isAndOrOp_ :: Abs.DEFAULT a -> Prelude.Bool
+isAndOrOp_ (Abs.ExpressionBracketD _ exp ) = isAndOrOp exp
+isAndOrOp_ (Abs.ExpressionUnaryD _ _ def) = isAndOrOp_ def
+isAndOrOp_ (Abs.ExpressionCastD _ def _) = isAndOrOp_ def
+isAndOrOp_ _ = False
+
+generateTac :: Prelude.Integer -> Address -> Prelude.Integer -> Prelude.Integer -> Type -> Prelude.Integer -> ([TACEntry],Prelude.Integer,[Address],Prelude.Integer)
+generateTac n adr c dim t 1 = let temp = newTemp n in
+                                ([TacAssignNullOp temp (buildArrayId adr c dim) t],n+1,[temp],c+dim)
+generateTac n adr c dim t l = let temp = newTemp n in
+                                let next = generateTac (n+1) adr (c+dim) dim t (l-1) in
+                                    ([TacAssignNullOp temp (buildArrayId adr c dim) t]++(sel1 next),sel2 next,[temp]++(sel3 next),sel4 next)
+
+getSonTypeExp :: Abs.TYPEEXPRESSION a -> Abs.TYPEEXPRESSION a
+getSonTypeExp (Abs.TypeExpressionArraySimple _ _ typeexpf) = getSonTypeExp_ typeexpf
+getSonTypeExp (Abs.TypeExpressionArray _ _ typeexpf) = getSonTypeExp_ typeexpf
+getSonTypeExp t = t
+
+getSonTypeExp_ :: Abs.TYPEEXPRESSIONFUNC a -> Abs.TYPEEXPRESSION a
+getSonTypeExp_ (Abs.TypeExpressionFunction _ typeexp) = typeexp
+getSonTypeExp_ (Abs.TypeExpressionArrayOfPointer _ t) = getSonTypeExp_ t
+--------------------------------------------------------------------------------------
+getDimFromTypeTAC :: Abs.TYPEPART a -> Abs.EXPRESSION a -> Env -> Prelude.Integer
+getDimFromTypeTAC (Abs.TypePart _ typeexp) exp env = getDimFromTypeExpTAC typeexp exp env
+
+getDimFromExpFTAC :: Abs.TYPEEXPRESSIONFUNC a -> Abs.EXPRESSION a -> Env -> Prelude.Integer
+getDimFromExpFTAC (Abs.TypeExpressionArrayOfPointer _ _) exp env = 0
+getDimFromExpFTAC (Abs.TypeExpressionFunction _ typeexp) exp env = getDimFromTypeExpTAC typeexp exp env
+
+getDimFromTypeExpTAC :: Abs.TYPEEXPRESSION a -> Abs.EXPRESSION a -> Env -> Prelude.Integer
+getDimFromTypeExpTAC (Abs.TypeExpressionArraySimple _ range expf) exp env = let next = getDimFromExpFTAC expf exp env in
+                                                                    if next==0 
+                                                                        then getDimFromRange range
+                                                                        else getDimFromRange range * getDimFromExpFTAC expf exp env
+getDimFromTypeExpTAC (Abs.TypeExpressionArray _ range expf) exp env = let next = getDimFromExpFTAC expf exp env in
+                                                                    if next==0 
+                                                                        then getDimFromRange range
+                                                                        else getDimFromRange range * getDimFromExpFTAC expf exp env
+getDimFromTypeExpTAC (Abs.TypeExpression _ prim) exp env = getDimFromPrimTAC prim exp env
+getDimFromTypeExpTAC _ _ _ = 0
+
+getDimFromPrimTAC :: Abs.PRIMITIVETYPE a -> Abs.EXPRESSION a -> Env -> Prelude.Integer
+getDimFromPrimTAC p@(Abs.TypeArray _ prim) (Abs.ExpressionBracket _ exp) env = getDimFromPrimTAC p exp env
+getDimFromPrimTAC (Abs.TypeArray _ prim) (Abs.ExpressionIdent _ (Abs.Ident id _) index) env = case Data.Map.lookup id env of
+                                                                                                Just (e:es) -> case findEntryOfType (e:es) "var" of
+                                                                                                                [] -> 0
+                                                                                                                [Variable (Array t dim) _ _ _ s] -> case index of 
+                                                                                                                                                        Abs.ArrayIndexElementEmpty _ -> getNElems s (toInteger(length s))
+                                                                                                                                                        Abs.ArrayIndexElement _ exp -> head s
+                                                                                                                                                        Abs.ArrayIndexElements _ exps exp  -> getNElems s (1+(countSquares exps))
+                                                                                                                _ -> 0
+
+getDimFromPrimTAC _ _ _ = 0
+
 ------------------------------------------------------------------------------------------------
 -- TAC GENERATION FUNCTIONS --------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
@@ -468,10 +551,19 @@ genTacStatement (Abs.VariableDeclarationStatement res@(TResult _ ty _) tipo vard
                                                                                                                 let vardecAddrs = sel5 vardecTac in -- variable addresses # >1
                                                                                                                     let initAddr = sel6 vardecTac in
                                                                                                                         let dim = sel4 vardecTac in
-                                                                                                                            (Abs.VariableDeclarationStatement (mergeTacs [vardecContent,
-                                                                                                                                                                          (TAC (buildTacEntriesForVarsDecl vardecAddrs initAddr ty dim 0) []),
-                                                                                                                                                                          tipoContent])
-                                                                                                                                                                          (sel1 tipoTac) (sel1 vardecTac) ,(sel2 vardecTac),(sel3 vardecTac),AddrNULL)
+                                                                                                                            if head initAddr == AddrAddress "array"
+                                                                                                                                then
+                                                                                                                                    let idBuilder = buildTacEntriesForVarsDecl_ vardecAddrs (tail initAddr) ty dim 0 (sel2 vardecTac) in
+                                                                                                                                        (Abs.VariableDeclarationStatement (mergeTacs [vardecContent,
+                                                                                                                                                                              (TAC (sel1 idBuilder) []),
+                                                                                                                                                                              tipoContent])
+                                                                                                                                                                              (sel1 tipoTac) (sel1 vardecTac) ,(sel2 idBuilder),(sel3 vardecTac),AddrNULL)
+                                                                                                                                else
+                                                                                                                                    let idBuilder = buildTacEntriesForVarsDecl vardecAddrs initAddr ty dim 0 in
+                                                                                                                                        (Abs.VariableDeclarationStatement (mergeTacs [vardecContent,
+                                                                                                                                                                                      (TAC idBuilder []),
+                                                                                                                                                                                      tipoContent])
+                                                                                                                                                                                      (sel1 tipoTac) (sel1 vardecTac) ,(sel2 vardecTac),(sel3 vardecTac),AddrNULL)
 genTacStatement (Abs.BreakStatement res) n l k (w,j) = ((Abs.BreakStatement (TAC [TacJump w,TacComment "break jump"] [])),n,k,AddrNULL)
 genTacStatement (Abs.ContinueStatement res) n l k (w,j) = ((Abs.ContinueStatement (TAC [TacJump j,TacComment "continue jump"] [])),n,k,AddrNULL)
 genTacStatement (Abs.ReturnStatement res ret) n l k (w,j) = case ret of 
@@ -488,12 +580,12 @@ genTacStatement (Abs.ExpressionStatement res expstat) n l k (w,j) = let newL = n
                                                                                 let newC = sel2 expressionstat in
                                                                                     let exprAddr = sel4 expressionstat in
                                                                                         ((Abs.ExpressionStatement (expressionstatement_content (sel1 expressionstat)) (sel1 expressionstat)),newC,(sel3 expressionstat),exprAddr)
-genTacStatement (Abs.AssignmentStatement resres@(TResult _ t _) lval assignOp exp) n l k (w,j) = if t==B_type Type_Boolean
+genTacStatement (Abs.AssignmentStatement resres@(TResult _ t _) lval assignOp exp) n l k (w,j) = if t==B_type Type_Boolean && isAndOrOp exp
                                                                                                                     then
                                                                                                                         let label = newLabel "endSet" k in
                                                                                                                             let temp = newTemp n in
                                                                                                                                 let leftVal = (genTacLeftVal lval (n+1) label (k+1) (w,j)) in
-                                                                                                                                    let rightVal = (genTacExpression exp (sel2 leftVal) label (sel3 leftVal) (w,j) "or") in
+                                                                                                                                    let rightVal = (genTacExpression exp (sel2 leftVal) label (sel3 leftVal) (w,j) "wor") in
                                                                                                                                         let newC = sel2 rightVal in
                                                                                                                                             let exprAddr = sel4 rightVal in
                                                                                                                                                 let leftValAddrs = sel4 leftVal in
@@ -1142,9 +1234,9 @@ genTacNamedExpression (Abs.NamedExpressionListEmpty res) n l k (w,j) = ((Abs.Nam
 genTacForStatement :: Abs.FORSTATEMENT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.FORSTATEMENT TAC, Prelude.Integer, Prelude.Integer)
 genTacForStatement (Abs.ForStateIndexDo res index@(Abs.IndexVarDeclaration _ ident@(Abs.Ident id resi@(TResult _ _ pos))) rangexp stat) n l k (w,j) =
                                                                         let rangeExp = (genTacRangeExpr rangexp n l k (w,j)) in -- for range do stats
-                                                                            let guardLabel = newLabel "guard" ((sel3 rangeExp)+1) in
-                                                                                let nextLabel = newLabel "next" ((sel3 rangeExp)+2) in
-                                                                                    let statement = (genTacStatement stat (sel2 rangeExp) l ((sel3 rangeExp )+3) (nextLabel,guardLabel)) in
+                                                                            let guardLabel = newLabel "guard" (sel3 rangeExp) in
+                                                                                let nextLabel = newLabel "next" ((sel3 rangeExp)+1) in
+                                                                                    let statement = (genTacStatement stat (sel2 rangeExp) l ((sel3 rangeExp )+2) (nextLabel,guardLabel)) in
                                                                                         let statTac = sel1 statement in
                                                                                             let rangeExpTac = sel1 rangeExp in
                                                                                                 case rangeExpTac of
@@ -1163,9 +1255,9 @@ genTacForStatement (Abs.ForStateIndexDo res index@(Abs.IndexVarDeclaration _ ide
                                                                                                                                                                                         (Abs.IndexVarDeclaration (TAC [] []) (Abs.Ident id (TAC [] []))) rangeExpTac statTac),sel2 statement, sel3 statement)                                                                                      
 genTacForStatement (Abs.ForStateIndexWDo res index@(Abs.IndexVarDeclaration _ ident@(Abs.Ident id resi@(TResult _ _ pos))) rangexp b@(Abs.BlockStatement _ stats)) n l k (w,j) =
                                                                             let rangeExp = (genTacRangeExpr rangexp n l k (w,j)) in -- for range do stats
-                                                                                let guardLabel = newLabel "guard" (k+1) in
-                                                                                    let nextLabel = newLabel "next" (k+2) in
-                                                                                        let statements = (genTacStatements stats (sel2 rangeExp) l ((sel3 rangeExp )+1) (nextLabel,guardLabel)) in
+                                                                                let guardLabel = newLabel "guard" (sel3 rangeExp) in
+                                                                                    let nextLabel = newLabel "next" ((sel3 rangeExp)+1) in
+                                                                                        let statements = (genTacStatements stats (sel2 rangeExp) l ((sel3 rangeExp )+2) (nextLabel,guardLabel)) in
                                                                                             let statsTac = sel1 statements in
                                                                                                 let rangeExpTac = sel1 rangeExp in
                                                                                                     case rangeExpTac of
@@ -1203,9 +1295,9 @@ genTacForStatement (Abs.ForStateExprDo res rangexp stat)        n l k (w,j) = le
                                                                                                                                                                                         (TAC [TacLabel nextLabel] [])                          -- end of for
                                                                                                                                                                                         ]) rangeExpTac statTac),sel2 statement, sel3 statement)                                                                                      
 genTacForStatement (Abs.ForStateExprWDo res rangexp b@(Abs.BlockStatement _ stats)) n l k (w,j) = let rangeExp = (genTacRangeExpr rangexp n l k (w,j)) in -- for range do stats
-                                                                                                    let guardLabel = newLabel "guard" (k+1) in
-                                                                                                        let nextLabel = newLabel "next" (k+2) in
-                                                                                                            let statements = (genTacStatements stats (sel2 rangeExp) l ((sel3 rangeExp )+1) (nextLabel,guardLabel)) in 
+                                                                                                    let guardLabel = newLabel "guard" (sel3 rangeExp) in
+                                                                                                        let nextLabel = newLabel "next" ((sel3 rangeExp)+1) in
+                                                                                                            let statements = (genTacStatements stats (sel2 rangeExp) l ((sel3 rangeExp )+2) (nextLabel,guardLabel)) in 
                                                                                                             let statsTac = sel1 statements in
                                                                                                                 let rangeExpTac = sel1 rangeExp in
                                                                                                                     case rangeExpTac of
@@ -1236,9 +1328,9 @@ genTacRangeExpr (Abs.RangeExpressionSingle res expr1 expr2) n l k (w,j) = let ex
 genTacWhileDoStatement :: Abs.WHILESTATEMENT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.WHILESTATEMENT TAC, Prelude.Integer, Prelude.Integer)
 genTacWhileDoStatement (Abs.WhileStateSimpleDo res expr stat) n l k (w,j) = let guardExpr = (genTacExpression expr n l k (w,j) "wor") in 
                                                                                 let exprTac = sel1 guardExpr in
-                                                                                    let guardLab = newLabel "guard" ((sel3 guardExpr)+1) in
-                                                                                        let nextLab = newLabel "next" ((sel3 guardExpr)+2) in
-                                                                                            let statement = (genTacStatement stat (sel2 guardExpr) l ((sel3 guardExpr)+3) (nextLab,guardLab)) in 
+                                                                                    let guardLab = newLabel "guard" ((sel3 guardExpr)+(if isAndOrOp expr then 1 else 0)) in
+                                                                                        let nextLab = newLabel "next" ((sel3 guardExpr)+(if isAndOrOp expr then 2 else 1)) in
+                                                                                            let statement = (genTacStatement stat (sel2 guardExpr) l ((sel3 guardExpr)+(if isAndOrOp expr then 3 else 2)) (nextLab,guardLab)) in 
                                                                                                 let statTac = sel1 statement in 
                                                                                                     let exprAddr = sel4 guardExpr in
                                                                                                         ((Abs.WhileStateSimpleDo (mergeTacs [(TAC [TacJump guardLab,TacLabel l] []),        -- jump to guard label + body label
@@ -1249,9 +1341,9 @@ genTacWhileDoStatement (Abs.WhileStateSimpleDo res expr stat) n l k (w,j) = let 
                                                                                                                                              exprTac statTac), sel2 statement, sel3 statement)
 genTacWhileDoStatement (Abs.WhileStateSimpleWDo res expr b@(Abs.BlockStatement _ statements)) n l k (w,j) = let guardExpr = (genTacExpression expr n l k (w,j) "wor") in 
                                                                                                                 let exprTac = sel1 guardExpr in
-                                                                                                                    let guardLab = newLabel "guard" ((sel3 guardExpr)+1) in
-                                                                                                                        let nextLab = newLabel "next" ((sel3 guardExpr)+2) in
-                                                                                                                            let stats = (genTacStatements statements (sel2 guardExpr) l ((sel3 guardExpr)+3) (nextLab,guardLab)) in 
+                                                                                                                    let guardLab = newLabel "guard" ((sel3 guardExpr)+(if isAndOrOp expr then 1 else 0)) in
+                                                                                                                        let nextLab = newLabel "next" ((sel3 guardExpr)+(if isAndOrOp expr then 2 else 1)) in
+                                                                                                                            let stats = (genTacStatements statements (sel2 guardExpr) l ((sel3 guardExpr)+(if isAndOrOp expr then 3 else 2)) (nextLab,guardLab)) in 
                                                                                                                                 let statsTac = sel1 stats in 
                                                                                                                                     let exprAddr = sel4 guardExpr in
                                                                                                                                         ((Abs.WhileStateSimpleWDo (mergeTacs [(TAC [TacJump guardLab,TacLabel l] []),     -- jump to guard label + body label   
@@ -1304,9 +1396,10 @@ genTacBlock :: Abs.B TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer
 genTacBlock (Abs.BlockStatement res statements) n l k (w,j) = let statsTac = genTacStatements statements n l k (w,j) in ((Abs.BlockStatement (statements_content (sel1 statsTac)) (sel1 statsTac)),(sel2 statsTac),(sel3 statsTac))
 
 genTacConditionalStatement :: Abs.CONDITIONALSTATE TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.CONDITIONALSTATE TAC,Prelude.Integer,Prelude.Integer)
-genTacConditionalStatement (Abs.ConditionalStatementSimpleThen res exp state elseState) n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) "" in -- res è il giusto tcheck? TODO
-                                                                                                        let statTac = genTacStatement state (sel2 expTac) l ((sel3 expTac)+1) (w,j) in        
-                                                                                                            let expTacMod = TAC (updateTac (code (expression_content (sel1 expTac))) l) [] in        
+genTacConditionalStatement (Abs.ConditionalStatementSimpleThen res exp state elseState) n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) "" in 
+                                                                                                        let statTac = genTacStatement state (sel2 expTac) l ((sel3 expTac)+(if isAndOrOp exp then 1 else 0)) (w,j) in        
+                                                                                                            let expTacMod = TAC (if isAndOrOp exp then (updateTac (code (expression_content (sel1 expTac))) l )
+                                                                                                                                                  else (code (expression_content (sel1 expTac)))) [] in        
                                                                                                                 let expAddr = sel4 expTac in
                                                                                                                     case elseState of 
                                                                                                                         -- if EXPR then CODE
@@ -1334,29 +1427,31 @@ genTacConditionalStatement (Abs.ConditionalStatementSimpleThen res exp state els
                                                                                                                                                                                                                 (sel1 expTac) (sel1 statTac) (Abs.ElseState (TAC [] []) (sel1 elseStatesTac)),(sel2 elseStatesTac),(sel3 elseStatesTac)+1)) -- if expr then ... else ...
 
 genTacConditionalStatement (Abs.ConditionalStatementSimpleWThen res exp b@(Abs.BlockStatement _ statements) elseState) n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) "" in -- res è il giusto tcheck? TODO
-                                                                                                                                       let statTacs = genTacStatements statements (sel2 expTac) l (sel3 expTac) (w,j) in
-                                                                                                                                           let expAddr = sel4 expTac in 
-                                                                                                                                               case elseState of
-                                                                                                                                                   (Abs.ElseStateEmpty _)      -> ((Abs.ConditionalStatementSimpleWThen (TAC (removeDuplicates (code (mergeTacs [(expression_content (sel1 expTac)), -- same as previous cases, but syntax has blocks!
-                                                                                                                                                                                                                                    (case exp of
-                                                                                                                                                                                                                                     (Abs.ExpressionBinaryOr _ _ _) -> (TAC [TacLabel (newLabel "true_or" (sel3 expTac))] [])
-                                                                                                                                                                                                                                     _ -> TAC [] []
-                                                                                                                                                                                                                                    ),
-                                                                                                                                                                                                                                    (statements_content (sel1 statTacs)),
-                                                                                                                                                                                                                                    (TAC [TacLabel l] [])])) []) [])
-                                                                                                                                                                                                                                    (sel1 expTac) (Abs.BlockStatement (TAC [] []) (sel1 statTacs)) (Abs.ElseStateEmpty (TAC [] []))),(sel2 statTacs),(sel3 statTacs))   -- if expr then ...
-                                                                                                                                                   (Abs.ElseState _ elsestats) -> let elseStatesTac = genTacStatement elsestats (sel2 statTacs) l (sel3 statTacs) (w,j) in
-                                                                                                                                                                                           let nextLab = newLabel "next" (sel3 elseStatesTac) in
-                                                                                                                                                                                               ((Abs.ConditionalStatementSimpleWThen (TAC (removeDuplicates (code (mergeTacs [(expression_content (sel1 expTac)), -- same as previous cases, but syntax has blocks!
-                                                                                                                                                                                                                                                 (case exp of
-                                                                                                                                                                                                                                                 (Abs.ExpressionBinaryOr _ _ _) -> (TAC [TacLabel (newLabel "true_or" (sel3 expTac))] [])
-                                                                                                                                                                                                                                                 _ -> TAC [] []
-                                                                                                                                                                                                                                                ),
-                                                                                                                                                                                                                                                 (statements_content (sel1 statTacs)),
-                                                                                                                                                                                                                                                 (TAC [TacJump nextLab] []),
-                                                                                                                                                                                                                                                 (TAC [TacLabel l] []), (statement_content (sel1 elseStatesTac)),
-                                                                                                                                                                                                                                                 (TAC [TacLabel nextLab] [])])) []) [])
-                                                                                                                                                                                                                                                 (sel1 expTac) (Abs.BlockStatement (TAC [] []) (sel1 statTacs)) (Abs.ElseState (TAC [] []) (sel1 elseStatesTac)),(sel2 elseStatesTac),(sel3 elseStatesTac)+1)) -- if expr then ... else ...
+                                                                                                                                       let statTacs = genTacStatements statements (sel2 expTac) l ((sel3 expTac)+(if isAndOrOp exp then 1 else 0)) (w,j) in
+                                                                                                                                           let expTacMod = TAC (if isAndOrOp exp then (updateTac (code (expression_content (sel1 expTac))) l )
+                                                                                                                                                                                 else (code (expression_content (sel1 expTac)))) [] in  
+                                                                                                                                                let expAddr = sel4 expTac in 
+                                                                                                                                                    case elseState of
+                                                                                                                                                        (Abs.ElseStateEmpty _)      -> ((Abs.ConditionalStatementSimpleWThen (TAC (removeDuplicates (code (mergeTacs [expTacMod, -- same as previous cases, but syntax has blocks!
+                                                                                                                                                                                                                                         (case exp of
+                                                                                                                                                                                                                                          (Abs.ExpressionBinaryOr _ _ _) -> (TAC [TacLabel (newLabel "true_or" (sel3 expTac))] [])
+                                                                                                                                                                                                                                          _ -> TAC [] []
+                                                                                                                                                                                                                                         ),
+                                                                                                                                                                                                                                         (statements_content (sel1 statTacs)),
+                                                                                                                                                                                                                                         (TAC [TacLabel l] [])])) []) [])
+                                                                                                                                                                                                                                         (sel1 expTac) (Abs.BlockStatement (TAC [] []) (sel1 statTacs)) (Abs.ElseStateEmpty (TAC [] []))),(sel2 statTacs),(sel3 statTacs))   -- if expr then ...
+                                                                                                                                                        (Abs.ElseState _ elsestats) -> let elseStatesTac = genTacStatement elsestats (sel2 statTacs) l (sel3 statTacs) (w,j) in
+                                                                                                                                                                                                let nextLab = newLabel "next" (sel3 elseStatesTac) in
+                                                                                                                                                                                                    ((Abs.ConditionalStatementSimpleWThen (TAC (removeDuplicates (code (mergeTacs [expTacMod, -- same as previous cases, but syntax has blocks!
+                                                                                                                                                                                                                                                      (case exp of
+                                                                                                                                                                                                                                                      (Abs.ExpressionBinaryOr _ _ _) -> (TAC [TacLabel (newLabel "true_or" (sel3 expTac))] [])
+                                                                                                                                                                                                                                                      _ -> TAC [] []
+                                                                                                                                                                                                                                                     ),
+                                                                                                                                                                                                                                                      (statements_content (sel1 statTacs)),
+                                                                                                                                                                                                                                                      (TAC [TacJump nextLab] []),
+                                                                                                                                                                                                                                                      (TAC [TacLabel l] []), (statement_content (sel1 elseStatesTac)),
+                                                                                                                                                                                                                                                      (TAC [TacLabel nextLab] [])])) []) [])
+                                                                                                                                                                                                                                                      (sel1 expTac) (Abs.BlockStatement (TAC [] []) (sel1 statTacs)) (Abs.ElseState (TAC [] []) (sel1 elseStatesTac)),(sel2 elseStatesTac),(sel3 elseStatesTac)+1)) -- if expr then ... else ...
 genTacConditionalStatement (Abs.ConditionalStatementCtrlThen res ctrlState state elseState) n l k (w,j) = let ctrlStatement = genTacControlStatement ctrlState n l (k-1) (w,j) in
                                                                                                               let statTac = genTacStatement state (sel2 ctrlStatement) l (sel3 ctrlStatement) (w,j) in
                                                                                                                   let flagValue = checkControlDeclarationStatement ctrlState in   -- get the result of the control declaration statement! valid declaration = true; invalid declaration = false flag!
@@ -1434,7 +1529,7 @@ genTacVarDecList (Abs.VariableDeclarationSingle res vardecId) n l k (w,j) = let 
                                                                                 (Abs.VariableDeclarationSingle (vardecid_content (sel1 vardecIdTac)) (sel1 vardecIdTac),(sel2 vardecIdTac),(sel3 vardecIdTac),sel4 vardecIdTac,vardecIdAddr,initAddr)
 
 genTacVarDecId :: Abs.VARDECID TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.VARDECID TAC,Prelude.Integer,Prelude.Integer,Prelude.Integer,[Address],[Address])
-genTacVarDecId (Abs.VariableDeclaration res@(TResult _ ty _) idlist typepart@(Abs.TypePart _ typeExp) initpart) n l k (w,j) = case initpart of
+genTacVarDecId (Abs.VariableDeclaration res@(TResult env ty _) idlist typepart@(Abs.TypePart _ typeExp) initpart) n l k (w,j) = case initpart of
                                                                             Abs.InitializzationPartEmpty resi -> let idlistTac = genTacIdentifierList idlist n l k (w,j) in
                                                                                                                     let tacId = identlist_content (sel1 idlistTac) in
                                                                                                                         let addrIdList = sel4 idlistTac in
@@ -1445,14 +1540,14 @@ genTacVarDecId (Abs.VariableDeclaration res@(TResult _ ty _) idlist typepart@(Ab
                                                                                                                                             Abs.TypeExpressionArraySimple _ _ _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),dim,addrIdList,buildInitArray initAddr length)
                                                                                                                                             Abs.TypeExpressionArray _ _ _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),dim,addrIdList,buildInitArray initAddr length)
                                                                                                                                             _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),-1,addrIdList,[initAddr])
-                                                                            Abs.InitializzationPart resi expr -> if ty==B_type Type_Boolean
+                                                                            Abs.InitializzationPart resi expr -> if ty==B_type Type_Boolean && isAndOrOp expr
                                                                                                                     then
                                                                                                                          let temp = newTemp n in
                                                                                                                             let label = newLabel "endSet" k in
                                                                                                                                 let idlistTac = genTacIdentifierList idlist (n+1) l (k+1) (w,j) in
                                                                                                                                     let tacId = identlist_content (sel1 idlistTac) in
                                                                                                                                         let addrIdList = sel4 idlistTac in
-                                                                                                                                            let exprTac = (genTacExpression expr (sel2 idlistTac) label (sel3 idlistTac) (w,j) "or") in
+                                                                                                                                            let exprTac = (genTacExpression expr (sel2 idlistTac) label (sel3 idlistTac) (w,j) "wor") in
                                                                                                                                                 let initTac = (Abs.InitializzationPart (expression_content (sel1 exprTac)) (sel1 exprTac)) in
                                                                                                                                                     let initAddr = sel4 exprTac in
                                                                                                                                                         (Abs.VariableDeclaration (mergeTacs[ (TAC [TacAssignNullOp temp (AddrBool True) (B_type Type_Boolean)] []),
@@ -1466,31 +1561,79 @@ genTacVarDecId (Abs.VariableDeclaration res@(TResult _ ty _) idlist typepart@(Ab
                                                                                                                                     let exprTac = (genTacExpression expr (sel2 idlistTac) l (sel3 idlistTac) (w,j) "or") in
                                                                                                                                         let initTac = (Abs.InitializzationPart (expression_content (sel1 exprTac)) (sel1 exprTac)) in
                                                                                                                                             let initAddr = sel4 exprTac in
-                                                                                                                                                (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),-1,addrIdList,[initAddr])
+                                                                                                                                                let dim = generateDimForArray typeExp in
+                                                                                                                                                    let length = getDimFromTypeTAC typepart expr env in
+                                                                                                                                                        case typeExp of 
+                                                                                                                                                            Abs.TypeExpressionArraySimple _ _ _ -> (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),dim,addrIdList,[AddrAddress "array"]++(buildInitArray initAddr length))
+                                                                                                                                                            Abs.TypeExpressionArray _ _ _ -> (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),dim,addrIdList,[AddrAddress "array"]++(buildInitArray initAddr length))
+                                                                                                                                                            _ -> if length>0
+                                                                                                                                                                then (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),dim,addrIdList,[AddrAddress "array"]++(buildInitArray initAddr length))
+                                                                                                                                                                else (Abs.VariableDeclaration (expression_content (sel1 exprTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),-1,addrIdList,[initAddr])
                                                                             Abs.InitializzationPartArray resi array -> let idlistTac = genTacIdentifierList idlist n l k (w,j) in
-                                                                                                                    let tacId = identlist_content (sel1 idlistTac) in
-                                                                                                                        let addrIdList = sel4 idlistTac in
-                                                                                                                            let dim = generateDimForArray typeExp in
-                                                                                                                                let arrayInitTac = (genTacArrayInit array (sel2 idlistTac) l (sel3 idlistTac) (w,j)) in
-                                                                                                                                    let initTac = (Abs.InitializzationPartArray (arrayinit_content (sel1 arrayInitTac)) (sel1 arrayInitTac)) in
-                                                                                                                                        (Abs.VariableDeclaration (arrayinit_content (sel1 arrayInitTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 arrayInitTac),(sel3 arrayInitTac),dim,addrIdList,sel4 arrayInitTac)
+                                                                                                                            let tacId = identlist_content (sel1 idlistTac) in
+                                                                                                                                let addrIdList = sel4 idlistTac in
+                                                                                                                                    let dim = generateDimForArray typeExp in
+                                                                                                                                        let arrayInitTac = (genTacArrayInit array (sel2 idlistTac) l (sel3 idlistTac) (w,j) dim 0 typeExp) in
+                                                                                                                                            let initTac = (Abs.InitializzationPartArray (arrayinit_content (sel1 arrayInitTac)) (sel1 arrayInitTac)) in
+                                                                                                                                                (Abs.VariableDeclaration (arrayinit_content (sel1 arrayInitTac)) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 arrayInitTac),(sel3 arrayInitTac),dim,addrIdList,sel4 arrayInitTac)
 
-genTacArrayInit :: Abs.ARRAYINIT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.ARRAYINIT TAC,Prelude.Integer,Prelude.Integer,[Address])
-genTacArrayInit (Abs.ArrayInitElems res listelementarray ) n l k (w,j) = let listElementTac = genTacListElementOfArray listelementarray n l k (w,j) in
-                                                                                (Abs.ArrayInitElems (listelementarray_content (sel1 listElementTac)) (sel1 listElementTac),(sel2 listElementTac),(sel3 listElementTac),(sel4 listElementTac))
-genTacArrayInit (Abs.ArrayInitSingle res arrayInit) n l k (w,j) = let arrayInitTac = genTacArrayInit arrayInit n l k (w,j) in
-                                                                                    (Abs.ArrayInitSingle (arrayinit_content (sel1 arrayInitTac)) (sel1 arrayInitTac),(sel2 arrayInitTac),(sel3 arrayInitTac),sel4 arrayInitTac)
-genTacArrayInit (Abs.ArrayInit res arrayInit1 arrayInit2) n l k (w,j) = let arrayInitTac1 = genTacArrayInit arrayInit1 n l k (w,j) in
-                                                                            let arrayInitTac2 = genTacArrayInit arrayInit2 (sel2 arrayInitTac1) l (sel3 arrayInitTac1) (w,j) in
+genTacArrayInit :: Abs.ARRAYINIT TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> Prelude.Integer -> Prelude.Integer -> Abs.TYPEEXPRESSION TCheckResult -> (Abs.ARRAYINIT TAC,Prelude.Integer,Prelude.Integer,[Address],Prelude.Integer)
+genTacArrayInit (Abs.ArrayInitElems res listelementarray ) n l k (w,j) dim c typeExp = let listElementTac = genTacListElementOfArray listelementarray n l k (w,j) dim c (getSonTypeExp typeExp) in
+                                                                                (Abs.ArrayInitElems (listelementarray_content (sel1 listElementTac)) (sel1 listElementTac),(sel2 listElementTac),(sel3 listElementTac),(sel4 listElementTac),sel5 listElementTac)
+genTacArrayInit (Abs.ArrayInitSingle res arrayInit) n l k (w,j) dim c typeExp = let arrayInitTac = genTacArrayInit arrayInit n l k (w,j) dim c (getSonTypeExp typeExp) in
+                                                                                    (Abs.ArrayInitSingle (arrayinit_content (sel1 arrayInitTac)) (sel1 arrayInitTac),(sel2 arrayInitTac),(sel3 arrayInitTac),sel4 arrayInitTac,sel5 arrayInitTac)
+genTacArrayInit (Abs.ArrayInit res arrayInit1 arrayInit2) n l k (w,j) dim c typeExp = let arrayInitTac1 = genTacArrayInit arrayInit1 n l k (w,j) dim c typeExp in
+                                                                            let arrayInitTac2 = genTacArrayInit arrayInit2 (sel2 arrayInitTac1) l (sel3 arrayInitTac1) (w,j) dim (sel5 arrayInitTac1) (getSonTypeExp typeExp) in
                                                                                     (Abs.ArrayInit (mergeTacs [(arrayinit_content (sel1 arrayInitTac1)),
-                                                                                                                (arrayinit_content (sel1 arrayInitTac2))]) (sel1 arrayInitTac1) (sel1 arrayInitTac2),(sel2 arrayInitTac2),(sel3 arrayInitTac2),(sel4 arrayInitTac1)++(sel4 arrayInitTac2))  
+                                                                                                                (arrayinit_content (sel1 arrayInitTac2))]) (sel1 arrayInitTac1) (sel1 arrayInitTac2),(sel2 arrayInitTac2),(sel3 arrayInitTac2),(sel4 arrayInitTac1)++(sel4 arrayInitTac2),sel5 arrayInitTac2)  
 
-genTacListElementOfArray :: Abs.LISTELEMENTARRAY TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> (Abs.LISTELEMENTARRAY TAC,Prelude.Integer,Prelude.Integer,[Address])
-genTacListElementOfArray (Abs.ListElementOfArray res exp)  n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) "" in
-                                                                            (Abs.ListElementOfArray (TAC (code (expression_content (sel1 expTac))) []) (sel1 expTac),(sel2 expTac),(sel3 expTac),[sel4 expTac])
-genTacListElementOfArray (Abs.ListElementsOfArray res exp listelement)  n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) "" in
-                                                                                        let listelementTac = genTacListElementOfArray listelement (sel2 expTac) l (sel3 expTac) (w,j) in
-                                                                                        (Abs.ListElementsOfArray (TAC ((code (expression_content (sel1 expTac))) ++ (code (listelementarray_content (sel1 listelementTac)))) []) (sel1 expTac) (sel1 listelementTac),(sel2 listelementTac),(sel3 listelementTac),[sel4 expTac]++(sel4 listelementTac))
+genTacListElementOfArray :: Abs.LISTELEMENTARRAY TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> Prelude.Integer -> Prelude.Integer -> Abs.TYPEEXPRESSION TCheckResult -> (Abs.LISTELEMENTARRAY TAC,Prelude.Integer,Prelude.Integer,[Address],Prelude.Integer)
+genTacListElementOfArray (Abs.ListElementOfArray res exp)  n l k (w,j) dim c typeExp = let expType = getTypeFromExpr exp in
+                                                                            if expType==B_type Type_Boolean && isAndOrOp exp 
+                                                                                then
+                                                                                    let temp = newTemp n in
+                                                                                        let label = newLabel "endSet" k in
+                                                                                            let expTac = genTacExpression exp (n+1) label (k+1) (w,j) "wor" in
+                                                                                                (Abs.ListElementOfArray (mergeTacs[ (TAC [TacAssignNullOp temp (AddrBool True) (B_type Type_Boolean)] []),
+                                                                                                                                    (expression_content (sel1 expTac)),
+                                                                                                                                    (TAC [TacAssignNullOp temp (AddrBool False) (B_type Type_Boolean)] []),
+                                                                                                                                    (TAC [TacLabel label] [])
+                                                                                                                                    ]) (sel1 expTac),(sel2 expTac),(sel3 expTac)+1,[temp],c)
+                                                                                else
+                                                                                    case expType of
+                                                                                        Array ta dima -> let expTac = genTacExpression exp n l k (w,j) "" in
+                                                                                                            let tacentry = generateTac (sel2 expTac) (sel4 expTac) c dim (genAbsoluteType ta) (getDimFromTypeExp typeExp) in
+                                                                                                                (Abs.ListElementOfArray (mergeTacs [(TAC (code (expression_content (sel1 expTac))) []),
+                                                                                                                                                    (TAC (sel1 tacentry) [])]) (sel1 expTac),(sel2 tacentry),(sel3 expTac),(sel3 tacentry),sel4 tacentry)
+                                                                                        _ -> let expTac = genTacExpression exp n l k (w,j) "" in
+                                                                                                (Abs.ListElementOfArray (TAC (code (expression_content (sel1 expTac))) []) (sel1 expTac),(sel2 expTac),(sel3 expTac),[sel4 expTac],c)
+genTacListElementOfArray (Abs.ListElementsOfArray res exp listelement)  n l k (w,j) dim c typeExp = let expType = getTypeFromExpr exp in
+                                                                                        if expType==B_type Type_Boolean && isAndOrOp exp 
+                                                                                            then
+                                                                                                let temp = newTemp n in
+                                                                                                    let label = newLabel "endSet" k in
+                                                                                                        let expTac = genTacExpression exp (n+1) label (k+1) (w,j) "wor" in
+                                                                                                            let listelementTac = genTacListElementOfArray listelement (sel2 expTac) l ((sel3 expTac)+1) (w,j) dim c typeExp in
+                                                                                                                (Abs.ListElementsOfArray (mergeTacs[ (TAC [TacAssignNullOp temp (AddrBool True) (B_type Type_Boolean)] []),
+                                                                                                                                    (expression_content (sel1 expTac)),
+                                                                                                                                    (TAC [TacAssignNullOp temp (AddrBool False) (B_type Type_Boolean)] []),
+                                                                                                                                    (TAC [TacLabel label] []),
+                                                                                                                                    (listelementarray_content (sel1 listelementTac))
+                                                                                                                                    ]) (sel1 expTac) (sel1 listelementTac),(sel2 listelementTac),(sel3 listelementTac),[temp]++(sel4 listelementTac),c)
+                                                                                            else
+                                                                                                case expType of
+                                                                                                    Array ta dima ->
+                                                                                                        let expTac = genTacExpression exp n l k (w,j) "" in
+                                                                                                            let tacentry = generateTac (sel2 expTac) (sel4 expTac) c dim (genAbsoluteType ta) (getDimFromTypeExp typeExp) in
+                                                                                                                let listelementTac = genTacListElementOfArray listelement (sel2 tacentry) l (sel3 expTac) (w,j) dim c typeExp in
+                                                                                                                    (Abs.ListElementsOfArray (mergeTacs [(TAC (code (expression_content (sel1 expTac))) []),
+                                                                                                                                                    (TAC (sel1 tacentry) []),
+                                                                                                                                                    (TAC (code (listelementarray_content (sel1 listelementTac))) [])
+                                                                                                                                                    ]) (sel1 expTac) (sel1 listelementTac),(sel2 listelementTac),(sel3 listelementTac),(sel3 tacentry)++(sel4 listelementTac),sel5 listelementTac)
+                                                                                                    _ ->
+                                                                                                        let expTac = genTacExpression exp n l k (w,j) "" in
+                                                                                                            let listelementTac = genTacListElementOfArray listelement (sel2 expTac) l (sel3 expTac) (w,j) dim c typeExp in
+                                                                                                            (Abs.ListElementsOfArray (TAC ((code (expression_content (sel1 expTac))) ++ (code (listelementarray_content (sel1 listelementTac)))) []) (sel1 expTac) (sel1 listelementTac),(sel2 listelementTac),(sel3 listelementTac),[sel4 expTac]++(sel4 listelementTac),c)
 
 genTacExpression :: Abs.EXPRESSION TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> Prelude.String -> (Abs.EXPRESSION TAC,Prelude.Integer,Prelude.Integer,Address)
 genTacExpression (Abs.ExpressionInteger res value@(Abs.Integer val resi))       n l k (w,j) str = (Abs.ExpressionInteger (TAC [] []) (Abs.Integer val (TAC [] []))  ,n,k, AddrInt val)

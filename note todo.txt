@@ -31,6 +31,8 @@ bloccare typeindex unary con +,-,! - done
 gestire tac rangeexpressions - done
 short-cut/lazy eval on bool flags - done
 gestione tac array di puntatori, viceversa e cose complesse - done
+array = array ??????? da completare con aggiunta del tac (temp,....) - done
+finire gestione []int,[][]int,........... - done
 -----------
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
@@ -38,6 +40,8 @@ Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 ------------
 
 gestione passaggio parametri? noi abbiamo ref. e val.?
+
+ricontrollare pointers, pointers misti array
 
 aggiungere test case significativi
 -------------
