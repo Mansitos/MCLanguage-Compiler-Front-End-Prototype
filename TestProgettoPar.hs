@@ -192,7 +192,7 @@ showContent (x:xs) = case x of
                       TacReturnVoid                           -> "\n" ++ "\t  " ++ "return_void" ++ showContent xs
                       TacReturn addr ty                       -> "\n" ++ "\t  " ++ "return_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
                       TacCastConversion addr fst tfrom tto    -> "\n" ++ "\t  " ++ (showAddrContent addr) ++ " " ++ (buildEqOperator tto) ++ " " ++ (buildCastOperator tfrom tto) ++ " " ++  (showAddrContent fst) ++ showContent xs
-                      TacPointDeref addr r                    -> "\n" ++ "\t  " ++ (showAddrContent addr) ++ " " ++ "=address &" ++ (showAddrContent r) ++ showContent xs
+                      TacPointRef addr r                      -> "\n" ++ "\t  " ++ (showAddrContent addr) ++ " " ++ "=address &" ++ (showAddrContent r) ++ showContent xs
                       TacConditionalJump (Label lab) flag addr -> case flag of
                           True ->  "\n" ++ "\t  if "       ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs
                           False -> "\n" ++ "\t  if_false " ++ (showAddrContent addr) ++ " goto " ++ lab  ++ showContent xs
