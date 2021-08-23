@@ -13,7 +13,7 @@ data TACEntry
     = TacAssignUnaryOp      {getAddr:: Address, unaryOp  :: TacUnaryOp,  first::Address, assignType::Type}                        --   x = + y
     | TacAssignBinaryOp     {getAddr:: Address, binaryOp :: TacBinaryOp, first::Address, second :: Address, assignType::Type}     --   x = y + z
     | TacAssignRelOp        {getAddr:: Address, relOp    :: TacRelOp,    first::Address, second :: Address, assignType::Type}     --   x = y < z
-    | TacAssignNullOp       {getAddr:: Address,                          first::Address,                    assignType::Type}     --   x = y
+    | TacAssignNullOp       {second_is_func::Prelude.Bool, getAddr:: Address           , first::Address,    assignType::Type}     --   x = y
     | TacProcCall           {getAddr:: Address}
     | TacFuncCall           {getAddr:: Address, first::Address,retType::Type}-- todo
     | TacFuncCallLeft       {getAddr:: Address}
