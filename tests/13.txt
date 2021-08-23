@@ -1,0 +1,5 @@
+var p:int $$;
+var i:int = 3;
+var x:int$=i+4*9%4;
+p=x;
+$p = 4+5+$x*(2.0:int);

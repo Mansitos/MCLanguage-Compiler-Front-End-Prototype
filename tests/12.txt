@@ -1,0 +1,4 @@
+var b:bool;
+var pb:bool $ = b && 1>1;
+var pr:real $ = 1+2+3+45+6**8.0;
+var x:int = (($ pr + 40):int) ** (($pr):int) + 456;

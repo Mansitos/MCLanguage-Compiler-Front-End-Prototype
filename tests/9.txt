@@ -1,12 +1,4 @@
-// Example of do-while
-
-var x:int = 42;
-var f:int;
-
-do { x += 1;
-     f = readInt();
-   }
-while ((x<100) || (f > 42));
-
-writeString ("End of execution!!!");
-
+var x:int$=1+2+3+4;
+var a:[1..4]int$ = [1,2,3,4];
+var b:[1..4]int$ $= [x,x,x,x];
+var c:int= $a[3] + $ $ b[2] + 6;

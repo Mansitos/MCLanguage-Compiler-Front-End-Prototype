@@ -101,7 +101,7 @@ runTests index v [] =  do
                       putStrLn "\n\n >>>>>>> End of testing Phase <<<<<<<\n"
                       putStrLn " For adding new test cases:\n   - create a new file n.txt with input code inside tests folder\n   - n must be the next number from the list\n   - modify variable \"numberOfTest\" with the new n-value in file TestProgettoPar.hs\n   - Rebuild and execute\n\n"
 
-numberOfTests = 11  -- must be set to the number of files in the tests folder. Tests files must be of consecutive ints: 1.txt 2.txt 3.txt etc.
+numberOfTests = 15  -- must be set to the number of files in the tests folder. Tests files must be of consecutive ints: 1.txt 2.txt 3.txt etc.
 testFilesPaths = ["tests/" ++ (show x) ++ ".txt"| x <- [1..numberOfTests]]
 
 ----------------------------------------------------------------------------------------------------
@@ -181,8 +181,8 @@ showContent :: [TACEntry] -> String
 showContent (x:xs) = case x of
                       TacAssignBinaryOp id op fst scnd ty     -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ showAddrContent fst ++ " " ++ show op           ++ " " ++ showAddrContent scnd ++ showContent xs
                       TacAssignRelOp id op fst scnd ty        -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ showAddrContent fst ++ " " ++ show op           ++ " " ++ showAddrContent scnd ++ showContent xs
-                      TacAssignUnaryOp id op fst ty           -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ show op             ++ " " ++ showAddrContent fst  ++ showContent xs
-                      TacAssignNullOp id fst ty               -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ showAddrContent fst                                ++ showContent xs
+                      TacAssignUnaryOp id op fst ty           -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ (if op==Point then show op else show op             ++ " ") ++ showAddrContent fst  ++ showContent xs
+                      TacAssignNullOp funz id  fst ty               -> "\n" ++ "\t  " ++ showAddrContent id ++ " "   ++ buildEqOperator ty ++ " " ++ (if funz then "fcall " else []) ++showAddrContent fst                                ++ showContent xs
                       TacLabel (Label l)                      -> "\n" ++ l ++ ":" ++ showContent xs
                       TacJump  (Label l)                      -> "\n" ++ "\t  goto " ++ l ++ showContent xs
                       TacProcCall id                          -> "\n" ++ "\t  " ++ "pcall " ++ showAddrContent id ++ showContent xs

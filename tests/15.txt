@@ -1,0 +1,12 @@
+// Example of do-while
+
+var x:int = 42;
+var f:int;
+
+do { x += 1;
+     f = readInt();
+   }
+while ((x<100) || (f > 42));
+
+writeString ("End of execution!!!");
+
