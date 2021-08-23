@@ -302,7 +302,9 @@ buildROp t1 t2 str = case str of
 -- builds the right TAC instruction.
 buildAssignTac :: Abs.ASSIGNOP TCheckResult -> [Address] -> [TACEntry] -> Address -> Type -> [TACEntry]
 buildAssignTac assignOp (leftAddr:xs) (a:arr) rightAddr t = case assignOp of
-                                                        (Abs.AssignOperationEq _ )         -> [TacAssignNullOp   leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
+                                                        (Abs.AssignOperationEq _ )         -> case t of
+                                                                                                Pointer {} -> [TacPointRef leftAddr rightAddr] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
+                                                                                                _ ->  [TacAssignNullOp leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
                                                         (Abs.AssignOperationEqPlus _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "plus") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
                                                         (Abs.AssignOperationEqMinus _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "minus") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
                                                         (Abs.AssignOperationEqProd _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "product") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
@@ -310,7 +312,9 @@ buildAssignTac assignOp (leftAddr:xs) (a:arr) rightAddr t = case assignOp of
                                                         (Abs.AssignOperationEqPercent _ )  -> [TacAssignBinaryOp leftAddr (buildOp t "module") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
                                                         (Abs.AssignOperationEqPower _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "power") leftAddr rightAddr t] ++ [a] ++ buildAssignTac assignOp xs arr rightAddr t
 buildAssignTac assignOp (leftAddr:xs) [] rightAddr t = case assignOp of
-                                                        (Abs.AssignOperationEq _ )         -> [TacAssignNullOp   leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
+                                                        (Abs.AssignOperationEq _ )         -> case t of
+                                                                                                Pointer {} -> [TacPointRef leftAddr rightAddr] ++ buildAssignTac assignOp xs [] rightAddr t
+                                                                                                _ -> [TacAssignNullOp   leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
                                                         (Abs.AssignOperationEqPlus _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "plus") leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
                                                         (Abs.AssignOperationEqMinus _ )    -> [TacAssignBinaryOp leftAddr (buildOp t "minus") leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
                                                         (Abs.AssignOperationEqProd _ )     -> [TacAssignBinaryOp leftAddr (buildOp t "product") leftAddr rightAddr t] ++ buildAssignTac assignOp xs [] rightAddr t
@@ -580,45 +584,45 @@ genTacStatement (Abs.ExpressionStatement res expstat) n l k (w,j) = let newL = n
                                                                                 let newC = sel2 expressionstat in
                                                                                     let exprAddr = sel4 expressionstat in
                                                                                         ((Abs.ExpressionStatement (expressionstatement_content (sel1 expressionstat)) (sel1 expressionstat)),newC,(sel3 expressionstat),exprAddr)
-genTacStatement (Abs.AssignmentStatement resres@(TResult _ t _) lval assignOp exp) n l k (w,j) = if t==B_type Type_Boolean && isAndOrOp exp
-                                                                                                                    then
-                                                                                                                        let label = newLabel "endSet" k in
-                                                                                                                            let temp = newTemp n in
-                                                                                                                                let leftVal = (genTacLeftVal lval (n+1) label (k+1) (w,j)) in
-                                                                                                                                    let rightVal = (genTacExpression exp (sel2 leftVal) label (sel3 leftVal) (w,j) "wor") in
-                                                                                                                                        let newC = sel2 rightVal in
-                                                                                                                                            let exprAddr = sel4 rightVal in
-                                                                                                                                                let leftValAddrs = sel4 leftVal in
-                                                                                                                                                    let lTac = (code (lvalueexpression_content (sel1 leftVal))) in
-                                                                                                                                                        let assignTac = case lTac of
-                                                                                                                                                                            [] -> (buildAssignTac assignOp leftValAddrs [] temp t) 
-                                                                                                                                                                            _ -> case head lTac of
-                                                                                                                                                                                TacComment _ -> (buildAssignTac assignOp leftValAddrs (code (lvalueexpression_content (sel1 leftVal))) temp t) 
-                                                                                                                                                                                _ -> (code (lvalueexpression_content (sel1 leftVal)))++(buildAssignTac assignOp leftValAddrs [] temp t) in
-                                                                                                                                                        ((Abs.AssignmentStatement (mergeTacs [
-                                                                                                                                                                                                (TAC [TacAssignNullOp temp (AddrBool True) (B_type Type_Boolean)] []),
-                                                                                                                                                                                                (TAC (code (expression_content (sel1 rightVal)))   -- expression (rval) evaluation tac code
-                                                                                                                                                                                                        []),
-                                                                                                                                                                                                (TAC [TacAssignNullOp temp (AddrBool False) (B_type Type_Boolean)] []),
-                                                                                                                                                                                                (TAC [TacLabel label] []),
-                                                                                                                                                                                                (TAC assignTac [])
-                                                                                                                                                                                            ]) (sel1 leftVal) (genTacAssignOp assignOp) (sel1 rightVal)),newC,(sel3 rightVal)+1,AddrNULL)
-                                                                                                                    else
-                                                                                                                        let newL = newLabel "" k in
-                                                                                                                            let leftVal = (genTacLeftVal lval n newL k (w,j)) in
-                                                                                                                                let rightVal = (genTacExpression exp (sel2 leftVal) newL (sel3 leftVal) (w,j) "") in
-                                                                                                                                    let newC = sel2 rightVal in
-                                                                                                                                        let exprAddr = sel4 rightVal in
-                                                                                                                                            let leftValAddrs = sel4 leftVal in
-                                                                                                                                                let lTac = (code (lvalueexpression_content (sel1 leftVal))) in
-                                                                                                                                                    let assignTac = case lTac of
-                                                                                                                                                                        [] -> (buildAssignTac assignOp leftValAddrs [] exprAddr t) 
-                                                                                                                                                                        _ -> case head lTac of
-                                                                                                                                                                            TacComment _ -> (buildAssignTac assignOp leftValAddrs (code (lvalueexpression_content (sel1 leftVal))) exprAddr t) 
-                                                                                                                                                                            _ -> (code (lvalueexpression_content (sel1 leftVal)))++(buildAssignTac assignOp leftValAddrs [] exprAddr t) in
-                                                                                                                                                    ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++   -- expression (rval) evaluation tac code
-                                                                                                                                                                                    assignTac)                                     -- assignements tac (list)                    
-                                                                                                                                                                                    []) (sel1 leftVal) (genTacAssignOp assignOp) (sel1 rightVal)),newC,(sel3 rightVal),AddrNULL)
+genTacStatement (Abs.AssignmentStatement resres@(TResult _ t _) lval assignOp exp) n l k (w,j) = if isAndOrOp exp
+                                                                                                    then
+                                                                                                        let label = newLabel "endSet" k in
+                                                                                                            let temp = newTemp n in
+                                                                                                                let leftVal = (genTacLeftVal lval (n+1) label (k+1) (w,j)) in
+                                                                                                                    let rightVal = (genTacExpression exp (sel2 leftVal) label (sel3 leftVal) (w,j) "wor") in
+                                                                                                                        let newC = sel2 rightVal in
+                                                                                                                            let exprAddr = sel4 rightVal in
+                                                                                                                                let leftValAddrs = sel4 leftVal in
+                                                                                                                                    let lTac = (code (lvalueexpression_content (sel1 leftVal))) in
+                                                                                                                                        let assignTac = case lTac of
+                                                                                                                                                            [] -> (buildAssignTac assignOp leftValAddrs [] temp t) 
+                                                                                                                                                            _ -> case head lTac of
+                                                                                                                                                                TacComment _ -> (buildAssignTac assignOp leftValAddrs (code (lvalueexpression_content (sel1 leftVal))) temp t) 
+                                                                                                                                                                _ -> (code (lvalueexpression_content (sel1 leftVal)))++(buildAssignTac assignOp leftValAddrs [] temp t) in
+                                                                                                                                        ((Abs.AssignmentStatement (mergeTacs [
+                                                                                                                                                                                (TAC [TacAssignNullOp temp (AddrBool True) (B_type Type_Boolean)] []),
+                                                                                                                                                                                (TAC (code (expression_content (sel1 rightVal)))   -- expression (rval) evaluation tac code
+                                                                                                                                                                                        []),
+                                                                                                                                                                                (TAC [TacAssignNullOp temp (AddrBool False) (B_type Type_Boolean)] []),
+                                                                                                                                                                                (TAC [TacLabel label] []),
+                                                                                                                                                                                (TAC assignTac [])
+                                                                                                                                                                            ]) (sel1 leftVal) (genTacAssignOp assignOp) (sel1 rightVal)),newC,(sel3 rightVal)+1,AddrNULL)
+                                                                                                    else
+                                                                                                        let newL = newLabel "" k in
+                                                                                                            let leftVal = (genTacLeftVal lval n newL k (w,j)) in
+                                                                                                                let rightVal = (genTacExpression exp (sel2 leftVal) newL (sel3 leftVal) (w,j) "") in
+                                                                                                                    let newC = sel2 rightVal in
+                                                                                                                        let exprAddr = sel4 rightVal in
+                                                                                                                            let leftValAddrs = sel4 leftVal in
+                                                                                                                                let lTac = (code (lvalueexpression_content (sel1 leftVal))) in
+                                                                                                                                    let assignTac = case lTac of
+                                                                                                                                                        [] -> (buildAssignTac assignOp leftValAddrs [] exprAddr t) 
+                                                                                                                                                        _ -> case head lTac of
+                                                                                                                                                            TacComment _ -> (buildAssignTac assignOp leftValAddrs (code (lvalueexpression_content (sel1 leftVal))) exprAddr t) 
+                                                                                                                                                            _ -> (code (lvalueexpression_content (sel1 leftVal)))++(buildAssignTac assignOp leftValAddrs [] exprAddr t) in
+                                                                                                                                                                    ((Abs.AssignmentStatement (TAC (code (expression_content (sel1 rightVal)) ++   -- expression (rval) evaluation tac code
+                                                                                                                                                                                                    assignTac)                                     -- assignements tac (list)                    
+                                                                                                                                                                                                    []) (sel1 leftVal) (genTacAssignOp assignOp) (sel1 rightVal)),newC,(sel3 rightVal),AddrNULL)
 genTacStatement (Abs.ConditionalStatement res condition) n l k (w,j) = let newL = newLabel "else" k in 
                                                                                 let condStatementTac = (genTacConditionalStatement condition n newL (k+1) (w,j)) in
                                                                                     let newC = sel2 condStatementTac in
@@ -678,7 +682,7 @@ genTacLeftVal (Abs.LvalueExpressions res@(TResult env _ _) ident@(Abs.Ident id r
                                                                                                         Just (entry:entries) ->  case findEntryOfType (entry:entries) "var" of
                                                                                                             ((Variable _ posv _ _ _):xs) -> let leftAddr = buildIDAddr posv id in
                                                                                                                                             let lvalAddr = (genTacLeftVal lval n l k (w,j)) in
-                                                                                                                                                ((Abs.LvalueExpressions (TAC ([TacComment ""]++(code (lvalueexpression_content (sel1 lvalAddr)))) []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] [])) (sel1 lvalAddr)),n,k,[leftAddr]++(sel4 lvalAddr))
+                                                                                                                                                ((Abs.LvalueExpressions (TAC ([TacComment ""]++(code (lvalueexpression_content (sel1 lvalAddr)))) []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElementEmpty (TAC [] [])) (sel1 lvalAddr)),(sel2 lvalAddr),(sel3 lvalAddr),[leftAddr]++(sel4 lvalAddr))
                                                                                                     (Abs.ArrayIndexElement _ typeindex) -> case Data.Map.lookup id env of
                                                                                                                                                 Just (entry:entries) ->  case findEntryOfType (entry:entries) "var" of
                                                                                                                                                     (x:xs) -> case findArray (x:xs) of
@@ -762,6 +766,23 @@ genTacLeftVal (Abs.LvalueExpression res@(TResult env _ _) ident@(Abs.Ident id re
                                                                                                                                                                                                                                             let posArr = buildPosArrayNoInteger (sel4 arrayIndexTac) s dim (sel2 arrayIndexTac) in
                                                                                                                                                                                                                                                 let leftAddrArray = buildArrayIdNoInteger leftAddr (newTemp ((sel2 arrayIndexTac)-1)) in
                                                                                                                                                                                                                                                     ((Abs.LvalueExpression (TAC (code (arrayindexelements_content (sel1 arrayIndexTac))) []) (Abs.Ident id (TAC [] [])) (Abs.ArrayIndexElements (TAC [] [])  (sel1 arrayIndexTac) (sel1 typeIndexTac))),(sel2 arrayIndexTac)+1,(sel3 arrayIndexTac),[leftAddrArray])
+genTacLeftVal (Abs.LvalueExpressionDeref res@(TResult _ t _) lval) n l k (w,j) = let lvalTac = genTacLeftVal lval n l k (w,j) in
+                                                                                    case length (sel4 lvalTac) of
+                                                                                        1 -> let temp = newTemp (sel2 lvalTac) in
+                                                                                                (Abs.LvalueExpressionDeref (mergeTacs [
+                                                                                                                            (TAC [TacAssignUnaryOp temp Point (head (sel4 lvalTac)) t] []),
+                                                                                                                            (lvalueexpression_content (sel1 lvalTac))
+                                                                                                                            ]) (sel1 lvalTac),(sel2 lvalTac)+1,sel3 lvalTac,[temp])
+                                                                                        _ -> let assignUnary = createAssignUnary [(head (sel4 lvalTac))] n t in
+                                                                                                let lvalTac = genTacLeftVal lval (sel2 assignUnary) l k (w,j) in
+                                                                                                    (Abs.LvalueExpressionDeref (mergeTacs [
+                                                                                                                            TAC (sel1 assignUnary) [],
+                                                                                                                            (lvalueexpression_content (sel1 lvalTac))
+                                                                                                                            ]) (sel1 lvalTac),(sel2 lvalTac),sel3 lvalTac,(sel3 assignUnary)++(tail(sel4 lvalTac)))
+
+createAssignUnary :: [Address] -> Prelude.Integer -> Type ->([TACEntry],Prelude.Integer,[Address])
+createAssignUnary (x:xs) n t = let temp = newTemp n in
+                                    ([TacAssignUnaryOp temp Point x t],n+1,[temp])
 
 genTacTypeIndex :: Abs.TYPEINDEX  TCheckResult -> Prelude.Integer -> Label -> Prelude.Integer -> (Label,Label) -> Prelude.Integer -> [Prelude.Integer] -> Prelude.Integer -> (Abs.TYPEINDEX  TAC, Prelude.Integer, Prelude.Integer, [Address])
 genTacTypeIndex (Abs.TypeOfIndexIntSingle res@(TResult env t pos) val@(Abs.Integer value resI)) n l k (w,j) d s p = case s of
@@ -1540,7 +1561,7 @@ genTacVarDecId (Abs.VariableDeclaration res@(TResult env ty _) idlist typepart@(
                                                                                                                                             Abs.TypeExpressionArraySimple _ _ _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),dim,addrIdList,buildInitArray initAddr length)
                                                                                                                                             Abs.TypeExpressionArray _ _ _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),dim,addrIdList,buildInitArray initAddr length)
                                                                                                                                             _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),-1,addrIdList,[initAddr])
-                                                                            Abs.InitializzationPart resi expr -> if ty==B_type Type_Boolean && isAndOrOp expr
+                                                                            Abs.InitializzationPart resi expr -> if isAndOrOp expr
                                                                                                                     then
                                                                                                                          let temp = newTemp n in
                                                                                                                             let label = newLabel "endSet" k in
@@ -1554,7 +1575,7 @@ genTacVarDecId (Abs.VariableDeclaration res@(TResult env ty _) idlist typepart@(
                                                                                                                                                                                             (expression_content (sel1 exprTac)),
                                                                                                                                                                                             (TAC [TacAssignNullOp temp (AddrBool False) (B_type Type_Boolean)] []),
                                                                                                                                                                                             (TAC [TacLabel label] [])
-                                                                                                                                                                                            ]) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac),-1,addrIdList,[temp])
+                                                                                                                                                                                            ]) (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) initTac ,(sel2 exprTac),(sel3 exprTac)+1,-1,addrIdList,[temp])
                                                                                                                     else let idlistTac = genTacIdentifierList idlist n l k (w,j) in
                                                                                                                             let tacId = identlist_content (sel1 idlistTac) in
                                                                                                                                 let addrIdList = sel4 idlistTac in

@@ -33,6 +33,9 @@ short-cut/lazy eval on bool flags - done
 gestione tac array di puntatori, viceversa e cose complesse - done
 array = array ??????? da completare con aggiunta del tac (temp,....) - done
 finire gestione []int,[][]int,........... - done
+ricontrollare pointers - done
+array of pointers ([]_$$) come lvalue - done
+pointers of array - done
 -----------
 
 Testare propagazione errori dopo aver corretto tutte le stringe di errore!
@@ -41,7 +44,7 @@ Testare propagazione errori dopo aver corretto tutte le stringe di errore!
 
 gestione passaggio parametri? noi abbiamo ref. e val.?
 
-ricontrollare pointers, pointers misti array
+togliere tipi usati come segnaposto nel tac
 
 aggiungere test case significativi
 -------------
