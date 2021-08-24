@@ -21,6 +21,7 @@ import LexProgettoPar
 %token
   '!' { PT _ (TS _ 1) }
   '!=' { PT _ (TS _ 2) }
+  '$' {PT _ (TS _ 3) }
   '%' { PT _ (TS _ 4) }
   '%=' { PT _ (TS _ 5) }
   '&&' { PT _ (TS _ 6) }
@@ -59,25 +60,23 @@ import LexProgettoPar
   'else' { PT _ (TS _ 39) }
   'false' { PT _ (TS _ 40) }
   'for' { PT _ (TS _ 41) }
-  'function' { PT _ (TS _ 43) }
-  'if' { PT _ (TS _ 44) }
-  'in' { PT _ (TS _ 45) }
-  'int' { PT _ (TS _ 46) }
-  'param' { PT _ (TS _ 47) }
-  'proc' { PT _ (TS _ 48) }
-  'real' { PT _ (TS _ 49) }
-  'ref' { PT _ (TS _ 50) }
-  'return' { PT _ (TS _ 51) }
-  'string' { PT _ (TS _ 52) }
-  'then' { PT _ (TS _ 53) }
-  'true' { PT _ (TS _ 54) }
-  'var' { PT _ (TS _ 55) }
-  'void' { PT _ (TS _ 56) }
-  'while' { PT _ (TS _ 57) }
-  '{' { PT _ (TS _ 58) }
-  '||' { PT _ (TS _ 59) }
-  '}' { PT _ (TS _ 60) }
-  '$' { PT _ (TS _ 61) }
+  'function' { PT _ (TS _ 42) }
+  'if' { PT _ (TS _ 43) }
+  'in' { PT _ (TS _ 44) }
+  'int' { PT _ (TS _ 45) }
+  'param' { PT _ (TS _ 46) }
+  'proc' { PT _ (TS _ 47) }
+  'real' { PT _ (TS _ 48) }
+  'return' { PT _ (TS _ 49) }
+  'string' { PT _ (TS _ 50) }
+  'then' { PT _ (TS _ 51) }
+  'true' { PT _ (TS _ 52) }
+  'var' { PT _ (TS _ 53) }
+  'void' { PT _ (TS _ 54) }
+  'while' { PT _ (TS _ 55) }
+  '{' { PT _ (TS _ 56) }
+  '||' { PT _ (TS _ 57) }
+  '}' { PT _ (TS _ 58) }
   L_Ident  { PT _ (TV _) }
   L_charac { PT _ (TC _) }
   L_doubl  { PT _ (TD _) }
@@ -163,8 +162,6 @@ VARIABLETYPE :: { Abs.VARIABLETYPE Posn }
 VARIABLETYPE : 'param' { Abs.VariableTypeParam (tokenPosn $1)}
              | 'const' { Abs.VariableTypeConst (tokenPosn $1)}
              | 'var' { Abs.VariableTypeVar (tokenPosn $1)}
-             | 'ref' { Abs.VariableTypeRef (tokenPosn $1)}
-             | 'const' 'ref' { Abs.VariableTypeConstRef (tokenPosn $1)}
 
 VARDECLIST :: { Abs.VARDECLIST Posn }
 VARDECLIST : VARDECID { Abs.VariableDeclarationSingle (Abs.vardecid_content $1) $1 }
