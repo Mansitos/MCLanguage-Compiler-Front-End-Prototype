@@ -361,27 +361,6 @@ isInList :: Prelude.String -> [Prelude.String] -> Prelude.Bool
 isInList id (x:xs) = id == x || isInList id xs
 isInList id [] = False
 
--- Given a primitive type, changes the type after a casting
-changeType :: TCheckResult -> Abs.PRIMITIVETYPE Posn -> TCheckResult
-changeType (TResult env (Array _ _) pos) pt = TError ["Incompatibility type for casting at "++ show pos]
-changeType (TResult env (Pointer _ _) pos) pt = TError ["Incompatibility type for casting at "++ show pos]
-changeType tcheck@(TResult env t pos) pt = if checkCompatibility tcheck (TResult env (getTypeFromPrimitive pt) pos)
-                                            then TResult env (getTypeFromPrimitive pt) pos
-                                            else TError ["Incompatibility type for casting at "++ show pos]
-changeType (TError e) _ = TError e
-
--- Checks if cast is present
-isThereCast :: Abs.DEFAULT Posn -> Bool
-isThereCast (Abs.ExpressionCastD _ _ _) = True
-isThereCast (Abs.ExpressionUnaryD pos unary def) = isThereCast def
-isThereCast _ = False
-
--- Returns the cast type
-getTypeCast :: Abs.DEFAULT Posn -> Abs.PRIMITIVETYPE Posn
-getTypeCast (Abs.ExpressionCastD pos def t) = t
-getTypeCast (Abs.ExpressionUnaryD pos unary def) = getTypeCast def
-getTypeCast _ = Abs.PrimitiveTypeVoid (Pn 0 0 0)
-
 -- Pretty printer of the array initialization part (used in errors strings)
 showInit :: Abs.INITPART Posn -> Prelude.String
 showInit (Abs.InitializzationPartArray _ arrayInit) = let p = Pn 0 0 0 in
@@ -408,10 +387,15 @@ getListDimFromTypeExp (Abs.TypeExpressionPointerOfArray _ typeexpf _) init env =
 getListDimFromTypeExp (Abs.TypeExpression _ prim) init env = getListDimFromPrimitive prim init env
 
 getListDimFromPrimitive :: Abs.PRIMITIVETYPE a -> Abs.INITPART a -> Env -> [Prelude.Integer]
-getListDimFromPrimitive (Abs.TypeArray _ prim) init env = case init of
-                                                        Abs.InitializzationPartEmpty _ -> [1]
-                                                        Abs.InitializzationPart _ exp -> getExpDim exp env
-                                                        Abs.InitializzationPartArray _ arrayInit -> getArrayInitDim arrayInit
+getListDimFromPrimitive (Abs.TypeArray _ prim) init env = case prim of
+                                                            Abs.TypeArray _ primp -> case init of
+                                                                                        Abs.InitializzationPartEmpty _ -> [1] ++ getListDimFromPrimitive prim init env
+                                                                                        Abs.InitializzationPart _ exp -> []
+                                                                                        Abs.InitializzationPartArray _ arrayInit -> getArrayInitDim arrayInit
+                                                            _ ->  case init of
+                                                                    Abs.InitializzationPartEmpty _ -> [1]
+                                                                    Abs.InitializzationPart _ exp -> getExpDim exp env
+                                                                    Abs.InitializzationPartArray _ arrayInit -> getArrayInitDim arrayInit
 getListDimFromPrimitive _ init env = []
 
 getArrayInitDim :: Abs.ARRAYINIT a -> [Prelude.Integer]
@@ -914,12 +898,6 @@ indexing (TResult env (Array t dim) pos) index = case index of
                                                         Abs.ArrayIndexElementEmpty posIn -> TResult env (Array t dim) pos
                                                         _ -> TResult env t pos
 indexing t index = t
-
--- Check if array has pointers inside
-isTherePointer :: Type -> Bool
-isTherePointer (Pointer _ _) = True
-isTherePointer (Array t _) = isTherePointer t
-isTherePointer _ = False
          
 ---------------------------------------------------------------------------------------------------
 --- GENERIC FUNCTIONS used for RETURN KEYS CHECKS -------------------------------------------------
@@ -995,7 +973,7 @@ solverDefInd (Variable ty@(Pointer t depth) posd mode override s) index p env = 
                                                                                 _ -> TError ["Indexing cannot be applied to a pointer! Position: "++ show p] 
 solverDefInd (Variable ty@(Array t dim) posd mode override s) index p env = case index of
                                                                                 Abs.ArrayIndexElementEmpty posIn -> TResult env ty p
-                                                                                _ -> if dim == (countIndex index) || True then case index of --TODO eliminare True
+                                                                                _ -> if dim == (countIndex index) then case index of 
                                                                                                                         (Abs.ArrayIndexElement _ _) -> TResult env t p
                                                                                                                         (Abs.ArrayIndexElements _ elems _) -> checkErrors (TResult env t p) (checkMultipleIndexElements t elems env)
                                                                                                                         else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array! Position: "++ show p] 
@@ -1551,19 +1529,28 @@ checkTypeLvalueExpression c node@(Abs.LvalueExpression pos ident@(Abs.Ident id p
                                                                                                                                                    then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                    else if mode == "const"
                                                                                                                                                             then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
-                                                                                                                                                            else if c==0 then TResult env t pos else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
+                                                                                                                                                            else if c==0 then case index of
+                                                                                                                                                                                Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                                                                _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
+                                                                                                                                                                         else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
                                                                         -- 1 entry of type var
                                                                         Just [Variable t pose mode override s] -> if mode == "param"  -- if param.. error because it cannot be overwritten
                                                                                                                then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                else if mode == "const"
                                                                                                                         then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
-                                                                                                                        else if c==0 then TResult env t pos else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
+                                                                                                                        else if c==0 then case index of
+                                                                                                                                            Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                            _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
+                                                                                                                                    else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
                                                                         -- multiple entries; first is of type var
                                                                         Just ((Variable t pose mode override s):xs) -> if mode == "param"  -- if param.. error because it cannot be overwritten
                                                                                                                then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                else if mode == "const"
                                                                                                                         then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
-                                                                                                                        else if c==0 then TResult env t pos else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
+                                                                                                                        else if c==0 then case index of
+                                                                                                                                            Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                            _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI] 
+                                                                                                                                    else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
                                                                         Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
 
 checkTypeLvalueExpression c node@(Abs.LvalueExpressions pos ident@(Abs.Ident id posI) index next) env = let lval= (Abs.LvalueExpression pos ident index) in
@@ -1632,7 +1619,7 @@ checkTypeLvalueExpression c node@(Abs.LvalueExpressions pos ident@(Abs.Ident id 
                                                                                                                                                                        TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                                                        _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
                                                                                                                                 else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show pos] 
-                                                                        -- 1 entry of type pointer TODO
+                                                                        -- 1 entry of type pointer
                                                                         Just [Variable (Pointer t depth) pose mode override s] -> if (checkCompatibility (TResult env (Pointer t depth) pos) (checkTypeLvalueExpression 0 next env)) 
                                                                                                                                   then if mode == "param"  -- if param.. error because it cannot be overwritten
                                                                                                                                       then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
@@ -1645,7 +1632,7 @@ checkTypeLvalueExpression c node@(Abs.LvalueExpressions pos ident@(Abs.Ident id 
                                                                                                                                   else case (checkTypeLvalueExpression 0 next env) of
                                                                                                                                         TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                         _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
-                                                                        -- multiple entries; first is of type pointer TODO
+                                                                        -- multiple entries; first is of type pointer
                                                                         Just ((Variable (Pointer t depth) pose mode override s):xs) -> if (checkCompatibility (TResult env (Pointer t depth) pos) (checkTypeLvalueExpression 0 next env)) 
                                                                                                                                        then if mode == "param"  -- if param.. error because it cannot be overwritten
                                                                                                                                             then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
@@ -1705,7 +1692,10 @@ checkTypeLvalueExpression c node@(Abs.LvalueExpressions pos ident@(Abs.Ident id 
                                                                                                                                                                                                                                               then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                                                               else if mode == "const"
                                                                                                                                                                                                                                                    then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
-                                                                                                                                                                                                                                                   else if c==0 then TResult env t pos else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
+                                                                                                                                                                                                                                                   else if c==0 then case index of
+                                                                                                                                                                                                                                                                        Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                                                                                                                                                        _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
+                                                                                                                                                                                                                                                                else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
                                                                                                                                                       else case (checkTypeLvalueExpression 0 next env) of
                                                                                                                                                             TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                                                             _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
@@ -1714,7 +1704,10 @@ checkTypeLvalueExpression c node@(Abs.LvalueExpressions pos ident@(Abs.Ident id 
                                                                                                                                                                                                           then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                           else if mode == "const"
                                                                                                                                                                                                                then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
-                                                                                                                                                                                                               else if c==0 then TResult env t pos else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
+                                                                                                                                                                                                               else if c==0 then case index of
+                                                                                                                                                                                                                                    Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                                                                                                                    _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
+                                                                                                                                                                                                                            else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
                                                                                                                   else case (checkTypeLvalueExpression 0 next env) of
                                                                                                                     TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                     _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
@@ -1723,7 +1716,10 @@ checkTypeLvalueExpression c node@(Abs.LvalueExpressions pos ident@(Abs.Ident id 
                                                                                                                                                                                                                then TError ["Variable " ++ id ++" is a param var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
                                                                                                                                                                                                                else if mode == "const"
                                                                                                                                                                                                                     then TError ["Variable " ++ id ++" is a const var. (const. at compile-time)! Cannot assign a value!"++ (show posI)] 
-                                                                                                                                                                                                                    else if c==0 then TResult env t pos else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
+                                                                                                                                                                                                                    else if c==0 then case index of
+                                                                                                                                                                                                                                        Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                                                                                                                        _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI] 
+                                                                                                                                                                                                                                else TError ["$ operator cannot be applied there! Position:" ++ (show posI)]
                                                                                                                        else case (checkTypeLvalueExpression 0 next env) of
                                                                                                                          TError e -> TError e -- if there was an error, propagate... if it wasn't then the error is because of the incompatible types!
                                                                                                                          _ -> TError ["Incompatible types on multiple assignment! Position: " ++ (show posI)]
@@ -2201,7 +2197,7 @@ checkTypeExpression d node@(Abs.ExpressionIdent pos ident@(Abs.Ident id posI) in
                                                                                                                                                                                                                                                                                     then TResult env (Pointer tm depthm) pos
                                                                                                                                                                                                                                                                                     else TResult env (if depthm-d==0 then tm else Pointer tm (depthm-d)) pos
                                                                                                                                                                                                                                         TResult env tm posm -> if d==0 
-                                                                                                                                                                                                                                                                    then TResult env tm pos
+                                                                                                                                                                                                                                                                    then TResult env tm posm
                                                                                                                                                                                                                                                                     else TError ["Operator $ cannot be applied here! Positon: "++show posI]
                                                                                                                                                                                             else TError ["Incorrect array indexing! the number of indexed dimensions is not matching the dim. of the array " ++ id ++ "! Position: "++ show posI] 
                                                                                                                                     ((Variable (Pointer t depth) posd mode override s):ys) -> if d==0
@@ -2212,13 +2208,19 @@ checkTypeExpression d node@(Abs.ExpressionIdent pos ident@(Abs.Ident id posI) in
                                                                                                                                                                                             else
                                                                                                                                                                                                 solverDefInd (Variable (if depth-d==0 then t else (Pointer t (depth-d))) posd mode override s) index pos env
                                                                                                                                     ((Variable t posd mode override s):ys) -> if d==0 
-                                                                                                                                                                                then TResult env t pos
+                                                                                                                                                                                then case index of
+                                                                                                                                                                                        Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                                                                        _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
                                                                                                                                                                                 else TError ["Operator $ cannot be applied here! Positon: "++show posI]
                                                                                                 Just [Variable t posd mode override s] -> if d==0 
-                                                                                                                                            then TResult env t pos
+                                                                                                                                            then case index of
+                                                                                                                                                    Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                                    _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
                                                                                                                                             else TError ["Operator $ cannot be applied here! Positon: "++show posI]
                                                                                                 Just ((Variable t posd mode override s):xs) -> if d==0 
-                                                                                                                                                then TResult env t pos
+                                                                                                                                                then case index of
+                                                                                                                                                        Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                                        _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
                                                                                                                                                 else TError ["Operator $ cannot be applied here! Positon: "++show posI]
                                                                                                 Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
 checkTypeExpression d node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of
@@ -2363,18 +2365,25 @@ checkTypeDefault d node@(Abs.ExpressionIdentD pos ident@(Abs.Ident id posI) inde
                                                                                                                                                                     else
                                                                                                                                                                         solverDefInd (Variable (if depth-d==0 then t else (Pointer t (depth-d))) posd mode override s) index pos env
                                                                                                             ((Variable t posd mode override s):ys) -> if d==0 
-                                                                                                                                                        then TResult env t pos
+                                                                                                                                                        then case index of
+                                                                                                                                                                Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                                                _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
                                                                                                                                                         else TError ["Operator $ cannot be applied here! Positon: "++show posI]
                                                                         Just [Variable t posd mode override s] -> if d==0 
-                                                                                                                    then TResult env t pos
+                                                                                                                    then case index of
+                                                                                                                            Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                            _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
                                                                                                                     else TError ["Operator $ cannot be applied here! Positon: "++show posI]
                                                                         Just ((Variable t posd mode override s):xs) -> if d==0 
-                                                                                                                        then TResult env t pos
+                                                                                                                        then case index of
+                                                                                                                                Abs.ArrayIndexElementEmpty posIn -> TResult env t pos
+                                                                                                                                _ ->TError ["Indexing cannot be applied to a variable of type "++show t++ "! Position: "++ show posI]
                                                                                                                         else TError ["Operator $ cannot be applied here! Positon: "++show posI]
                                                                         Nothing -> (TError ["Variable " ++ id ++ " undeclared! Position: " ++ (show posI)])
-checkTypeDefault d node@(Abs.ExpressionCastD pos def ty) env = let tipoTCheck = checkPrimitiveType ty env in
-                                                                   let defTCheck = checkTypeDefault d def env in
+checkTypeDefault d node@(Abs.ExpressionCastD pos def ty) env = let tipoTCheck@(TResult _ tyTo _) = checkPrimitiveType ty env in
+                                                                   let defTCheck = checkTypeDefault 0 def env in
                                                                        case defTCheck of
+                                                                           TResult env tyFrom@(Pointer te depthe) pose -> TError ["Type "++show tyFrom++" cannot be converted into "++show tyTo++"! Position: "++ show pos]
                                                                            TResult _ _ _ -> if (checkCastCompatibility defTCheck tipoTCheck) then tipoTCheck else TError ["Incompatibility type for casting at "++ show pos]
                                                                            _ -> mergeErrors (TError ["Incompatibility type for casting at "++ show pos]) defTCheck
 checkTypeDefault d node@(Abs.ExpressionCallD pos (Abs.Ident id posid) exps) env = case Data.Map.lookup id env of

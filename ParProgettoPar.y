@@ -92,6 +92,7 @@ import LexProgettoPar
 %left '*' '/' '%'
 %right '**'
 %nonassoc UNARY
+%left ':' '$' 
 
 %%
 

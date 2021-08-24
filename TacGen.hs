@@ -86,10 +86,6 @@ mergeTacFromList_f :: [TAC] -> [TACEntry]
 mergeTacFromList_f ((TAC entries fs):xs) = fs ++ mergeTacFromList_f xs
 mergeTacFromList_f [] = []
 
-isElseLabel :: Label -> Prelude.Bool     
-isElseLabel (Label (x:xs)) = (x=='e')
-isElseLabel _ = False
-
 -- Given an Address, return the string of it's content. Used in printing.
 showAddrContent :: Address -> Prelude.String 
 showAddrContent (AddrString s) = "\"" ++ s ++ "\""
@@ -125,7 +121,7 @@ buildTacEntriesForVarsDecl [x] [r] ty dim n = case r of     -- single, not point
                         _ -> [TacAssignNullOp False (buildArrayId x n dim) r ty]
     _ -> [TacAssignNullOp False (buildArrayId x n dim) r ty]
 ------------------------------------------------------ 
-buildTacEntriesForVarsDecl [x] (r:rs) (Pointer t p) dim n = case r of -- TODO
+buildTacEntriesForVarsDecl [x] (r:rs) (Pointer t p) dim n = case r of -- 
     AddrNULL -> [TacPointRef (buildArrayId x n dim) (genDefaultInitAddr (Pointer t p))] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim)
     _ -> [TacPointRef (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim)
 buildTacEntriesForVarsDecl [x] (r:rs) (Array t d) dim n = buildTacEntriesForVarsDecl [x] (r:rs) t dim n
@@ -141,7 +137,7 @@ buildTacEntriesForVarsDecl (x:xs) [r] ty dim n = case r of -- multiple, not poin
     AddrNULL -> [TacAssignNullOp False (buildArrayId x n dim) (genDefaultInitAddr ty)  ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
     _ -> [TacAssignNullOp False (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl xs [r] ty dim n
 ------------------------------------------------------ 
--- TODO versione pointers
+-- versione pointers
 buildTacEntriesForVarsDecl (x:xs) (r:rs) (Pointer t p) dim n =  [TacPointRef (buildArrayId x n dim) r] ++ buildTacEntriesForVarsDecl [x] rs (Pointer t p) dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) (Pointer t p) dim 0
 buildTacEntriesForVarsDecl (x:xs) (r:rs) (Array t d) dim n = buildTacEntriesForVarsDecl (x:xs) (r:rs) t dim n
 buildTacEntriesForVarsDecl (x:xs) (r:rs) ty dim n =  [TacAssignNullOp False (buildArrayId x n dim) r ty] ++ buildTacEntriesForVarsDecl [x] rs ty dim (n+dim) ++ buildTacEntriesForVarsDecl xs (r:rs) ty dim 0
@@ -209,7 +205,7 @@ getTypeFromPrimitive (Abs.PrimitiveTypeInt _)    = (B_type Type_Integer)
 getTypeFromPrimitive (Abs.PrimitiveTypeReal _)   = (B_type Type_Real)
 getTypeFromPrimitive (Abs.PrimitiveTypeString _) = (B_type Type_String)
 getTypeFromPrimitive (Abs.PrimitiveTypeChar _)   = (B_type Type_Char)
-getTypeFromPrimitive (Abs.TypeArray _ prim)      = (Type.Array (TacGen.getTypeFromPrimitive prim) 0) -- 0 is placeholder TODO
+getTypeFromPrimitive (Abs.TypeArray _ prim)      = (Type.Array (TacGen.getTypeFromPrimitive prim) 1) 
 
 -- Get a Default node of the ABS, returns the correct Type
 getTypeFromDefault :: Abs.DEFAULT TCheckResult -> Type
@@ -491,6 +487,15 @@ getSonTypeExp_ :: Abs.TYPEEXPRESSIONFUNC a -> Abs.TYPEEXPRESSION a
 getSonTypeExp_ (Abs.TypeExpressionFunction _ typeexp) = typeexp
 getSonTypeExp_ (Abs.TypeExpressionArrayOfPointer _ t) = getSonTypeExp_ t
 --------------------------------------------------------------------------------------
+
+isPrimArray :: Abs.TYPEEXPRESSION a -> Prelude.Bool
+isPrimArray (Abs.TypeExpression _ prim) = isPrimArray_ prim
+isPrimArray _ = False
+
+isPrimArray_ :: Abs.PRIMITIVETYPE a -> Prelude.Bool
+isPrimArray_ (Abs.TypeArray _ _) = True
+isPrimArray_ _ = False
+
 getDimFromTypeTAC :: Abs.TYPEPART a -> Abs.EXPRESSION a -> Env -> Prelude.Integer
 getDimFromTypeTAC (Abs.TypePart _ typeexp) exp env = getDimFromTypeExpTAC typeexp exp env
 
@@ -1490,7 +1495,7 @@ genTacConditionalStatement (Abs.ConditionalStatementSimpleThen res exp state els
                                                                                                                                                                                                                     (TAC [TacLabel nextLab] [])])                      -- next (end of if) label
                                                                                                                                                                                                                     (sel1 expTac) (sel1 statTac) (Abs.ElseState (TAC [] []) (sel1 elseStatesTac)),(sel2 elseStatesTac),(sel3 elseStatesTac)+1)) -- if expr then ... else ...                          
 
-genTacConditionalStatement (Abs.ConditionalStatementSimpleWThen res exp b@(Abs.BlockStatement _ statements) elseState) n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) "" in -- res è il giusto tcheck? TODO
+genTacConditionalStatement (Abs.ConditionalStatementSimpleWThen res exp b@(Abs.BlockStatement _ statements) elseState) n l k (w,j) = let expTac = genTacExpression exp n l k (w,j) "" in 
                                                                                                                                        let statTacs = genTacStatements statements (sel2 expTac) l ((sel3 expTac)+(if isAndOrOp exp then 1 else 0)) (w,j) in
                                                                                                                                            let expTacMod = TAC (if isAndOrOp exp then (updateTac (code (expression_content (sel1 expTac))) l )
                                                                                                                                                                                  else (code (expression_content (sel1 expTac)))) [] in  
@@ -1620,7 +1625,9 @@ genTacVarDecId (Abs.VariableDeclaration res@(TResult env ty _) idlist typepart@(
                                                                                                                                         case typeExp of
                                                                                                                                             Abs.TypeExpressionArraySimple _ _ _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),dim,addrIdList,buildInitArray initAddr length)
                                                                                                                                             Abs.TypeExpressionArray _ _ _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),dim,addrIdList,buildInitArray initAddr length)
-                                                                                                                                            _ -> (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),-1,addrIdList,[initAddr])
+                                                                                                                                            _ -> if isPrimArray typeExp
+                                                                                                                                                then (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),dim,addrIdList,[initAddr])
+                                                                                                                                                else (Abs.VariableDeclaration tacId (sel1 idlistTac) (Abs.TypePart (TAC [] []) (TypeExpression (TAC [] []) (Abs.PrimitiveTypeInt (TAC [] [])))) (Abs.InitializzationPartEmpty (TAC [] [])),(sel2 idlistTac),(sel3 idlistTac),-1,addrIdList,[initAddr])
                                                                             Abs.InitializzationPart resi expr -> if isAndOrOp expr
                                                                                                                     then
                                                                                                                          let temp = newTemp n in

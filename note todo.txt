@@ -36,15 +36,14 @@ finire gestione []int,[][]int,........... - done
 ricontrollare pointers - done
 array of pointers ([]_$$) come lvalue - done
 pointers of array - done
+[]int; lunghezza 1 - done
+togliere parole riservate non più usate - done
+gestione passaggio parametri? noi abbiamo ref. e val.? - removed
+aggiungere test case significativi - done
+Testare propagazione errori dopo aver corretto tutte le stringe di errore! - done
+togliere tipi usati come segnaposto nel tac - removed
 -----------
 
-Testare propagazione errori dopo aver corretto tutte le stringe di errore!
+[]--->modificare typearray con supporto a typeexpression
 
-------------
-
-gestione passaggio parametri? noi abbiamo ref. e val.?
-
-togliere tipi usati come segnaposto nel tac
-
-aggiungere test case significativi
 -------------
