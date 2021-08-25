@@ -42,8 +42,7 @@ gestione passaggio parametri? noi abbiamo ref. e val.? - removed
 aggiungere test case significativi - done
 Testare propagazione errori dopo aver corretto tutte le stringe di errore! - done
 togliere tipi usati come segnaposto nel tac - removed
+[]--->modificare typearray con supporto a typeexpression - completed
 -----------
-
-[]--->modificare typearray con supporto a typeexpression
 
 -------------

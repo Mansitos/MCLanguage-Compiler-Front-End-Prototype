@@ -490,6 +490,7 @@ getSonTypeExp_ (Abs.TypeExpressionArrayOfPointer _ t) = getSonTypeExp_ t
 
 isPrimArray :: Abs.TYPEEXPRESSION a -> Prelude.Bool
 isPrimArray (Abs.TypeExpression _ prim) = isPrimArray_ prim
+isPrimArray (Abs.TypeExpressionPointer _ prim _) = isPrimArray_ prim
 isPrimArray _ = False
 
 isPrimArray_ :: Abs.PRIMITIVETYPE a -> Prelude.Bool
@@ -513,6 +514,7 @@ getDimFromTypeExpTAC (Abs.TypeExpressionArray _ range expf) exp env = let next =
                                                                         then getDimFromRange range
                                                                         else getDimFromRange range * getDimFromExpFTAC expf exp env
 getDimFromTypeExpTAC (Abs.TypeExpression _ prim) exp env = getDimFromPrimTAC prim exp env
+getDimFromTypeExpTAC (Abs.TypeExpressionPointer _ prim pointer) exp env = getDimFromPrimTAC prim exp env
 getDimFromTypeExpTAC _ _ _ = 0
 
 getDimFromPrimTAC :: Abs.PRIMITIVETYPE a -> Abs.EXPRESSION a -> Env -> Prelude.Integer

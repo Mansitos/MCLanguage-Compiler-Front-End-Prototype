@@ -773,7 +773,9 @@ getTypeExpr :: Abs.TYPEEXPRESSION Posn -> Type
 getTypeExpr (Abs.TypeExpression _ primitive) = getTypeFromPrimitive primitive
 getTypeExpr (Abs.TypeExpressionArraySimple _ rangeexp typeexpression) = Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)
 getTypeExpr (Abs.TypeExpressionArray _ rangeexp typeexpression) = Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)
-getTypeExpr (Abs.TypeExpressionPointer _ primitive pointer) = Pointer (getTypeFromPrimitive primitive) (checkPointerDepth pointer)
+getTypeExpr (Abs.TypeExpressionPointer p primitive pointer) = case primitive of
+                                                                Abs.TypeArray _ prim -> Array (getTypeExpr (Abs.TypeExpressionPointer p prim pointer)) 1
+                                                                _ -> Pointer (getTypeFromPrimitive primitive) (checkPointerDepth pointer)
 getTypeExpr (Abs.TypeExpressionPointerOfArray pos typeexpression pointer) = Pointer (getTypeFromSon (getTypeFromTypeExpF typeexpression)) ((getDepthSon typeexpression)+(checkPointerDepth pointer))
 
 -- Given a Pointer node of the ABS, it counts the depth (how much pointers '*' there are) of that pointer
@@ -790,7 +792,9 @@ getTypeFromTypeExp :: Abs.TYPEEXPRESSION Posn -> Type
 getTypeFromTypeExp (Abs.TypeExpression _ primitive) = getTypeFromPrimitive primitive
 getTypeFromTypeExp (Abs.TypeExpressionArraySimple _ rangeexp typeexpression) = Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)
 getTypeFromTypeExp (Abs.TypeExpressionArray _ rangeexp typeexpression) = Array (getTypeFromTypeExpF typeexpression) (getArrayLength rangeexp)
-getTypeFromTypeExp (Abs.TypeExpressionPointer _ primitive pointer) = Pointer (getTypeFromPrimitive primitive) (checkPointerDepth pointer)
+getTypeFromTypeExp (Abs.TypeExpressionPointer p primitive pointer) = case primitive of
+                                                                        Abs.TypeArray _ prim -> Array (getTypeFromTypeExp (Abs.TypeExpressionPointer p prim pointer)) 1
+                                                                        _ -> Pointer (getTypeFromPrimitive primitive) (checkPointerDepth pointer)
 getTypeFromTypeExp (Abs.TypeExpressionPointerOfArray pos typeexpression pointer) = Pointer (getTypeFromTypeExpF typeexpression) (checkPointerDepth pointer)
 
 -- Get a PrimitiveType node of the ABS, returns the correct Type
@@ -2489,7 +2493,7 @@ checkTypeVariableDec node@(Abs.VariableDeclaration pos identlist typepart initpa
                                                                                                                                                     _ -> if (checkCompatibility initCheck (TResult env t pos) && depth==1) then checkErrors initCheck (checkErrors identTCheck typeCheck) else mergeErrors initCheck (mergeErrors (TError ["Pointer initializzation with incompatible type! Position: "++ show (getPos initCheck)]) identTCheck)
                                                                                                                                             TResult env (Array t dim) post -> case initpart of
                                                                                                                                                                                 Abs.InitializzationPart _ exp -> case initCheck of
-                                                                                                                                                                                                                       TResult env (Array ts dims) posi -> if t==ts
+                                                                                                                                                                                                                       TResult env (Array ts dims) posi -> if checkCompatibility initCheck typeCheck
                                                                                                                                                                                                                                                                then initCheck
                                                                                                                                                                                                                                                                else mergeErrors initCheck (mergeErrors (TError ["Cannot initialize "++ (case identlist of 
                                                                                                                                                                                                                                                                                                                                             (Abs.IdentifierList _ _ _) -> "arrays"
