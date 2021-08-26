@@ -1439,18 +1439,19 @@ executeDefault d node@(Abs.ExpressionCastD pos def ty) env = Abs.ExpressionCastD
 executeDefault d node@(Abs.ExpressionUnaryD pos unary def) env = let dd = case unary of
                                                                             Abs.UnaryOperationPointer _ -> d+1
                                                                             _ -> 0 in
-                                                                                let defExecute = (executeDefault dd def env) in
-                                                                                    let defType = case default_content defExecute of
-                                                                                                    TResult _ ty _ -> ty
-                                                                                                    _ -> B_type Type_Void in
-                                                                                        case unary of
-                                                                                            Abs.UnaryOperationPointer _ -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
-                                                                                            Abs.UnaryOperationNot _ -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
-                                                                                            _ -> case defType of
-                                                                                                    B_type Type_Real -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
-                                                                                                    B_type Type_Integer -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
-                                                                                                    B_type Type_Boolean -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault d (Abs.ExpressionCastD pos def (Abs.PrimitiveTypeInt pos) ) env)
-
+                                                                                    let defExecute = (executeDefault dd def env) in
+                                                                                        let defType = case default_content defExecute of
+                                                                                                        TResult _ ty _ -> ty
+                                                                                                        _ -> B_type Type_Void in
+                                                                                                                        case unary of
+                                                                                                                            Abs.UnaryOperationPointer _ -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
+                                                                                                                            Abs.UnaryOperationNot _ -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
+                                                                                                                            _ -> case defType of
+                                                                                                                                    B_type Type_Real -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
+                                                                                                                                    B_type Type_Integer -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault dd def env)
+                                                                                                                                    B_type Type_Boolean -> Abs.ExpressionUnaryD (checkTypeDefault d node env) (executeUnaryOp unary env) (executeDefault d (Abs.ExpressionCastD pos def (Abs.PrimitiveTypeInt pos) ) env)
+executeDefault d node@(Abs.ExpressionIdentD pos id index) env = Abs.ExpressionIdentD (checkTypeDefault d node env) (executeIdentVar id env) (executeArrayIndexElement index env)
+                                                                                                    
 executeLValue :: Prelude.Integer -> Abs.LVALUEEXPRESSION Posn -> Env -> Abs.LVALUEEXPRESSION TCheckResult
 executeLValue c node@(Abs.LvalueExpression pos id ident) env = Abs.LvalueExpression (checkTypeLvalueExpression c node env) (executeIdentVar id env) (executeArrayIndexElement ident env)
 executeLValue c node@(Abs.LvalueExpressions pos id ident next) env = Abs.LvalueExpressions (checkTypeLvalueExpression c node env) (executeIdentVar id env) (executeArrayIndexElement ident env) (executeLValue 0 next env)                
