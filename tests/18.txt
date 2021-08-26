@@ -1,0 +1,2 @@
+var checked x:[1..4]int=[1,2+2,5,7];
+var y:int = x[1+5*7];
