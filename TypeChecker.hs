@@ -1449,7 +1449,7 @@ executeDefault d node@(Abs.ExpressionStringD pos value) env = Abs.ExpressionStri
 executeDefault d node@(Abs.ExpressionRealD pos value) env = Abs.ExpressionRealD (checkTypeDefault 0 node env) (executeReal value env)
 executeDefault d node@(Abs.ExpressionBracketD pos exp) env = Abs.ExpressionBracketD (checkTypeDefault 0 node env) (executeExpression exp env)
 executeDefault d node@(Abs.ExpressionCastD pos def ty) env = Abs.ExpressionCastD (checkTypeDefault 0 node env) (executeDefault d def env) (executePrimitiveType ty env)
---executeDefault d node@() expression call
+executeDefault d node@(Abs.ExpressionCallD pos id exps) env = Abs.ExpressionCallD (checkTypeDefault d node env) (executeIdentFunc id env) (executeExpressions exps env) 
 executeDefault d node@(Abs.ExpressionUnaryD pos unary def) env = let dd = case unary of
                                                                             Abs.UnaryOperationPointer _ -> d+1
                                                                             _ -> 0 in
@@ -2236,12 +2236,18 @@ checkTypeExpression d node@(Abs.ExpressionBinaryOr pos exp1 exp2) env = let exp1
 checkTypeExpression d node@(Abs.ExpressionBinaryEq pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                             let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                 if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                    then TResult env (B_type Type_Boolean) pos
+                                                                                    then case getType exp1TCheck of
+                                                                                        (Array _ _) -> TError ["Cannot check equality with arrays! Position: " ++ show pos]
+                                                                                        (Pointer _ _ ) -> TError ["Cannot check equality with pointers! Position: " ++ show pos]
+                                                                                        _ -> TResult env (B_type Type_Boolean) pos
                                                                                     else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryNotEq pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                             let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                 if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                    then TResult env (B_type Type_Boolean) pos
+                                                                                    then case getType exp1TCheck of
+                                                                                        (Array _ _) -> TError ["Cannot check equality with arrays! Position: " ++ show pos]
+                                                                                        (Pointer _ _ ) -> TError ["Cannot check equality with pointers! Position: " ++ show pos]
+                                                                                        _ -> TResult env (B_type Type_Boolean) pos
                                                                                     else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryGratherEq pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                                 let exp2TCheck = checkTypeExpression d exp2 env in 
