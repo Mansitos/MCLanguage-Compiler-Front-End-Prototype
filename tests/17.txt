@@ -1,0 +1,6 @@
+function foo (valres i : int, x : int, valres y : int) : int {
+  return 1;
+}
+
+var x:int;
+x = foo(x,x,x); // parameters are checked to be valid l-val

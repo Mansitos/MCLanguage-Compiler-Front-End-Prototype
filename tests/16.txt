@@ -1,0 +1,3 @@
+function foo (valres i : int, x : int, valres y : int) : int {
+  return 1;
+}

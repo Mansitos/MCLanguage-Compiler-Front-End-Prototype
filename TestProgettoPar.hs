@@ -101,7 +101,7 @@ runTests index v [] =  do
                       putStrLn "\n\n >>>>>>> End of testing Phase <<<<<<<\n"
                       putStrLn " For adding new test cases:\n   - create a new file n.txt with input code inside tests folder\n   - n must be the next number from the list\n   - modify variable \"numberOfTest\" with the new n-value in file TestProgettoPar.hs\n   - Rebuild and execute\n\n"
 
-numberOfTests = 15  -- must be set to the number of files in the tests folder. Tests files must be of consecutive ints: 1.txt 2.txt 3.txt etc.
+numberOfTests = 17  -- must be set to the number of files in the tests folder. Tests files must be of consecutive ints: 1.txt 2.txt 3.txt etc.
 testFilesPaths = ["tests/" ++ (show x) ++ ".txt"| x <- [1..numberOfTests]]
 
 ----------------------------------------------------------------------------------------------------
@@ -188,7 +188,9 @@ showContent (x:xs) = case x of
                       TacProcCall id                          -> "\n" ++ "\t  " ++ "pcall " ++ showAddrContent id ++ showContent xs
                       TacFuncCallLeft id                      -> "\n" ++ "\t  " ++ "fcall " ++ showAddrContent id ++ showContent xs
                       TacFuncCall id retAddr ty               -> "\n" ++ "\t  " ++ showAddrContent retAddr ++ " " ++ buildEqOperator ty ++ " fcall " ++ showAddrContent id ++ showContent xs
-                      TacParam addr ty                        -> "\n" ++ "\t  " ++ "param_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
+                      TacParam addr ty isValRes                -> if (isValRes == False)
+                                                                 then "\n" ++ "\t  " ++ "param_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
+                                                                 else "\n" ++ "\t  " ++ "param_address " ++ showAddrContent addr ++ showContent xs
                       TacReturnVoid                           -> "\n" ++ "\t  " ++ "return_void" ++ showContent xs
                       TacReturn addr ty                       -> "\n" ++ "\t  " ++ "return_" ++ show ty ++ " " ++ showAddrContent addr ++ showContent xs
                       TacCastConversion addr fst tfrom tto    -> "\n" ++ "\t  " ++ (showAddrContent addr) ++ " " ++ (buildEqOperator tto) ++ " " ++ (buildCastOperator tfrom tto) ++ " " ++  (showAddrContent fst) ++ showContent xs

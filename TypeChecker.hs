@@ -2397,7 +2397,20 @@ checkCompatibilityOfExpsList  (Abs.Expressions pos exp exps) ((TypeChecker.Param
 checkCompatibilityOfExpsList  (Abs.Expression pos exp) ((TypeChecker.Parameter ty _ _ _):zs) env = let expType = checkTypeExpression 0 exp env in 
                                                                                                         if checkCompatibility expType (TResult env ty pos) 
                                                                                                             then True else False
-checkCompatibilityOfExpsList  (Abs.ExpressionEmpty pos) [] env = True                                                                                                                                                 
+checkCompatibilityOfExpsList  (Abs.ExpressionEmpty pos) [] env = True 
+
+checkCompatibilityOfValResParams :: Abs.EXPRESSIONS Posn -> [TypeChecker.Parameter] -> Env -> Prelude.Bool
+checkCompatibilityOfValResParams (Abs.Expressions pos exp exps) ((TypeChecker.Parameter ty _ "valres" _):zs) env = case exp of
+                                                                                                            (Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) -> True && (checkCompatibilityOfValResParams exps zs env)
+                                                                                                            _ -> False -- not an l-value
+
+checkCompatibilityOfValResParams (Abs.Expression pos exp) ((TypeChecker.Parameter ty _ "valres" _):zs) env       = case exp of
+                                                                                                                (Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) -> True
+                                                                                                                _ -> False -- not an l-value
+checkCompatibilityOfValResParams  (Abs.Expressions pos exp exps) ((TypeChecker.Parameter ty _ "val" _):zs) env = True && (checkCompatibilityOfValResParams exps zs env)
+checkCompatibilityOfValResParams  (Abs.Expression pos exp) ((TypeChecker.Parameter ty _ "val" _):zs) env = True
+checkCompatibilityOfValResParams (Abs.ExpressionEmpty pos) [] env = True  
+checkCompatibilityOfValResParams _ _ _ = True  
 
 checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
 checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type Type_Real) pos
@@ -3089,6 +3102,8 @@ checkCompatibilityOfValResParamsNamed (Abs.NamedExpressionList pos x@(Abs.NamedE
                                                                                                                                                                 _ -> False -- not an l-value
 checkCompatibilityOfValResParamsNamed (Abs.NamedExpressionLists pos x@(Abs.NamedExpression posn exp) xs) ((TypeChecker.Parameter ty _ "val" _):zs) env = True && (checkCompatibilityOfValResParamsNamed xs zs env)
 checkCompatibilityOfValResParamsNamed (Abs.NamedExpressionList pos x@(Abs.NamedExpression posn exp)) ((TypeChecker.Parameter ty _ "val" _):zs) env = True
+checkCompatibilityOfValResParamsNamed (Abs.NamedExpressionListEmpty _) _ env = True
+checkCompatibilityOfValResParamsNamed _ _ _ = True
 
 -- Given a List of named expression, counts them and return the result
 countNumberOfParam :: Abs.NAMEDEXPRESSIONLIST Posn -> Prelude.Int
