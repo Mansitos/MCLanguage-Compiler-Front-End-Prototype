@@ -762,6 +762,7 @@ getVarMode (Abs.VariableTypeVar _) = "var"
 
 getVarType :: Abs.VARDECLIST Posn -> Type
 getVarType (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ _ ty _)) = getTypePart ty
+getVarType (Abs.VariableDeclarationSingle _ (Abs.VariableDeclarationChecked _ _ ty _)) = getTypePart ty
 
 getTypePart :: Abs.TYPEPART Posn -> Type
 getTypePart (Abs.TypePart _ typeExpr) = getTypeExpr typeExpr
@@ -849,10 +850,12 @@ getArrayPrimitiveType (Abs.TypeArray _ prim) =  getArrayPrimitiveType prim
 -- Get a VarDecList (list of vars declarations) of the ABS, returns a list of strings, where each element is the id of the vars
 getVariableDeclStatNames :: Abs.VARDECLIST Posn -> [Prelude.String]
 getVariableDeclStatNames (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ id _ _)) = getIdList id
+getVariableDeclStatNames (Abs.VariableDeclarationSingle _ (Abs.VariableDeclarationChecked _ id _ _)) = getIdList id
 
 -- Get a VarDecList (list of vars declarations) of the ABS, returns a list of Posn, where each element is the posn of the vars
 getVariableDeclStatPos :: Abs.VARDECLIST Posn -> [Posn]
 getVariableDeclStatPos (Abs.VariableDeclarationSingle _ (Abs.VariableDeclaration _ id _ _)) = getPosList id
+getVariableDeclStatPos (Abs.VariableDeclarationSingle _ (Abs.VariableDeclarationChecked _ id _ _)) = getPosList id
 
 -- Given an IdentList node, return a list of string containing all the ids
 getIdList :: Abs.IDENTLIST Posn -> [Prelude.String]
@@ -1226,6 +1229,7 @@ executeExpression node@(Abs.ExpressionUnary pos unary def) env = let d = case un
                                                                                                     B_type Type_Real -> Abs.ExpressionUnary (checkTypeExpression 0 node env) (executeUnaryOp unary env) (executeDefault d def env)
                                                                                                     B_type Type_Integer -> Abs.ExpressionUnary (checkTypeExpression 0 node env) (executeUnaryOp unary env) (executeDefault d def env)
                                                                                                     B_type Type_Boolean -> Abs.ExpressionUnary (checkTypeExpression 0 node env) (executeUnaryOp unary env) (executeDefault d (Abs.ExpressionCastD pos def (Abs.PrimitiveTypeInt pos) ) env)
+                                                                                                    _ -> Abs.ExpressionUnary (checkTypeExpression 0 node env) (executeUnaryOp unary env) (executeDefault d def env)
 executeExpression node@(Abs.ExpressionBinaryPlus pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
                                                                         let rightExecute = (executeExpression exp2 env) in
                                                                                 let leftType = getTypeFromExpressionTResult leftExecute in

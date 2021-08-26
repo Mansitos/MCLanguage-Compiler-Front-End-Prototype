@@ -101,7 +101,7 @@ runTests index v [] =  do
                       putStrLn "\n\n >>>>>>> End of testing Phase <<<<<<<\n"
                       putStrLn " For adding new test cases:\n   - create a new file n.txt with input code inside tests folder\n   - n must be the next number from the list\n   - modify variable \"numberOfTest\" with the new n-value in file TestProgettoPar.hs\n   - Rebuild and execute\n\n"
 
-numberOfTests = 17  -- must be set to the number of files in the tests folder. Tests files must be of consecutive ints: 1.txt 2.txt 3.txt etc.
+numberOfTests = 18  -- must be set to the number of files in the tests folder. Tests files must be of consecutive ints: 1.txt 2.txt 3.txt etc.
 testFilesPaths = ["tests/" ++ (show x) ++ ".txt"| x <- [1..numberOfTests]]
 
 ----------------------------------------------------------------------------------------------------
@@ -209,6 +209,7 @@ showContent (x:xs) = case x of
                           True ->  "\n" ++ "\t  if "       ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab ++ showContent xs
                           False -> "\n" ++ "\t  if_false " ++ (showAddrContent laddr) ++ " " ++ (show relop) ++ " " ++ (showAddrContent raddr) ++ " goto " ++ lab ++ showContent xs
                       TacComment comment -> if comment == "" then showContent xs else"\t  \t # "   ++ comment ++ showContent xs 
+                      TacError err -> "\n" ++ "\t"++"  Error:"++err ++ showContent xs
                       ExitTac -> "" ++"\n\n"
 showContent [] = ""
 
