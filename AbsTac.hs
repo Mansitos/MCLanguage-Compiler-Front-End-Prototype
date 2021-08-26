@@ -17,7 +17,7 @@ data TACEntry
     | TacProcCall           {getAddr:: Address}
     | TacFuncCall           {getAddr:: Address, first::Address,retType::Type}-- todo
     | TacFuncCallLeft       {getAddr:: Address}
-    | TacParam              {first::Address, paramType::Type}
+    | TacParam              {first::Address, paramType::Type, isValRes::Prelude.Bool}
     | TacReturnVoid         {}
     | TacReturn             {first:: Address, returnType::Type}
     | TacCastConversion     {getAddr::Address, first:: Address, fromType::Type, toType::Type}
