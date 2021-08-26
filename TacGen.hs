@@ -67,7 +67,7 @@ newTemp n = AddrAddress ("t"++show n)
 buildIDAddr :: Posn -> Prelude.String -> Env -> Address
 buildIDAddr posv@(Pn a r c) id env = case Data.Map.lookup id env of
                                         Just (entry:entries) -> case entry of 
-                                                                    (Variable _ _ "valres" _ _) -> AddrAddress (id++"_local_copy@"++show r++","++show c)
+                                                                    (Variable _ _ "valres" _ _ _) -> AddrAddress (id++"_local_copy@"++show r++","++show c)
                                                                     _ -> AddrAddress (id++"@"++show r++","++show c)
                                         Nothing -> AddrAddress (id++"@"++show r++","++show c) -- should not reach nothing!!!!
                                             

@@ -2423,19 +2423,6 @@ checkCompatibilityOfExpsList  (Abs.Expression pos exp) ((TypeChecker.Parameter t
                                                                                                             then True else False
 checkCompatibilityOfExpsList  (Abs.ExpressionEmpty pos) [] env = True 
 
-checkCompatibilityOfValResParams :: Abs.EXPRESSIONS Posn -> [TypeChecker.Parameter] -> Env -> Prelude.Bool
-checkCompatibilityOfValResParams (Abs.Expressions pos exp exps) ((TypeChecker.Parameter ty _ "valres" _):zs) env = case exp of
-                                                                                                            (Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) -> True && (checkCompatibilityOfValResParams exps zs env)
-                                                                                                            _ -> False -- not an l-value
-
-checkCompatibilityOfValResParams (Abs.Expression pos exp) ((TypeChecker.Parameter ty _ "valres" _):zs) env       = case exp of
-                                                                                                                (Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) -> True
-                                                                                                                _ -> False -- not an l-value
-checkCompatibilityOfValResParams  (Abs.Expressions pos exp exps) ((TypeChecker.Parameter ty _ "val" _):zs) env = True && (checkCompatibilityOfValResParams exps zs env)
-checkCompatibilityOfValResParams  (Abs.Expression pos exp) ((TypeChecker.Parameter ty _ "val" _):zs) env = True
-checkCompatibilityOfValResParams (Abs.ExpressionEmpty pos) [] env = True  
-checkCompatibilityOfValResParams _ _ _ = True  
-
 checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
 checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type Type_Real) pos
 checkTypeUnaryOp node@(Abs.UnaryOperationNegative pos) env = TResult env (B_type Type_Real) pos
