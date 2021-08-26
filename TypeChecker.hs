@@ -84,7 +84,6 @@ checkCompatibility (TResult env t pos) (TResult envC tC posC) = case t of
                                                                                           _ -> False 
                                                                     B_type Type_Boolean  -> case tC of
                                                                                           B_type Type_Boolean  -> True
-                                                                                          B_type Type_Integer -> True -- boolean can be put where int is required
                                                                                           _ -> False 
                                                                     B_type Type_Char  -> case tC of
                                                                                           B_type Type_Char  -> True
@@ -146,12 +145,10 @@ returnSuperType (TResult env t pos) (TResult envC tC posC) = case t of
                                                                     B_type Type_Integer -> case tC of
                                                                                           B_type Type_Integer -> (TResult env t pos)   
                                                                                           B_type Type_Real -> (TResult envC tC posC)   -- real > int
-                                                                                          B_type Type_Boolean -> (TResult env t pos)   -- int > boolean
                                                                     B_type Type_Real -> case tC of
                                                                                           B_type Type_Real -> (TResult env t pos)
                                                                                           B_type Type_Integer -> (TResult env t pos)   -- real > int
                                                                     B_type Type_Boolean  -> case tC of
-                                                                                          B_type Type_Integer -> (TResult env tC posC) -- int > boolean 
                                                                                           B_type Type_Boolean  -> (TResult env t pos)
                                                                     B_type Type_Char  -> case tC of
                                                                                           B_type Type_Char  -> (TResult env t pos)
@@ -1022,11 +1019,7 @@ executeStatement node@(Abs.AssignmentStatement pos lval assignOp exp) env = let 
                                                                                                 then if (leftType == (B_type Type_Real))
                                                                                                       then (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) (executeExpression (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeReal pos)) env))   -- right needs an implicit cast to real to be explicited!
                                                                                                       else (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) exprExecute )   -- no implicit casts to be explicited!
-                                                                                                else if (rightType == (B_type Type_Boolean))
-                                                                                                        then if (leftType == (B_type Type_Integer))
-                                                                                                                then (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) (executeExpression (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeInt pos)) env))   -- right needs an implicit cast to int to be explicited!
-                                                                                                                else (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) exprExecute)  -- no implicit cats to be explicited! 
-                                                                                                        else (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) exprExecute)  -- no implicit cats to be explicited! (you cannot cast the lval; only rval can be casted to be matched with lval type!)
+                                                                                                else (Abs.AssignmentStatement (checkTypeStatement node env) lvalExecute (executeAssignOp assignOp env) exprExecute)  -- no implicit cats to be explicited! (you cannot cast the lval; only rval can be casted to be matched with lval type!)
 executeStatement node@(Abs.VariableDeclarationStatement pos tipo vardec) env = Abs.VariableDeclarationStatement (checkTypeStatement node env) (executeVarType tipo env) (executeVarDecList vardec env)
 executeStatement node@(Abs.ConditionalStatement pos condition) env = let newEnv = updateEnvCondStat condition (updateIfCanOverride env)  in Abs.ConditionalStatement (checkTypeStatement node env) (executeConditionalState condition newEnv)
 executeStatement node@(Abs.WhileDoStatement pos whileStatement) env = let newEnv = updateEnvWhileStat whileStatement (updateIfCanOverride env)  in Abs.WhileDoStatement (checkTypeStatement node env) (executeWhileState whileStatement newEnv)
@@ -1097,9 +1090,7 @@ executeVardecID node@(Abs.VariableDeclaration pos idlist tipo init) env = let ti
                                                                                                                             let initType = (getTypeFromExpressionTResult exprExecute) in
                                                                                                                                 if (initType == (B_type Type_Integer) && varsType == (B_type Type_Real))
                                                                                                                                 then (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute (executeInitPart (Abs.InitializzationPart e (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeReal pos))) env)) -- vars are declared as real but expr is int! it needs implicit cast to be explicited!
-                                                                                                                                else if (initType == (B_type Type_Boolean) && varsType == (B_type Type_Integer))
-                                                                                                                                        then (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute (executeInitPart (Abs.InitializzationPart e (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeInt pos))) env)) -- vars are declared as int but expr is boolean! it needs implicit cast to be explicited!
-                                                                                                                                        else (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited(Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited
+                                                                                                                                else (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited
                                                                                         _ -> (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited
 executeVardecID node@(Abs.VariableDeclarationChecked pos idlist tipo init) env = let tipoExecute = (executeTypePart tipo env) in 
                                                                                   let initExecute = (executeInitPart init env) in
@@ -1209,16 +1200,10 @@ executeExpression node@(Abs.ExpressionBinaryPlus pos exp1 exp2) env = let leftEx
                                                                                         if (leftType == (B_type Type_Integer))
                                                                                                  then if (rightType == (B_type Type_Real))
                                                                                                         then (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
-                                                                                                        else if (rightType == (B_type Type_Boolean))
-                                                                                                                then (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) leftExecute (executeExpression (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeInt pos)) env)) -- left needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) leftExecute rightExecute) 
-                                                                                                 else if (leftType == (B_type Type_Boolean))
-                                                                                                        then if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeInt pos)) env) rightExecute)  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) leftExecute rightExecute)
-                                                                                                        else if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                        else (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                 else if (rightType == (B_type Type_Integer))
+                                                                                                        then (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+                                                                                                        else (Abs.ExpressionBinaryPlus (checkTypeExpression 0 node env) leftExecute rightExecute) 
 executeExpression node@(Abs.ExpressionBinaryMinus pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
                                                                         let rightExecute = (executeExpression exp2 env) in
                                                                                 let leftType = getTypeFromExpressionTResult leftExecute in
@@ -1226,16 +1211,10 @@ executeExpression node@(Abs.ExpressionBinaryMinus pos exp1 exp2) env = let leftE
                                                                                         if (leftType == (B_type Type_Integer))
                                                                                                  then if (rightType == (B_type Type_Real))
                                                                                                         then (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
-                                                                                                        else if (rightType == (B_type Type_Boolean))
-                                                                                                                then (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) leftExecute (executeExpression (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeInt pos)) env)) -- left needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) leftExecute rightExecute) 
-                                                                                                 else if (leftType == (B_type Type_Boolean))
-                                                                                                        then if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeInt pos)) env) rightExecute)  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) leftExecute rightExecute)
-                                                                                                        else if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                        else (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                 else if (rightType == (B_type Type_Integer))
+                                                                                                        then (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+                                                                                                        else (Abs.ExpressionBinaryMinus (checkTypeExpression 0 node env) leftExecute rightExecute) 
 executeExpression node@(Abs.ExpressionBinaryProduct pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
                                                                             let rightExecute = (executeExpression exp2 env) in
                                                                                     let leftType = getTypeFromExpressionTResult leftExecute in
@@ -1243,16 +1222,10 @@ executeExpression node@(Abs.ExpressionBinaryProduct pos exp1 exp2) env = let lef
                                                                                             if (leftType == (B_type Type_Integer))
                                                                                                  then if (rightType == (B_type Type_Real))
                                                                                                         then (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
-                                                                                                        else if (rightType == (B_type Type_Boolean))
-                                                                                                                then (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) leftExecute (executeExpression (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeInt pos)) env)) -- left needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) leftExecute rightExecute) 
-                                                                                                 else if (leftType == (B_type Type_Boolean))
-                                                                                                        then if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeInt pos)) env) rightExecute)  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) leftExecute rightExecute)
-                                                                                                        else if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                        else (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                 else if (rightType == (B_type Type_Integer))
+                                                                                                        then (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+                                                                                                        else (Abs.ExpressionBinaryProduct (checkTypeExpression 0 node env) leftExecute rightExecute) 
 executeExpression node@(Abs.ExpressionBinaryDivision pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
                                                                             let rightExecute = (executeExpression exp2 env) in
                                                                                     let leftType = getTypeFromExpressionTResult leftExecute in
@@ -1260,16 +1233,10 @@ executeExpression node@(Abs.ExpressionBinaryDivision pos exp1 exp2) env = let le
                                                                                             if (leftType == (B_type Type_Integer))
                                                                                                  then if (rightType == (B_type Type_Real))
                                                                                                         then (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
-                                                                                                        else if (rightType == (B_type Type_Boolean))
-                                                                                                                then (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) leftExecute (executeExpression (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeInt pos)) env)) -- left needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) leftExecute rightExecute) 
-                                                                                                 else if (leftType == (B_type Type_Boolean))
-                                                                                                        then if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeInt pos)) env) rightExecute)  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) leftExecute rightExecute)
-                                                                                                        else if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                        else (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                 else if (rightType == (B_type Type_Integer))
+                                                                                                        then (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+                                                                                                        else (Abs.ExpressionBinaryDivision (checkTypeExpression 0 node env) leftExecute rightExecute) 
 executeExpression node@(Abs.ExpressionBinaryModule pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
                                                                             let rightExecute = (executeExpression exp2 env) in
                                                                                     let leftType = getTypeFromExpressionTResult leftExecute in
@@ -1277,16 +1244,10 @@ executeExpression node@(Abs.ExpressionBinaryModule pos exp1 exp2) env = let left
                                                                                             if (leftType == (B_type Type_Integer))
                                                                                                  then if (rightType == (B_type Type_Real))
                                                                                                         then (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
-                                                                                                        else if (rightType == (B_type Type_Boolean))
-                                                                                                                then (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) leftExecute (executeExpression (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeInt pos)) env)) -- left needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) leftExecute rightExecute) 
-                                                                                                 else if (leftType == (B_type Type_Boolean))
-                                                                                                        then if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeInt pos)) env) rightExecute)  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) leftExecute rightExecute)
-                                                                                                        else if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                        else (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                 else if (rightType == (B_type Type_Integer))
+                                                                                                        then (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+                                                                                                        else (Abs.ExpressionBinaryModule (checkTypeExpression 0 node env) leftExecute rightExecute) 
 executeExpression node@(Abs.ExpressionBinaryPower pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
                                                                         let rightExecute = (executeExpression exp2 env) in
                                                                                 let leftType = getTypeFromExpressionTResult leftExecute in
@@ -1294,16 +1255,10 @@ executeExpression node@(Abs.ExpressionBinaryPower pos exp1 exp2) env = let leftE
                                                                                         if (leftType == (B_type Type_Integer))
                                                                                                  then if (rightType == (B_type Type_Real))
                                                                                                         then (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeReal pos)) env)rightExecute) -- left needs an implicit cast to real to be explicited!
-                                                                                                        else if (rightType == (B_type Type_Boolean))
-                                                                                                                then (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) leftExecute (executeExpression (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeInt pos)) env)) -- left needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) leftExecute rightExecute) 
-                                                                                                 else if (leftType == (B_type Type_Boolean))
-                                                                                                        then if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp1) (Abs.PrimitiveTypeInt pos)) env) rightExecute)  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) leftExecute rightExecute)
-                                                                                                        else if (rightType == (B_type Type_Integer))
-                                                                                                                then (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
-                                                                                                                else (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                        else (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) leftExecute rightExecute) 
+                                                                                                 else if (rightType == (B_type Type_Integer))
+                                                                                                        then (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) leftExecute (executeExpression(Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp2) (Abs.PrimitiveTypeReal pos)) env))  -- right needs an implicit cast to real to be explicited!
+                                                                                                        else (Abs.ExpressionBinaryPower (checkTypeExpression 0 node env) leftExecute rightExecute) 
 executeExpression node@(Abs.ExpressionBinaryAnd pos exp1 exp2) env = let leftExecute = (executeExpression exp1 env) in
                                                                         let rightExecute = (executeExpression exp2 env) in
                                                                                 let leftType = getTypeFromExpressionTResult leftExecute in
@@ -2056,25 +2011,7 @@ checkTypeExpressions node@(Abs.Expression pos exp) env = let expsTCheck = checkT
                                                                     TResult _ _ _ -> TResult env (B_type Type_Void) pos
                                                                     _ -> expsTCheck
 checkTypeExpressions node@(Abs.ExpressionEmpty pos) env = TResult env (B_type Type_Void) pos
-{-
-var x : int = true;
-x = false;
-x = 1 + false;
-x = false - 2;
-x= false *3;
-x = 1 % false;
-x = false / 2;
-x= false ** 3;
-x= false + true ** (true||false) +5;
-var y:real=2+2.0+5+6+9.8;
-y=true+2;
-pow fatto nel typechecker
-gestire execute con entrambi booleani
-fare doppio cast per booleano a reali
 
-
-
--}
 checkTypeExpression :: Prelude.Integer -> Abs.EXPRESSION Posn -> Env -> TCheckResult
 checkTypeExpression d node@(Abs.ExpressionInteger pos value) env = checkTypeInteger value env
 checkTypeExpression d node@(Abs.ExpressionBoolean pos value) env = checkTypeBoolean value env
@@ -2099,74 +2036,56 @@ checkTypeExpression d node@(Abs.ExpressionUnary pos unary def) env = case unary 
 checkTypeExpression d node@(Abs.ExpressionBinaryPlus pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                             let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                 if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                    then case exp1TCheck of
-                                                                                            TResult enve te pose -> if (te==(B_type Type_Boolean))
-                                                                                                                    then TResult enve (B_type Type_Integer) pose 
-                                                                                                                    else let ty = returnSuperType exp2TCheck exp1TCheck in
-                                                                                                                        case ty of
-                                                                                                                            TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Plus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Plus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            _ -> mergeErrors (mergeErrors (TError ["Operator Plus cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Plus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Plus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Plus cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
                                                                                     else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryMinus pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                             let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                 if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                    then case exp1TCheck of
-                                                                                            TResult enve te pose -> if (te==(B_type Type_Boolean))
-                                                                                                                    then TResult enve (B_type Type_Integer) pose 
-                                                                                                                    else let ty = returnSuperType exp2TCheck exp1TCheck in
-                                                                                                                        case ty of
-                                                                                                                            TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Minus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Minus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            _ -> mergeErrors (mergeErrors (TError ["Operator Minus cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Minus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Minus requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Minus cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
                                                                                     else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryProduct pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                             let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                 if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                    then case exp1TCheck of
-                                                                                            TResult enve te pose -> if (te==(B_type Type_Boolean))
-                                                                                                                    then TResult enve (B_type Type_Integer) pose 
-                                                                                                                    else let ty = returnSuperType exp2TCheck exp1TCheck in
-                                                                                                                        case ty of
-                                                                                                                            TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Product requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Product requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            _ -> mergeErrors (mergeErrors (TError ["Operator Product cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Product requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Product requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Product cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
                                                                                     else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryDivision pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                             let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                 if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                    then case exp1TCheck of
-                                                                                            TResult enve te pose -> if (te==(B_type Type_Boolean))
-                                                                                                                    then TResult enve (B_type Type_Integer) pose 
-                                                                                                                    else let ty = returnSuperType exp2TCheck exp1TCheck in
-                                                                                                                        case ty of
-                                                                                                                            TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Division requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Division requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            _ -> mergeErrors (mergeErrors (TError ["Operator Division cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Division requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Division requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Division cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
                                                                                     else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryModule pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                             let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                 if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                    then case exp1TCheck of
-                                                                                            TResult enve te pose -> if (te==(B_type Type_Boolean))
-                                                                                                                    then TResult enve (B_type Type_Integer) pose 
-                                                                                                                    else let ty = returnSuperType exp2TCheck exp1TCheck in
-                                                                                                                        case ty of
-                                                                                                                            TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Module requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Module requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            _ -> mergeErrors (mergeErrors (TError ["Operator Module cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Module requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Module requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Module cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
                                                                                     else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryPower pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                             let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                 if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                    then case exp1TCheck of
-                                                                                            TResult enve te pose -> if (te==(B_type Type_Boolean))
-                                                                                                                    then TResult enve (B_type Type_Integer) pose 
-                                                                                                                    else let ty = returnSuperType exp2TCheck exp1TCheck in
-                                                                                                                        case ty of
-                                                                                                                            TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Power requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Power requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
-                                                                                                                            _ -> mergeErrors (mergeErrors (TError ["Operator Power cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
+                                                                                    then let ty = returnSuperType exp2TCheck exp1TCheck in
+                                                                                            case ty of
+                                                                                                TResult _ (B_type Type_Integer) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Power requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                TResult _ (B_type Type_Real) _ -> if checkCompatibility ty (TResult env (B_type Type_Real) pos) then ty else (TError ["Operator Power requires operands to be of type real but " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck) ++ " are given! Position: "++ show pos])
+                                                                                                _ -> mergeErrors (mergeErrors (TError ["Operator Power cannot be applied to operands of type " ++ show (getType ty) ++"! Position: "++ show pos]) exp1TCheck) exp2TCheck
                                                                                     else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryAnd pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                             let exp2TCheck = checkTypeExpression d exp2 env in 
@@ -2197,30 +2116,22 @@ checkTypeExpression d node@(Abs.ExpressionBinaryNotEq pos exp1 exp2) env = let e
 checkTypeExpression d node@(Abs.ExpressionBinaryGratherEq pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                                 let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                     if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                        then if (checkCompatibility exp1TCheck (TResult env (B_type Type_Real) pos) ) && (checkCompatibility exp2TCheck (TResult env (B_type Type_Real) pos) )
-                                                                                                then TResult env (B_type Type_Boolean) pos
-                                                                                                else mergeErrors (mergeErrors (TError ["Operands must be numeric! Position: " ++ show pos]) exp1TCheck) exp2TCheck 
+                                                                                        then TResult env (B_type Type_Boolean) pos
                                                                                         else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryGrather pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                                 let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                     if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                        then if (checkCompatibility exp1TCheck (TResult env (B_type Type_Real) pos) ) && (checkCompatibility exp2TCheck (TResult env (B_type Type_Real) pos) )
-                                                                                                then TResult env (B_type Type_Boolean) pos
-                                                                                                else mergeErrors (mergeErrors (TError ["Operands must be numeric! Position: " ++ show pos]) exp1TCheck) exp2TCheck 
+                                                                                        then TResult env (B_type Type_Boolean) pos
                                                                                         else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryLessEq pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                                 let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                     if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                        then if (checkCompatibility exp1TCheck (TResult env (B_type Type_Real) pos) ) && (checkCompatibility exp2TCheck (TResult env (B_type Type_Real) pos) )
-                                                                                                then TResult env (B_type Type_Boolean) pos
-                                                                                                else mergeErrors (mergeErrors (TError ["Operands must be numeric! Position: " ++ show pos]) exp1TCheck) exp2TCheck 
+                                                                                        then TResult env (B_type Type_Boolean) pos
                                                                                         else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionBinaryLess pos exp1 exp2) env = let exp1TCheck = checkTypeExpression d exp1 env in
                                                                                 let exp2TCheck = checkTypeExpression d exp2 env in 
                                                                                     if (checkCompatibility exp1TCheck exp2TCheck || checkCompatibility exp2TCheck exp1TCheck)
-                                                                                        then if (checkCompatibility exp1TCheck (TResult env (B_type Type_Real) pos) ) && (checkCompatibility exp2TCheck (TResult env (B_type Type_Real) pos) )
-                                                                                                then TResult env (B_type Type_Boolean) pos
-                                                                                                else mergeErrors (mergeErrors (TError ["Operands must be numeric! Position: " ++ show pos]) exp1TCheck) exp2TCheck 
+                                                                                        then TResult env (B_type Type_Boolean) pos
                                                                                         else mergeErrors (mergeErrors (TError ["Operands of types " ++ show (getType exp1TCheck) ++ " and " ++ show (getType exp2TCheck)++" are incompatible! Position: " ++ show pos]) exp1TCheck) exp2TCheck
 checkTypeExpression d node@(Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) env =  let index = reverseIndexTree indexing in
                                                                                             case Data.Map.lookup id env of
@@ -2340,14 +2251,20 @@ checkTypeExpression d node@(Abs.ExpressionCall pos (Abs.Ident id posid) exps) en
 checkTypeExpressionCall_ :: Abs.EXPRESSION Posn -> Env -> [EnvEntry] -> TCheckResult
 checkTypeExpressionCall_ (Abs.ExpressionCall pos (Abs.Ident id posid) exps) env [Function t posf param canOverride] = case exps of
     (Abs.Expression pose exp) -> if Prelude.length (param) == 1 -- The call was with 1 param, does the definition requires only 1 param?
-                                               then if (checkCompatibilityOfExpsList (Abs.Expressions pos exp (Abs.ExpressionEmpty pose)) param env) then TResult env t pos 
+                                               then if (checkCompatibilityOfExpsList (Abs.Expressions pos exp (Abs.ExpressionEmpty pose)) param env) 
+                                                   then if (checkCompatibilityOfValResParams (Abs.Expressions pos exp (Abs.ExpressionEmpty pose)) param env)  
+                                                        then TResult env t pos 
+                                                        else TError ["Valres parameter require l-val expression! Position: " ++ show pose]
                                                     else TError ["Function " ++ id ++ "( ) requires a parameter of type " ++ show (Prelude.head (getTypeListFromFuncParams param)) ++ " but " ++  show (getType (checkTypeExpression 0 exp env)) ++ " is given! Position: " ++ show pos]
                                                else TError ["Function " ++ id ++ "( ) called with too few arguments! Position: " ++ show pos]
     (Abs.ExpressionEmpty pose) -> if param == [] then TResult env t pos else TError ["Function " ++ id ++ "( ) called without parameters! Position: " ++ show pos] -- The call was with no params, check if the definition requires no param too
     (Abs.Expressions pose exp expss) -> if Prelude.length (param) == 1 + (countNumberOfExps expss) -- The call has n params, does the definition requires n params?
-                                                              then if (checkCompatibilityOfExpsList exps param env) then TResult env t pos 
-                                                                   else TError ["Function " ++ id ++ "( ) called with parameters of the wrong type! Position: " ++ show pos]
-                                                              else TError ["Function " ++ id ++ "( ) called with a different number of parameters than it's definition! Position: " ++ show pos]
+                                            then if (checkCompatibilityOfExpsList exps param env) 
+                                                then if (checkCompatibilityOfValResParams exps param env)  
+                                                     then TResult env t pos 
+                                                     else TError ["Valres parameters require l-val expression! Position: " ++ show pose]
+                                                 else TError ["Function " ++ id ++ "( ) called with parameters of the wrong type! Position: " ++ show pos]
+                                            else TError ["Function " ++ id ++ "( ) called with a different number of parameters than it's definition! Position: " ++ show pos]
 
 countNumberOfExps :: Abs.EXPRESSIONS Posn -> Prelude.Int
 countNumberOfExps (Abs.Expressions _ _ exps) = 1 + countNumberOfExps exps
@@ -2361,7 +2278,19 @@ checkCompatibilityOfExpsList  (Abs.Expressions pos exp exps) ((TypeChecker.Param
 checkCompatibilityOfExpsList  (Abs.Expression pos exp) ((TypeChecker.Parameter ty _ _ _):zs) env = let expType = checkTypeExpression 0 exp env in 
                                                                                                         if checkCompatibility expType (TResult env ty pos) 
                                                                                                             then True else False
-checkCompatibilityOfExpsList  (Abs.ExpressionEmpty pos) [] env = True                                                                                                                                                 
+checkCompatibilityOfExpsList  (Abs.ExpressionEmpty pos) [] env = True 
+
+checkCompatibilityOfValResParams :: Abs.EXPRESSIONS Posn -> [TypeChecker.Parameter] -> Env -> Prelude.Bool
+checkCompatibilityOfValResParams (Abs.Expressions pos exp exps) ((TypeChecker.Parameter ty _ "valres" _):zs) env = case exp of
+                                                                                                            (Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) -> True && (checkCompatibilityOfValResParams exps zs env)
+                                                                                                            _ -> False -- not an l-value
+
+checkCompatibilityOfValResParams (Abs.Expression pos exp) ((TypeChecker.Parameter ty _ "valres" _):zs) env       = case exp of
+                                                                                                                (Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) -> True
+                                                                                                                _ -> False -- not an l-value
+checkCompatibilityOfValResParams  (Abs.Expressions pos exp exps) ((TypeChecker.Parameter ty _ "val" _):zs) env = True && (checkCompatibilityOfValResParams exps zs env)
+checkCompatibilityOfValResParams  (Abs.Expression pos exp) ((TypeChecker.Parameter ty _ "val" _):zs) env = True
+checkCompatibilityOfValResParams (Abs.ExpressionEmpty pos) [] env = True    
 
 checkTypeUnaryOp :: Abs.UNARYOP Posn -> Env -> TCheckResult
 checkTypeUnaryOp node@(Abs.UnaryOperationPositive pos) env = TResult env (B_type Type_Real) pos
@@ -2511,15 +2440,22 @@ checkTypeExpressionCallD_ :: Abs.DEFAULT Posn -> Env -> [EnvEntry] -> TCheckResu
 checkTypeExpressionCallD_ (Abs.ExpressionCallD pos (Abs.Ident id posid) exps) env [Function t posf param canOverride] = case exps of
     (Abs.Expression posd exp) -> if Prelude.length (param) == 1 -- The call was with 1 param, does the definition requires only 1 param?
                                                then if (let expType = checkTypeExpression 0 exp env -- Check if the type is compatibile with the one required in the definition
-                                                        in checkCompatibility expType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) then TResult env t pos 
+                                                        in checkCompatibility expType (TResult env (Prelude.head (getTypeListFromFuncParams param)) pos)) 
+                                                        then if (checkCompatibilityOfValResParams (Abs.Expressions pos exp (Abs.ExpressionEmpty posd)) param env) 
+                                                             then TResult env t pos 
+                                                             else TError ["Valres parameter require l-val expression! Position: " ++ show posd]
                                                     else TError ["Function " ++ id ++ "( ) requires a parameter of type " ++ show (Prelude.head (getTypeListFromFuncParams param)) ++ " but " ++  show (getType (checkTypeExpression 0 exp env)) ++ " is given! Position: " ++ show pos]
                                                else TError ["Function " ++ id ++ "( ) called with too few arguments! Position: " ++ show pos]
     (Abs.ExpressionEmpty posd) -> if param == [] then TResult env t pos else TError ["Function " ++ id ++ "( ) called without parameters! Position: " ++ show pos] -- The call was with no params, check if the definition requires no param too
     (Abs.Expressions posd exp expss) -> if Prelude.length (param) == 1 + (countNumberOfExps expss) -- The call has n params, does the definition requires n params?
-                                                              then if (checkCompatibilityOfExpsList exps param env) then TResult env t pos 
+                                                              then if (checkCompatibilityOfExpsList exps param env)
+                                                                   then if (checkCompatibilityOfValResParams exps param env)
+                                                                        then TResult env t pos
+                                                                        else TError ["Valres parameters require l-val expression! Position: " ++ show posd]
                                                                    else TError ["Function " ++ id ++ "( ) called with parameters of the wrong type! Position: " ++ show pos]
                                                               else TError ["Function " ++ id ++ "( ) called with a different number of parameters than it's definition! Position: " ++ show pos]
 
+                                                              
 checkTypeIdentVar :: Abs.Ident Posn -> Env -> TCheckResult
 checkTypeIdentVar node@(Abs.Ident id pos) env = case Data.Map.lookup id env of
     Just [Variable t posv mode override s] -> TResult env t pos
@@ -3013,14 +2949,30 @@ checkTypeCallExpression node@(Abs.CallExpressionParentheses _ (Abs.Ident id pos)
 checkTypeCallExpression_ :: Abs.CALLEXPRESSION Posn -> Env -> [EnvEntry] -> TCheckResult
 checkTypeCallExpression_ (Abs.CallExpressionParentheses _ (Abs.Ident id pos) namedexpr) env [Function t posf param canOverride] = case namedexpr of
     (Abs.NamedExpressionList res namedexprr) -> if Prelude.length (param) == 1 -- The call was with 1 param, does the definition requires only 1 param?
-                                               then if (checkCompatibilityOfParamsList namedexpr param env) then TResult env t pos 
+                                               then if (checkCompatibilityOfParamsList namedexpr param env)
+                                                    then if (checkCompatibilityOfValResParamsNamed namedexpr param env)  
+                                                         then TResult env t pos 
+                                                         else TError ["Valres parameter require l-val expression! Position: " ++ show pos]
                                                     else TError ["Function " ++ id ++ "( ) requires a parameter of type " ++ show (Prelude.head (getTypeListFromFuncParams param)) ++ " but " ++  show (getType (checkTypeNamedExpression namedexprr env)) ++ " is given! Position: " ++ show pos]
                                                else TError ["Function " ++ id ++ "( ) called with too few arguments! Position: " ++ show pos]
     (Abs.NamedExpressionListEmpty res) -> if param == [] then TResult env t pos else TError ["Function " ++ id ++ "( ) called without parameters! Position: " ++ show pos] -- The call was with no params, check if the definition requires no param too
     (Abs.NamedExpressionLists res _ namedexprlist) -> if Prelude.length (param) == 1 + (countNumberOfParam namedexprlist) -- The call has n params, does the definition requires n params?
-                                                              then if (checkCompatibilityOfParamsList namedexpr param env) then TResult env t pos 
+                                                              then if (checkCompatibilityOfParamsList namedexpr param env) 
+                                                                  then if (checkCompatibilityOfValResParamsNamed namedexpr param env)  
+                                                                      then TResult env t pos 
+                                                                      else TError ["Valres parameter require l-val expression! Position: " ++ show pos]
                                                                    else TError ["Function " ++ id ++ "( ) called with parameters of the wrong type! Position: " ++ show pos]
                                                               else TError ["Function " ++ id ++ "( ) called with a different number of parameters than it's definition! Position: " ++ show pos]
+
+checkCompatibilityOfValResParamsNamed :: Abs.NAMEDEXPRESSIONLIST Posn -> [TypeChecker.Parameter] -> Env -> Prelude.Bool
+checkCompatibilityOfValResParamsNamed (Abs.NamedExpressionLists pos x@(Abs.NamedExpression posn exp) xs) ((TypeChecker.Parameter ty _ "valres" _):zs) env = case exp of
+                                                                                                                                                                (Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) -> True && (checkCompatibilityOfValResParamsNamed xs zs env)
+                                                                                                                                                                _ -> False -- not an l-value
+checkCompatibilityOfValResParamsNamed (Abs.NamedExpressionList pos x@(Abs.NamedExpression posn exp)) ((TypeChecker.Parameter ty _ "valres" _):zs) env = case exp of
+                                                                                                                                                                (Abs.ExpressionIdent pos ident@(Abs.Ident id posI) indexing) -> True
+                                                                                                                                                                _ -> False -- not an l-value
+checkCompatibilityOfValResParamsNamed (Abs.NamedExpressionLists pos x@(Abs.NamedExpression posn exp) xs) ((TypeChecker.Parameter ty _ "val" _):zs) env = True && (checkCompatibilityOfValResParamsNamed xs zs env)
+checkCompatibilityOfValResParamsNamed (Abs.NamedExpressionList pos x@(Abs.NamedExpression posn exp)) ((TypeChecker.Parameter ty _ "val" _):zs) env = True
 
 -- Given a List of named expression, counts them and return the result
 countNumberOfParam :: Abs.NAMEDEXPRESSIONLIST Posn -> Prelude.Int
