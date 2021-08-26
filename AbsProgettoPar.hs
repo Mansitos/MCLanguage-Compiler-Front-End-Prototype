@@ -48,7 +48,9 @@ data STATEMENT a
 
 data PARAMETERS a
     = ParameterList {parameters_content::a, parameters_parameter::(PARAMETER a), parameters_parameters::(PARAMETERS a)} 
+    | ParameterListValRes {parameters_content::a, parameters_parameter::(PARAMETER a), parameters_parameters::(PARAMETERS a)} 
     | ParameterListSingle {parameters_content::a, parameters_parameter::(PARAMETER a)}
+    | ParameterListSingleValRes {parameters_content::a, parameters_parameter::(PARAMETER a)}
     | ParameterListEmpty{parameters_content::a}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -77,6 +79,7 @@ data VARDECLIST a = VariableDeclarationSingle {vardeclist_content::a, vardeclist
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data VARDECID a = VariableDeclaration {vardecid_content::a, vardecid_identlist::(IDENTLIST a), vardecid_typepart::(TYPEPART a), vardecid_initpart::(INITPART a)}
+                | VariableDeclarationChecked {vardecid_content::a, vardecid_identlist::(IDENTLIST a), vardecid_typepart::(TYPEPART a), vardecid_initpart::(INITPART a)}
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data IDENTLIST a

@@ -153,8 +153,10 @@ instance Print (AbsProgettoPar.STATEMENT attr) where
 
 instance Print (AbsProgettoPar.PARAMETERS attr) where
   prt i = \case
-    AbsProgettoPar.ParameterList _ parameter parameters -> prPrec i 0 (concatD [prt 0 parameter, doc (showString ","), prt 0 parameters])
-    AbsProgettoPar.ParameterListSingle _ parameter -> prPrec i 0 (concatD [prt 0 parameter])
+    AbsProgettoPar.ParameterList _ parameter parameters -> prPrec i 0 (concatD [ prt 0 parameter, doc (showString ","), prt 0 parameters])
+    AbsProgettoPar.ParameterListValRes _ parameter parameters -> prPrec i 0 (concatD [doc (showString "valres"), prt 0 parameter, doc (showString ","), prt 0 parameters])
+    AbsProgettoPar.ParameterListSingle _ parameter -> prPrec i 0 (concatD [ prt 0 parameter])
+    AbsProgettoPar.ParameterListSingleValRes _ parameter -> prPrec i 0 (concatD [doc (showString "valres"),prt 0 parameter])
     AbsProgettoPar.ParameterListEmpty _ -> prPrec i 0 (concatD [])
 
 instance Print (AbsProgettoPar.PARAMETER attr) where
@@ -186,7 +188,7 @@ instance Print (AbsProgettoPar.VARDECLIST attr) where
 instance Print (AbsProgettoPar.VARDECID attr) where
   prt i = \case
     AbsProgettoPar.VariableDeclaration _ identlist typepart initpart -> prPrec i 0 (concatD [prt 0 identlist, prt 0 typepart, prt 0 initpart])
-
+    AbsProgettoPar.VariableDeclarationChecked _ identlist typepart initpart -> prPrec i 0 (concatD [doc (showString "checked"),prt 0 identlist, prt 0 typepart, prt 0 initpart])
 instance Print (AbsProgettoPar.IDENTLIST attr) where
   prt i = \case
     AbsProgettoPar.IdentifierList _ id_ identlist -> prPrec i 0 (concatD [prt 0 id_, doc (showString ","), prt 0 identlist])

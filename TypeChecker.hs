@@ -333,13 +333,15 @@ getIdsFromIdentList node@(Abs.IdentifierSingle pos ident@(Abs.Ident id posI)) = 
 
 -- Given a Parameters node of the ABS, returns a list of Parameters (constructor for the ENV)
 getParamList :: Abs.PARAMETERS Posn -> [Parameter]
-getParamList (Abs.ParameterList pos param params) = let p = buildParam param in [p] ++ getParamList params
-getParamList (Abs.ParameterListSingle pos param)  = let p = buildParam param in [p]
-getParamList (Abs.ParameterListEmpty pos)         = []
+getParamList (Abs.ParameterList pos param params)       = let p = buildParam param "val"    in [p] ++ getParamList params
+getParamList (Abs.ParameterListValRes pos param params) = let p = buildParam param "valres" in [p] ++ getParamList params
+getParamList (Abs.ParameterListSingle pos param)        = let p = buildParam param "val"    in [p]
+getParamList (Abs.ParameterListSingleValRes pos param)  = let p = buildParam param "valres" in [p]
+getParamList (Abs.ParameterListEmpty pos)               = []
 
 -- Given a Parameter node of the ABS, return a single built Parameter data type (constructor for the ENV)
-buildParam :: Abs.PARAMETER Posn -> Parameter
-buildParam (Abs.Parameter pos id ty) = (TypeChecker.Parameter (getTypeFromTypeExpF ty) (getPosFromIdent id) "_mode_" (getIdFromIdent id)) 
+buildParam :: Abs.PARAMETER Posn -> Prelude.String -> Parameter
+buildParam (Abs.Parameter pos id ty) mode = (TypeChecker.Parameter (getTypeFromTypeExpF ty) (getPosFromIdent id) mode (getIdFromIdent id)) 
 
 -- Given a list of parameters (from a func env entry) returns the list of types of each parameter
 getTypeListFromFuncParams :: [Parameter] -> [Type]
@@ -1090,7 +1092,17 @@ executeVardecID node@(Abs.VariableDeclaration pos idlist tipo init) env = let ti
                                                                                                                                 then (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute (executeInitPart (Abs.InitializzationPart e (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeReal pos))) env)) -- vars are declared as real but expr is int! it needs implicit cast to be explicited!
                                                                                                                                 else (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited
                                                                                         _ -> (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited
-                                                                                
+executeVardecID node@(Abs.VariableDeclarationChecked pos idlist tipo init) env = let tipoExecute = (executeTypePart tipo env) in 
+                                                                                  let initExecute = (executeInitPart init env) in
+                                                                                      let varsType = getTypePart tipo in
+                                                                                          case init of
+                                                                                              Abs.InitializzationPart e exp -> let exprExecute = (executeExpression exp env) in
+                                                                                                                                  let initType = (getTypeFromExpressionTResult exprExecute) in
+                                                                                                                                      if (initType == (B_type Type_Integer) && varsType == (B_type Type_Real))
+                                                                                                                                      then (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute (executeInitPart (Abs.InitializzationPart e (Abs.ExpressionCast pos (Abs.ExpressionBracketD pos exp) (Abs.PrimitiveTypeReal pos))) env)) -- vars are declared as real but expr is int! it needs implicit cast to be explicited!
+                                                                                                                                      else (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited
+                                                                                              _ -> (Abs.VariableDeclaration (checkTypeVariableDec node env) (executeIDList idlist env) tipoExecute initExecute) -- no implicit cast to be explicited
+                                                                                                  
                                                                                 
 
 executeIDList :: Abs.IDENTLIST Posn -> Env -> Abs.IDENTLIST TCheckResult
@@ -2958,7 +2970,12 @@ checkTypeExecuteParameter node@(Abs.ParameterList pos param params) env = let pa
                                                                                 (if  checkDuplicatedParametersInFunDecl (getListOfIdsFromParamList pamList) -- check if params ids are not dups
                                                                                 then mergeErrors (checkTypeParameter param env) (TError ["Duplicated parameter identifiers in function declaration! Position: " ++ show pos]) -- dups in params 
                                                                                 else checkErrors (checkTypeParameter param env) (TResult env (B_type Type_Integer) pos)) -- no dups: decl ok
+checkTypeExecuteParameter node@(Abs.ParameterListValRes pos param params) env = let pamList = (getParamList node) in
+                                                                                    (if  checkDuplicatedParametersInFunDecl (getListOfIdsFromParamList pamList) -- check if params ids are not dups
+                                                                                    then mergeErrors (checkTypeParameter param env) (TError ["Duplicated parameter identifiers in function declaration! Position: " ++ show pos]) -- dups in params 
+                                                                                    else checkErrors (checkTypeParameter param env) (TResult env (B_type Type_Integer) pos)) -- no dups: decl ok
 checkTypeExecuteParameter node@(Abs.ParameterListSingle pos param) env = checkErrors (checkTypeParameter param env) (TResult env (B_type Type_Integer) pos) -- single can't have dups in ids
+checkTypeExecuteParameter node@(Abs.ParameterListSingleValRes pos param) env = checkErrors (checkTypeParameter param env) (TResult env (B_type Type_Integer) pos) -- single can't have dups in ids
 checkTypeExecuteParameter node@(Abs.ParameterListEmpty pos) env = TResult env (B_type Type_Void) pos -- empty can't have dups in ids
 
 checkTypeParameter:: Abs.PARAMETER Posn -> Env -> TCheckResult

@@ -109,8 +109,8 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "True" 30 (b "," 15 (b ")" 8 (b "%" 4 (b "!=" 2 (b "!" 1 N N) (b "$" 3 N N)) (b "&&" 6 (b "%=" 5 N N) (b "(" 7 N N))) (b "*=" 12 (b "**" 10 (b "*" 9 N N) (b "**=" 11 N N)) (b "+=" 14 (b "+" 13 N N) N))) (b "<" 23 (b "/" 19 (b "-=" 17 (b "-" 16 N N) (b ".." 18 N N)) (b ":" 21 (b "/=" 20 N N) (b ";" 22 N N))) (b ">" 27 (b "=" 25 (b "<=" 24 N N) (b "==" 26 N N)) (b "False" 29 (b ">=" 28 N N) N)))) (b "int" 45 (b "do" 38 (b "break" 34 (b "]" 32 (b "[" 31 N N) (b "bool" 33 N N)) (b "const" 36 (b "char" 35 N N) (b "continue" 37 N N))) (b "function" 42 (b "false" 40 (b "else" 39 N N) (b "for" 41 N N)) (b "in" 44 (b "if" 43 N N) N))) (b "true" 52 (b "return" 49 (b "proc" 47 (b "param" 46 N N) (b "real" 48 N N)) (b "then" 51 (b "string" 50 N N) N)) (b "{" 56 (b "void" 54 (b "var" 53 N N) (b "while" 55 N N)) (b "}" 58 (b "||" 57 N N) N))))
-    where b s n = let bs = s
+resWords = b "[" 31 (b "-" 16 (b ")" 8 (b "%" 4 (b "!=" 2 (b "!" 1 N N) (b "$" 3 N N)) (b "&&" 6 (b "%=" 5 N N) (b "(" 7 N N))) (b "*=" 12 (b "**" 10 (b "*" 9 N N) (b "**=" 11 N N)) (b "+=" 14 (b "+" 13 N N) (b "," 15 N N)))) (b "<=" 24 (b "/=" 20 (b ".." 18 (b "-=" 17 N N) (b "/" 19 N N)) (b ";" 22 (b ":" 21 N N) (b "<" 23 N N))) (b ">=" 28 (b "==" 26 (b "=" 25 N N) (b ">" 27 N N)) (b "True" 30 (b "False" 29 N N) N)))) (b "int" 46 (b "do" 39 (b "char" 35 (b "bool" 33 (b "]" 32 N N) (b "break" 34 N N)) (b "const" 37 (b "checked" 36 N N) (b "continue" 38 N N))) (b "function" 43 (b "false" 41 (b "else" 40 N N) (b "for" 42 N N)) (b "in" 45 (b "if" 44 N N) N))) (b "valres" 54 (b "return" 50 (b "proc" 48 (b "param" 47 N N) (b "real" 49 N N)) (b "then" 52 (b "string" 51 N N) (b "true" 53 N N))) (b "{" 58 (b "void" 56 (b "var" 55 N N) (b "while" 57 N N)) (b "}" 60 (b "||" 59 N N) N))))
+   where b s n = let bs = s
                  in  B bs (TS bs n)
 
 unescapeInitTail :: String -> String

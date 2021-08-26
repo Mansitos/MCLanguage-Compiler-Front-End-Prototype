@@ -54,29 +54,31 @@ import LexProgettoPar
   'bool' { PT _ (TS _ 33) }
   'break' { PT _ (TS _ 34) }
   'char' { PT _ (TS _ 35) }
-  'const' { PT _ (TS _ 36) }
-  'continue' { PT _ (TS _ 37) }
-  'do' { PT _ (TS _ 38) }
-  'else' { PT _ (TS _ 39) }
-  'false' { PT _ (TS _ 40) }
-  'for' { PT _ (TS _ 41) }
-  'function' { PT _ (TS _ 42) }
-  'if' { PT _ (TS _ 43) }
-  'in' { PT _ (TS _ 44) }
-  'int' { PT _ (TS _ 45) }
-  'param' { PT _ (TS _ 46) }
-  'proc' { PT _ (TS _ 47) }
-  'real' { PT _ (TS _ 48) }
-  'return' { PT _ (TS _ 49) }
-  'string' { PT _ (TS _ 50) }
-  'then' { PT _ (TS _ 51) }
-  'true' { PT _ (TS _ 52) }
-  'var' { PT _ (TS _ 53) }
-  'void' { PT _ (TS _ 54) }
-  'while' { PT _ (TS _ 55) }
-  '{' { PT _ (TS _ 56) }
-  '||' { PT _ (TS _ 57) }
-  '}' { PT _ (TS _ 58) }
+  'checked' { PT _ (TS _ 36) }
+  'const' { PT _ (TS _ 37) }
+  'continue' { PT _ (TS _ 38) }
+  'do' { PT _ (TS _ 39) }
+  'else' { PT _ (TS _ 40) }
+  'false' { PT _ (TS _ 41) }
+  'for' { PT _ (TS _ 42) }
+  'function' { PT _ (TS _ 43) }
+  'if' { PT _ (TS _ 44) }
+  'in' { PT _ (TS _ 45) }
+  'int' { PT _ (TS _ 46) }
+  'param' { PT _ (TS _ 47) }
+  'proc' { PT _ (TS _ 48) }
+  'real' { PT _ (TS _ 49) }
+  'return' { PT _ (TS _ 50) }
+  'string' { PT _ (TS _ 51) }
+  'then' { PT _ (TS _ 52) }
+  'true' { PT _ (TS _ 53) }
+  'valres' {PT _ (TS _ 54) }
+  'var' { PT _ (TS _ 55) }
+  'void' { PT _ (TS _ 56) }
+  'while' { PT _ (TS _ 57) }
+  '{' { PT _ (TS _ 58) }
+  '||' { PT _ (TS _ 59) }
+  '}' { PT _ (TS _ 60) }
   L_Ident  { PT _ (TV _) }
   L_charac { PT _ (TC _) }
   L_doubl  { PT _ (TD _) }
@@ -143,7 +145,9 @@ STATEMENT : B { Abs.Statement (Abs.b_content $1) $1 }
 
 PARAMETERS :: { Abs.PARAMETERS Posn }
 PARAMETERS : PARAMETER ',' PARAMETERS { Abs.ParameterList (Abs.parameter_content $1) $1 $3 }
+           | 'valres' PARAMETER ',' PARAMETERS { Abs.ParameterListValRes (tokenPosn $1) $2 $4 }
            | PARAMETER  { Abs.ParameterListSingle (Abs.parameter_content $1) $1 }
+           | 'valres' PARAMETER { Abs.ParameterListSingleValRes (tokenPosn $1) $2 }
            | {- empty -} { Abs.ParameterListEmpty (Pn 0 0 0)}
 
 PARAMETER :: { Abs.PARAMETER Posn }
@@ -168,6 +172,7 @@ VARDECLIST : VARDECID { Abs.VariableDeclarationSingle (Abs.vardecid_content $1) 
 
 VARDECID :: { Abs.VARDECID Posn }
 VARDECID : IDENTLIST TYPEPART INITPART { Abs.VariableDeclaration (Abs.identlist_content $1) $1 $2 $3 }
+         | 'checked' IDENTLIST TYPEPART INITPART { Abs.VariableDeclarationChecked (tokenPosn $1) $2 $3 $4 }
 
 IDENTLIST :: { Abs.IDENTLIST Posn }
 IDENTLIST : Ident ',' IDENTLIST { Abs.IdentifierList (Abs.contentId $1) $1 $3 }

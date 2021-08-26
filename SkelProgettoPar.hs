@@ -58,7 +58,9 @@ transSTATEMENT x = case x of
 transPARAMETERS :: Show attr => (AbsProgettoPar.PARAMETERS attr) -> Result
 transPARAMETERS x = case x of
   AbsProgettoPar.ParameterList _ parameter parameters -> failure x
+  AbsProgettoPar.ParameterListValRes _ parameter parameters -> failure x
   AbsProgettoPar.ParameterListSingle _ parameter -> failure x
+  AbsProgettoPar.ParameterListSingleValRes _ parameter -> failure x
   AbsProgettoPar.ParameterListEmpty _ -> failure x
 
 transPARAMETER :: Show attr => (AbsProgettoPar.PARAMETER attr) -> Result
@@ -90,6 +92,7 @@ transVARDECLIST x = case x of
 transVARDECID :: Show attr => (AbsProgettoPar.VARDECID attr) -> Result
 transVARDECID x = case x of
   AbsProgettoPar.VariableDeclaration _ identlist typepart initpart -> failure x
+  AbsProgettoPar.VariableDeclarationChecked _ identlist typepart initpart -> failure x
 
 transIDENTLIST :: Show attr => (AbsProgettoPar.IDENTLIST attr) -> Result
 transIDENTLIST x = case x of
@@ -110,7 +113,6 @@ transLISTELEMENTARRAY :: Show attr => (AbsProgettoPar.LISTELEMENTARRAY attr) -> 
 transLISTELEMENTARRAY x = case x of
   AbsProgettoPar.ListElementsOfArray _ expression listelementarray -> failure x
   AbsProgettoPar.ListElementOfArray _ expression -> failure x
-
 
 transARRAYINIT :: Show attr => (AbsProgettoPar.ARRAYINIT attr) -> Result
 transARRAYINIT x = case x of
